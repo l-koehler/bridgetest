@@ -14,11 +14,14 @@ use minetest_protocol::wire::command::ToServerCommand;
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::MinetestServer;
 
-pub async fn client_handler(_mt_server: MinetestServer, mut conn: MinetestConnection) {
+use tokio::net::TcpStream;
+
+pub async fn client_handler(_mt_server: MinetestServer, mut conn: MinetestConnection, mut mc_conn: TcpStream) {
     println!("[Debug] async translator::client_handler()");
 
     loop {
         tokio::select! {
+            // recieve data over the MinetestConnection
             t = conn.recv() => {
                 
                 // Check if the client disconnected
@@ -47,7 +50,9 @@ pub async fn client_handler(_mt_server: MinetestServer, mut conn: MinetestConnec
                 
                 // pass the command to somewhere else for handling
                 command_handler(command, &mut conn).await;
-            }
+            },
+            // or recieve data over the minecraft/TCP connection (mc_conn)
+            
         }
     }
 }
@@ -56,6 +61,6 @@ async fn command_handler(_command: ToServerCommand, _conn: &mut MinetestConnecti
     println!("[Debug] translator::command_handler()");
     match _command.command_name() {
         "Init" => mt_command::handshake(_command, _conn).await,
-        _ => println!("not implemented")
+        _ => println!("Dropping MT Packet: Unknown Name")
     }
 }
