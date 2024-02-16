@@ -6,16 +6,14 @@
 
 use crate::utils;
 use crate::mt_command;
+
 use minetest_protocol::peer::peer::PeerError;
-use minetest_protocol::wire::command::ToClientCommand;
-use minetest_protocol::wire::command::ToServerCommand;
 use minetest_protocol::wire::command::CommandProperties;
-use minetest_protocol::CommandRef;
-use minetest_protocol::MinetestClient;
+use minetest_protocol::wire::command::ToServerCommand;
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::MinetestServer;
 
-pub async fn client_handler(mt_server: MinetestServer, mut conn: MinetestConnection) {
+pub async fn client_handler(_mt_server: MinetestServer, mut conn: MinetestConnection) {
     println!("[Debug] async translator::client_handler()");
 
     loop {
@@ -47,16 +45,16 @@ pub async fn client_handler(mt_server: MinetestServer, mut conn: MinetestConnect
                 utils::show_mt_command(&command);
                 
                 // pass the command to somewhere else for handling
-                command_handler(command, &mut conn);
+                command_handler(command, &mut conn).await;
             }
         }
     }
 }
 
-fn command_handler(command: ToServerCommand, conn: &mut MinetestConnection) {
+async fn command_handler(_command: ToServerCommand, _conn: &mut MinetestConnection) {
     println!("[Debug] translator::command_handler()");
-    // match command.command_name() {
-    //     "Init" => mt_command::handshake(command, conn),
-    //     _ => println!("not implemented")
-    // }
+    match _command.command_name() {
+        "Init" => mt_command::handshake(_command, _conn).await,
+        _ => println!("not implemented")
+    }
 }

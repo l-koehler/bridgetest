@@ -3,7 +3,6 @@ mod utils;
 mod mt_command;
 
 use minetest_protocol::MinetestServer;
-use minetest_protocol::MinetestConnection;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 #[tokio::main]

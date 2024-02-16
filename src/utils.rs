@@ -1,5 +1,8 @@
+use minetest_protocol::peer::peer::PeerError;
+
 use minetest_protocol::CommandRef;
 use minetest_protocol::CommandDirection;
+use minetest_protocol::wire::command::ToServerCommand;
 
 pub fn show_mt_command(command: &dyn CommandRef) {
     let dir = match command.direction() {
