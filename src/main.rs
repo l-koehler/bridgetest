@@ -1,6 +1,7 @@
 mod translator;
 mod utils;
 mod mt_command;
+mod mc_command;
 
 use minetest_protocol::MinetestServer;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};

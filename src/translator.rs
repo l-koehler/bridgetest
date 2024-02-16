@@ -1,6 +1,7 @@
 /*
  * This file contains the loop in which packets from the MT Client are
- * processed (fn client_handler)
+ * processed (fn client_handler).
+ * Also, this file is badly named (as you might have noticed).
  */
 
 
