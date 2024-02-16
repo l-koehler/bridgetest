@@ -28,7 +28,7 @@ pub async fn handshake(_command: ToServerCommand, _conn: &mut MinetestConnection
             username_legacy: "DEBUG".to_string(),
         })
     );
-    _conn.send(hello_command).await;
+    let _ = _conn.send(hello_command).await;
     println!("[MT CMD] S->C Hello");
     // Wait for a C->S FirstSrp
     // TODO: this is right now just assuming the response is part of the authentication
@@ -47,6 +47,6 @@ pub async fn handshake(_command: ToServerCommand, _conn: &mut MinetestConnection
             sudo_auth_methods: 0,
         })
     );
-    _conn.send(auth_accept_command).await;
+    let _ = _conn.send(auth_accept_command).await;
     println!("[MT CMD] S->C AuthAccept");
 }
