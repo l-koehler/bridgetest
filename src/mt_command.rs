@@ -29,7 +29,7 @@ pub async fn handshake(_command: ToServerCommand, _conn: &mut MinetestConnection
         })
     );
     let _ = _conn.send(hello_command).await;
-    println!("[MT CMD] S->C Hello");
+    println!("[Minetest] S->C Hello");
     // Wait for a C->S FirstSrp
     // TODO: this is right now just assuming the response is part of the authentication
     let second_response = _conn.recv().await.expect("Client disconnected during authentication!");
@@ -48,5 +48,5 @@ pub async fn handshake(_command: ToServerCommand, _conn: &mut MinetestConnection
         })
     );
     let _ = _conn.send(auth_accept_command).await;
-    println!("[MT CMD] S->C AuthAccept");
+    println!("[Minetest] S->C AuthAccept");
 }

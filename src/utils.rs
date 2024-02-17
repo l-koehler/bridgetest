@@ -6,6 +6,6 @@ pub fn show_mt_command(command: &dyn CommandRef) {
         CommandDirection::ToClient => "S->C",
         CommandDirection::ToServer => "C->S",
     };
-    println!("[MT CMD] {} {}", dir, command.command_name());
+    println!("[Minetest] {} {}", dir, command.command_name());
     //println!("{} {:#?}", dir, command); // verbose
 }
