@@ -1,10 +1,11 @@
 mod translator;
 mod utils;
-mod mt_command;
+mod commands;
+mod packet_handler;
+mod settings;
 
 use minetest_protocol::MinetestServer;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use tokio::net::TcpStream;
+use std::net::{IpAddr, SocketAddr};
 
 #[tokio::main]
 async fn main() {
@@ -13,26 +14,16 @@ async fn main() {
 }
 
 async fn start_client_handler() {
-    println!("[Debug] async main::start_client_handler()");
-    // TODO: read the port from a config file or something to that effect
-    let mt_server_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 30000);
-    println!("[Minecraft] Connecting to 127.0.0.1:25565...");
-    let mut mc_conn = TcpStream::connect("127.0.0.1:25565").await;
-    
-    match mc_conn {
-        Ok(mc_stream) => {
-            println!("[Minecraft] Connected!");
-            let mut mt_server = MinetestServer::new(mt_server_addr);
-            println!("[Minetest] Waiting for client to connect...");
-            tokio::select! {
-                conn = mt_server.accept() => {
-                    println!("[Minetest] Client connected from {:?}", conn.remote_addr());
-                    translator::client_handler(mt_server, conn, mc_stream).await;
-                }
-            }
-        }
-        Err(err) => {
-            println!("[Minecraft] Failed to connect! Is the server running? ({})", err);
+    // Create/Host a Minetest Server
+    println!("[Minetest] Creating Server (Port: {})...", settings::MT_SERVER_PORT);
+    let mt_server_addr = SocketAddr::new(IpAddr::V4(settings::MT_SERVER_ADDR),
+                                         settings::MT_SERVER_PORT);
+    let mut mt_server = MinetestServer::new(mt_server_addr);
+    // Wait for a client to join
+    tokio::select! {
+        conn = mt_server.accept() => {
+            println!("[Minetest] Client connected from {:?}", conn.remote_addr());
+            translator::client_handler(mt_server, conn).await;
         }
     }
 }

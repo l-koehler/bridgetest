@@ -1,3 +1,7 @@
+/*
+ * This file contains shared functions, for example logging
+ */
+
 use minetest_protocol::CommandRef;
 use minetest_protocol::CommandDirection;
 
@@ -9,3 +13,4 @@ pub fn show_mt_command(command: &dyn CommandRef) {
     println!("[Minetest] {} {}", dir, command.command_name());
     //println!("{} {:#?}", dir, command); // verbose
 }
+

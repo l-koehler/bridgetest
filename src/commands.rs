@@ -1,18 +1,26 @@
 /*
- * This file contains functions that perform specific actions with the MT client
+ * This file contains functions that perform specific actions
+ * between the MT client and the MC server
+ * For example the handshake function, which also creates and returns a
+ * Minecraft client.
  */
+
 use crate::utils;
+use crate::settings;
 
 use minetest_protocol::wire::command::ToServerCommand;
 use minetest_protocol::MinetestConnection;
-
-// commands that can be sent to the client
 use minetest_protocol::wire::command::ToClientCommand;
 use minetest_protocol::wire::command::HelloSpec;
 use minetest_protocol::wire::command::AuthAcceptSpec;
 use minetest_protocol::wire::types;
 
-pub async fn handshake(_command: ToServerCommand, _conn: &mut MinetestConnection) {
+use azalea;
+use azalea_client::{Client, Account};
+
+use tokio::sync::mpsc::UnboundedReceiver;
+
+pub async fn handshake(_command: ToServerCommand, _conn: &mut MinetestConnection) -> (azalea::Client, UnboundedReceiver<azalea::Event>) {
     // Got called by C->S Init
     // Send S->C Hello
     let hello_command = ToClientCommand::Hello(
@@ -49,4 +57,10 @@ pub async fn handshake(_command: ToServerCommand, _conn: &mut MinetestConnection
     );
     let _ = _conn.send(auth_accept_command).await;
     println!("[Minetest] S->C AuthAccept");
+    println!("[Minecraft] Logging in...");
+    
+    // TODO: Change this line to allow online accounts
+    let mc_account: Account = Account::offline("DEBUG");
+    let (mc_client, rx) = Client::join(&mc_account, settings::MC_SERVER_ADDR).await.expect("[Minecraft] Failed to log in!");
+    return (mc_client, rx)
 }
