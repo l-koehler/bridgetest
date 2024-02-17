@@ -75,6 +75,9 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 name = "bridgetest"
 version = "0.1.0"
 dependencies = [
+ "bytes",
+ "mc-varint",
+ "minecraft-varint",
  "minetest-protocol",
  "tokio",
 ]
@@ -209,10 +212,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-varint"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6407d50d4e371d5f450a4a5f1abd4531e48e9a1627409c051b5d4c7c84f6bb09"
+
+[[package]]
 name = "memchr"
 version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "523dc4f511e55ab87b694dc30d0f820d60906ef06413f93d4d7a1385599cc149"
+
+[[package]]
+name = "minecraft-varint"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e56e02d75c6e82ca643fd12b2bd409ce003376dd7535c385948b906de440c57c"
 
 [[package]]
 name = "minetest-protocol"

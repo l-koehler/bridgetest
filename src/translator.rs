@@ -16,14 +16,15 @@ use minetest_protocol::MinetestServer;
 
 use tokio::net::TcpStream;
 
-pub async fn client_handler(_mt_server: MinetestServer, mut conn: MinetestConnection, mut mc_conn: TcpStream) {
+const MAX_MC_PACKET_SIZE: usize = 2097151;
+
+pub async fn client_handler(_mt_server: MinetestServer, mut conn: MinetestConnection, mc_conn: TcpStream) {
     println!("[Debug] async translator::client_handler()");
 
     loop {
         tokio::select! {
             // recieve data over the MinetestConnection
             t = conn.recv() => {
-                
                 // Check if the client disconnected
                 match t {
                     Ok(_) => (),
@@ -52,7 +53,27 @@ pub async fn client_handler(_mt_server: MinetestServer, mut conn: MinetestConnec
                 command_handler(command, &mut conn).await;
             },
             // or recieve data over the minecraft/TCP connection (mc_conn)
-            
+            _ready = mc_conn.readable() => {
+                println!("[Minecraft] TCP Connection became readable!");
+                // ready isnt even relevant
+                let mut buffer = vec![0; MAX_MC_PACKET_SIZE];
+                
+                match mc_conn.try_read(&mut buffer) {
+                    Ok(n) => {
+                        buffer.truncate(n);
+                        
+                        break;
+                    }
+                    Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                        // stream can't be read, consume the readiness event
+                        continue;
+                    }
+                    Err(e) => {
+                        // some actual error while reading the minecraft tcp
+                        println!("[Minecraft] Encontered Error in readable TCP: {}", e);
+                    }
+                }
+            }
         }
     }
 }

@@ -17,7 +17,7 @@ async fn start_client_handler() {
     // TODO: read the port from a config file or something to that effect
     let mt_server_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 30000);
     println!("[Minecraft] Connecting to 127.0.0.1:25565...");
-    let mut mc_conn = TcpStream::connect("127.0.0.1:25565").await;
+    let mc_conn = TcpStream::connect("127.0.0.1:25565").await;
     
     match mc_conn {
         Ok(mc_stream) => {

@@ -1,8 +1,5 @@
-
-
 use minetest_protocol::CommandRef;
 use minetest_protocol::CommandDirection;
-
 
 pub fn show_mt_command(command: &dyn CommandRef) {
     let dir = match command.direction() {
