@@ -1,7 +1,6 @@
 mod translator;
 mod utils;
 mod commands;
-mod packet_handler;
 mod settings;
 
 use minetest_protocol::MinetestServer;
