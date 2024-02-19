@@ -7,38 +7,61 @@
 
 use crate::utils;
 use crate::settings;
+use crate::clientbound_translator;
+use crate::MTServerState;
+extern crate alloc;
 
 use minetest_protocol::wire::command::ToServerCommand;
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::wire::command::ToClientCommand;
 use minetest_protocol::wire::command::HelloSpec;
 use minetest_protocol::wire::command::AuthAcceptSpec;
+use minetest_protocol::wire::command::InitSpec;
 use minetest_protocol::wire::types;
 
 use azalea;
 use azalea_client::{Client, Account};
-use azalea_world::iterators::BlockIterator;
 
 use tokio::sync::mpsc::UnboundedReceiver;
+use alloc::boxed::Box;
+use azalea_client::Event;
+use azalea_protocol::packets::game::ClientboundGamePacket;
 
 pub async fn mt_auto(command: ToServerCommand, conn: &mut MinetestConnection, mc_client: &azalea::Client) {
-    // TODO
+    match command {
+        ToServerCommand::Null(_) => (), // Drop NULL
+        ToServerCommand::Init(_) => utils::logger("[Minetest] Client sent Init, but handshake already done!", 2),
+        ToServerCommand::Init2(_) => utils::logger("[Minetest] Client sent Init2 (preferred language), this is not implemented and will be ignored.", 2),
+        ToServerCommand::ModchannelJoin(_) => utils::logger("[Minetest] Client sent ModchannelJoin, this does not exist in MC", 2),
+        ToServerCommand::ModchannelLeave(_) => utils::logger("[Minetest] Client sent ModchannelLeave, this does not exist in MC", 2),
+        ToServerCommand::TSModchannelMsg(_) => utils::logger("[Minetest] Client sent TSModchannelMsg, this does not exist in MC", 2),
+        _ => utils::logger("[Minetest] Got unimplemented command, dropping packet!", 2) // Drop packet if unable to match
+    }
 }
 
-pub async fn mc_auto(command: azalea_client::Event, conn: &mut MinetestConnection, mc_client: &azalea::Client) {
-    // TODO
-}
-
-pub async fn send_world(mt_conn: &mut MinetestConnection, mc_client: &azalea::Client) {
-    // TODO get the world and pass it to the client
-    let mut iter = BlockIterator::new(azalea::BlockPos::default(), 4);
-    for block_pos in iter {
-        println!("{:?}", block_pos);
+pub async fn mc_auto(command: azalea_client::Event, conn: &mut MinetestConnection, mc_client: &azalea::Client, mt_server_state: &mut MTServerState) {
+    let command_clone = command.clone(); //  The borrow checker is my only mortal enemy
+    let command_name = utils::mc_packet_name(&command_clone);
+    match command {
+        Event::AddPlayer(player_data) => clientbound_translator::add_player(player_data, conn, mt_server_state).await,
+        Event::Packet(packet_value) => match *packet_value {
+            ClientboundGamePacket::UpdateRecipes(_) => (),
+            _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),
+        },
+        _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),
     }
 }
 
 pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection) -> (azalea::Client, UnboundedReceiver<azalea::Event>) {
-    // Got called by C->S Init
+    // command is guaranteed to be ToServerCommand::Init(Box<InitSpec>)
+    let init_command: Box<InitSpec>;
+    if let ToServerCommand::Init(extracted_box) = command {
+        init_command = extracted_box;
+    } else {
+        utils::logger("commands::handshake() got called with a ToServerCommand that was not a C->S Init", 3);
+        panic!("handshake() got called with non-init packet!")
+    }
+    let player_name = init_command.player_name.clone(); // Fix to not trip the borrow checker (Needed for Account::offline)
     // Send S->C Hello
     let hello_command = ToClientCommand::Hello(
         Box::new(HelloSpec {
@@ -51,7 +74,7 @@ pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection) 
                 first_srp: true,
             },
             // TODO
-            username_legacy: "DEBUG".to_string(),
+            username_legacy: init_command.player_name,
         })
     );
     let _ = conn.send(hello_command).await;
@@ -78,7 +101,7 @@ pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection) 
     println!("[Minecraft] Logging in...");
     
     // TODO: Change this line to allow online accounts
-    let mc_account: Account = Account::offline("DEBUG");
+    let mc_account: Account = Account::offline(player_name.as_str());
     let (mut mc_client, mut rx) = Client::join(&mc_account, settings::MC_SERVER_ADDR).await.expect("[Minecraft] Failed to log in!");
     return (mc_client, rx)
 }

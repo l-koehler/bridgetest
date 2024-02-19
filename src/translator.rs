@@ -6,6 +6,7 @@
 
 use crate::utils;
 use crate::commands;
+use crate::MTServerState; // ok this is stupid to do whatever it works
 
 use minetest_protocol::peer::peer::PeerError;
 use minetest_protocol::wire::command::CommandProperties;
@@ -18,9 +19,8 @@ use azalea_client;
 use azalea_protocol::packets::game::ClientboundGamePacket;
 
 use tokio::sync::mpsc::UnboundedReceiver;
-use std::sync::Arc;
 
-pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestConnection) {
+pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestConnection, mut mt_server_state: MTServerState) {
     println!("[Debug] async translator::client_handler()");
     /*
      * The first few packets (handshake) are outside the main loop, because
@@ -36,7 +36,7 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
         }
         println!("[Minetest] Dropping unexpected packet! Got serverbound \"{}\", expected \"Init\"", command.command_name());
     }
-    let (mut mc_client, mut mc_conn) = commands::handshake(command, &mut mt_conn).await;
+    let (mc_client, mut mc_conn) = commands::handshake(command, &mut mt_conn).await;
     // Await a LOGIN packet
     // It verifies that the client is now in the server world
     println!("[Minecraft] Awaiting S->C Login confirmation...");
@@ -50,7 +50,6 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
         println!("[Minetest] Dropping unexpected packet! Got serverbound \"{}\", expected \"Init\"", utils::mc_packet_name(&command));
     }
 
-    mc_client.chat("Hello, world!");
     println!("[Debug] Authenticated with both client and server.");
     /*
      * Main Loop.
@@ -94,7 +93,7 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
                     Some(_) => {
                         let mc_command = t.expect("[Minecraft] Failed to unwrap non-empty packet from Server!");
                         utils::show_mc_command(&mc_command);
-                        commands::mc_auto(mc_command, &mut mt_conn, &mc_client).await;
+                        commands::mc_auto(mc_command, &mut mt_conn, &mc_client, &mut mt_server_state).await;
                     },
                     // This should NOT happen, why does it happen thousands of times per second?? TODO!
                     None => println!("[Minecraft] Recieved empty/none, skipping: {:#?}", t),

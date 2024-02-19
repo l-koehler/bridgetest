@@ -2,6 +2,8 @@
  * This file contains shared functions, for example logging
  */
 
+use crate::settings;
+
 use minetest_protocol::CommandRef;
 use minetest_protocol::CommandDirection;
 use azalea_client::Event;
@@ -12,17 +14,39 @@ pub fn show_mt_command(command: &dyn CommandRef) {
         CommandDirection::ToClient => "S->C",
         CommandDirection::ToServer => "C->S",
     };
-    println!("[Minetest] {} {}", dir, command.command_name());
+    logger(&format!("[Minetest] {} {}", dir, command.command_name()), 0);
     //println!("{} {:#?}", dir, command); // verbose
+}
+
+pub fn logger(text: &str, level: i8) {
+    /*
+     * Level 0: Debug - Everything that makes some sense to have
+     * Level 1: Stats - Status updates and other sort-of-useful stuff
+     * Level 2: Error - Packet got dropped or something
+     * Level 3: Fatal - Cannot recover, will panic or drop connections
+     */
+    if settings::DROP_LOG_BELOW <= level {
+        if level == 0 {
+            println!("\x1b[0;37m[{:?}] [DEBUG] {}\x1b[0m", chrono::Utc::now().timestamp(), text)
+        } else if level == 1{
+            println!("[{:?}] [STATS] {}", chrono::Utc::now().timestamp(), text)
+        } else if level == 2 {
+            println!("\x1b[1;33m[{:?}] [ERROR] {}\x1b[0m", chrono::Utc::now().timestamp(), text)
+        } else {
+            println!("\x1b[0;31m[{:?}] [FATAL] {}\x1b[0m", chrono::Utc::now().timestamp(), text)
+        }
+    }
+
+
 }
 
 pub fn show_mc_command(command: &Event) {
     match command {
-        // Do not show generic data/tick packets
-        Event::Packet(_) => (),
+        // Do not show generic data/tick packets, they happen all the time and are boring
+        //Event::Packet(_) => (),
         Event::Tick => (),
         // Events are always sent by the server, no need to check direction
-        _ => println!("[Minecraft] S->C {}", mc_packet_name(command)),
+        _ => logger(&format!("[Minecraft] S->C {}", mc_packet_name(command)), 0),
     }
 }
 
@@ -35,8 +59,7 @@ pub fn mc_packet_name(command: &Event) -> &str {
         Event::Packet(packet_value) => match **packet_value {
             // There are 117 possible cases here and most of them do not matter
             // Uncomment if you actually need this
-            _ => "GamePacket"
-            /*
+            //_ => "GamePacket"
             ClientboundGamePacket::Bundle(_) => "GamePacket: Bundle",
             ClientboundGamePacket::AddEntity(_) => "GamePacket: AddEntity",
             ClientboundGamePacket::AddExperienceOrb(_) => "GamePacket: AddExperienceOrb",
@@ -154,7 +177,6 @@ pub fn mc_packet_name(command: &Event) -> &str {
             ClientboundGamePacket::UpdateMobEffect(_) => "GamePacket: UpdateMobEffect",
             ClientboundGamePacket::UpdateRecipes(_) => "GamePacket: UpdateRecipes",
             ClientboundGamePacket::UpdateTags(_) => "GamePacket: UpdateTags",
-            */
         },
         Event::AddPlayer(_) => "AddPlayer",
         Event::RemovePlayer(_) => "RemovePlayer",
