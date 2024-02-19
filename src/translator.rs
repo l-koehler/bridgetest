@@ -30,9 +30,9 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     loop {
         let t = mt_conn.recv().await;
         command = t.expect("[Minetest] Client sent disconnect during handshake!");
-        if command.command_name() == "Init" {
-            // Recieved init packet from minetest client
-            break;
+        match command {
+            ToServerCommand::Init(_) => break,
+            _ => (),
         }
         println!("[Minetest] Dropping unexpected packet! Got serverbound \"{}\", expected \"Init\"", command.command_name());
     }
