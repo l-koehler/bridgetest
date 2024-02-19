@@ -25,5 +25,4 @@ pub async fn add_player(player_data: PlayerInfo, conn: &mut MinetestConnection, 
     );
     let _ = conn.send(add_player_command).await;
     utils::logger("[Minetest] S->C UpdatePlayerList", 1);
-
 }

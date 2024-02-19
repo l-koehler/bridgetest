@@ -96,7 +96,7 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
                         commands::mc_auto(mc_command, &mut mt_conn, &mc_client, &mut mt_server_state).await;
                     },
                     // This should NOT happen, why does it happen thousands of times per second?? TODO!
-                    None => println!("[Minecraft] Recieved empty/none, skipping: {:#?}", t),
+                    None => utils::logger(&format!("[Minecraft] Recieved empty/none, skipping: {:#?}", t), 2),
                 }
             }
         }

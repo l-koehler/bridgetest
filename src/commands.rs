@@ -78,7 +78,7 @@ pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection) 
         })
     );
     let _ = conn.send(hello_command).await;
-    println!("[Minetest] S->C Hello");
+    utils::logger("[Minetest] S->C Hello", 1);
     // Wait for a C->S FirstSrp
     // TODO: this is right now just assuming the response is part of the authentication
     let second_response = conn.recv().await.expect("Client disconnected during authentication!");
@@ -97,8 +97,8 @@ pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection) 
         })
     );
     let _ = conn.send(auth_accept_command).await;
-    println!("[Minetest] S->C AuthAccept");
-    println!("[Minecraft] Logging in...");
+    utils::logger("[Minetest] S->C AuthAccept", 1);
+    utils::logger("[Minecraft] Logging in...", 1);
     
     // TODO: Change this line to allow online accounts
     let mc_account: Account = Account::offline(player_name.as_str());
