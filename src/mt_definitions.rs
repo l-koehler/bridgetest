@@ -108,6 +108,8 @@ pub fn get_node_def_command() -> ToClientCommand {
         scale: 1,
         align_style: AlignStyle::Node
     };
+    // like [tiledef_placeholder; 6] if it were slow qwq
+    let tiledef_sides = [tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone()];
     let contentfeatures_placeholder: ContentFeatures = ContentFeatures {
         version: 13, // https://github.com/minetest/minetest/blob/master/src/nodedef.h#L313
         name: "[[ERROR]]".to_string(),
@@ -118,13 +120,10 @@ pub fn get_node_def_command() -> ToClientCommand {
         mesh: "".to_string(),
         visual_scale: 1.0,
         unused_six: 6, // unused? idk what does this even do
-        // TODO!!!!! What the fuck have i done (it works)
-        tiledef: [tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone()],
-        tiledef_overlay: [tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone()],
-        // WHAT THE FUCK THIS ONE ISNT EVEN SPECIFIED IN THE minetest-protocol DOCS [[I HAD TO GUESS TO REPEAT THE ACCURSED THING FROM ABOVE]]
-        tiledef_special: [tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone()].to_vec(),
-        // this code haunts me
-        // WHY THE FUCK IS  THIS NEEDED WHAT AM I DOING WRONG WHYYYYY ARE YOU DOING THIS TO MEEE
+        tiledef: tiledef_sides.clone(),
+        tiledef_overlay: tiledef_sides.clone(),
+        // unexplained in the minetest-protocol crate
+        tiledef_special: tiledef_sides.to_vec(),
         alpha_for_legacy: 20,
         red: 100,
         green: 70,
