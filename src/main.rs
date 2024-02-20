@@ -7,6 +7,7 @@ mod utils;
 mod commands;
 mod settings;
 mod clientbound_translator;
+mod mt_definitions;
 
 use minetest_protocol::MinetestServer;
 

@@ -4,6 +4,7 @@
  * Also, this file is badly named (as you might have noticed).
  */
 
+use crate::mt_definitions;
 use crate::utils;
 use crate::commands;
 use crate::MTServerState; // ok this is stupid to do whatever it works
@@ -15,7 +16,7 @@ use minetest_protocol::MinetestConnection;
 use minetest_protocol::MinetestServer;
 
 use azalea;
-use azalea_client;
+use azalea_client::Event;
 use azalea_protocol::packets::game::ClientboundGamePacket;
 
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -44,18 +45,22 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     let (mc_client, mut mc_conn) = commands::handshake(command, &mut mt_conn, &mut mt_server_state).await;
     // Await a LOGIN packet
     // It verifies that the client is now in the server world
-    println!("[Minecraft] Awaiting S->C Login confirmation...");
+    utils::logger("[Minecraft] Awaiting S->C Login confirmation...", 1);
     loop {
         let t = mc_conn.recv().await;
         let command = t.expect("[Minecraft] Server sent disconnect while awaiting login");
-        if utils::mc_packet_name(&command) == "Login" {
+        match command {
             // Recieved login packet from minecraft server
-            break;
+            Event::Login => break,
+            _ => utils::logger(&format!("[Minetest] Dropping unexpected packet! Got serverbound \"{}\", expected \"Init\"", utils::mc_packet_name(&command)), 1),
         }
-        println!("[Minetest] Dropping unexpected packet! Got serverbound \"{}\", expected \"Init\"", utils::mc_packet_name(&command));
     }
 
-    println!("[Debug] Authenticated with both client and server.");
+    utils::logger("Authenticated with both client and server.", 1);
+    let _ = mt_conn.send(mt_definitions::get_item_def_command()).await;
+    utils::logger("[Minetest] S->C Itemdef", 1);
+    let _ = mt_conn.send(mt_definitions::get_node_def_command()).await;
+    utils::logger("[Minetest] S->C Nodedef", 1);
     /*
      * Main Loop.
      * At this point, both the minetest client and the minecraft server
@@ -80,9 +85,9 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
                             true
                         };
                         if show_err {
-                            println!("[Minetest] Client Disconnected: {:?}", err)
+                            utils::logger(&format!("[Minetest] Client Disconnected: {:?}", err), 1)
                         } else {
-                            println!("[Minetest] Client Disconnected")
+                            utils::logger("[Minetest] Client Disconnected", 1)
                         }
                         break; // Exit the client handler on client disconnect
                     }
@@ -100,7 +105,6 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
                         utils::show_mc_command(&mc_command);
                         commands::mc_auto(mc_command, &mut mt_conn, &mc_client, &mut mt_server_state).await;
                     },
-                    // This should NOT happen, why does it happen thousands of times per second?? TODO!
                     None => utils::logger(&format!("[Minecraft] Recieved empty/none, skipping: {:#?}", t), 2),
                 }
             }
