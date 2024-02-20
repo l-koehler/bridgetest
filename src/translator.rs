@@ -29,14 +29,19 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     let mut command;
     loop {
         let t = mt_conn.recv().await;
-        command = t.expect("[Minetest] Client sent disconnect during handshake!");
-        match command {
-            ToServerCommand::Init(_) => break,
-            _ => (),
-        }
-        println!("[Minetest] Dropping unexpected packet! Got serverbound \"{}\", expected \"Init\"", command.command_name());
+        match t {
+            Err(_) => utils::logger("[Minetest] got Error from conn.recv(), skipping!", 2),
+            Ok(_t) => {
+                command = _t; // Cannot use _t directly, _t is valid only in the scope of the match
+                match command {
+                    ToServerCommand::Init(_) => break,
+                    _ => utils::logger(&format!("[Minetest] Dropping unexpected packet! Got serverbound \"{}\", expected \"Init\"", command.command_name()), 2),
+                }
+            }
+        };
+
     }
-    let (mc_client, mut mc_conn) = commands::handshake(command, &mut mt_conn).await;
+    let (mc_client, mut mc_conn) = commands::handshake(command, &mut mt_conn, &mut mt_server_state).await;
     // Await a LOGIN packet
     // It verifies that the client is now in the server world
     println!("[Minecraft] Awaiting S->C Login confirmation...");

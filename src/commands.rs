@@ -52,7 +52,7 @@ pub async fn mc_auto(command: azalea_client::Event, conn: &mut MinetestConnectio
     }
 }
 
-pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection) -> (azalea::Client, UnboundedReceiver<azalea::Event>) {
+pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) -> (azalea::Client, UnboundedReceiver<azalea::Event>) {
     // command is guaranteed to be ToServerCommand::Init(Box<InitSpec>)
     let init_command: Box<InitSpec>;
     if let ToServerCommand::Init(extracted_box) = command {
@@ -62,6 +62,7 @@ pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection) 
         panic!("handshake() got called with non-init packet!")
     }
     let player_name = init_command.player_name.clone(); // Fix to not trip the borrow checker (Needed for Account::offline)
+    mt_server_state.players.push(player_name.clone()); // I FUCKING [mildy dislike (affectionate)] THE BORROW CHECKER AAAAA
     // Send S->C Hello
     let hello_command = ToClientCommand::Hello(
         Box::new(HelloSpec {
@@ -73,7 +74,6 @@ pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection) 
                 srp: false,
                 first_srp: true,
             },
-            // TODO
             username_legacy: init_command.player_name,
         })
     );
@@ -87,6 +87,8 @@ pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection) 
     let auth_accept_command = ToClientCommand::AuthAccept(
         Box::new(AuthAcceptSpec {
             player_pos: types::v3f {
+                // TODO: Sane defaults are impossible here
+                // Teleport the player as soon as DefaultSpawnLocation is recieved or something?
                  x: 0.0,
                  y: 0.0,
                  z: 90.0,
