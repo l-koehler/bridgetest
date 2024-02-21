@@ -90,14 +90,12 @@ pub fn get_item_def_command() -> ToClientCommand{
 }
 
 pub fn get_node_def_command() -> ToClientCommand {
-
     let simplesound_placeholder: SimpleSoundSpec = SimpleSoundSpec {
         name: "[[ERROR]]".to_string(),
         gain: 1.0,
         pitch: 1.0,
         fade: 1.0,
     };
-
     let tiledef_placeholder: TileDef = TileDef {
         name: "[[ERROR]]".to_string(),
         animation: TileAnimationParams::None,
@@ -161,24 +159,9 @@ pub fn get_node_def_command() -> ToClientCommand {
         node_box: NodeBox::Regular,
         selection_box: NodeBox::Regular,
         collision_box: NodeBox::Regular,
-        sound_footstep: SimpleSoundSpec {
-            name: "[[ERROR]]".to_string(),
-            gain: 1.0,
-            pitch: 1.0,
-            fade: 1.0,
-        },
-        sound_dig: SimpleSoundSpec {
-            name: "[[ERROR]]".to_string(),
-            gain: 1.0,
-            pitch: 1.0,
-            fade: 1.0,
-        },
-        sound_dug: SimpleSoundSpec {
-            name: "[[ERROR]]".to_string(),
-            gain: 1.0,
-            pitch: 1.0,
-            fade: 1.0,
-        },
+        sound_footstep: simplesound_placeholder.clone(),
+        sound_dig: simplesound_placeholder.clone(),
+        sound_dug: simplesound_placeholder.clone(),
         legacy_facedir_simple: false,
         legacy_wallmounted: false,
         node_dig_prediction: None,
@@ -197,6 +180,6 @@ pub fn get_node_def_command() -> ToClientCommand {
     return nodedef_command;
 }
 
-pub fn get_empty_media_command() -> ToClientCommand {
-    todo!()
+pub fn get_texture_media_command() -> ToClientCommand {
+    todo!();
 }
