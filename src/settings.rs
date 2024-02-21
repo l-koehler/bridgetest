@@ -1,14 +1,13 @@
 /*
- * This file contains various constants.
- * TODO: Until I implement some argv parsing or config
- * file stuff, just change the settings here before compiling.
+ * This file contains various defaults used when creating
+ * a initial configuration file.
  */
 
-use dirs;
-
-
-pub const MC_SERVER_ADDR: &str = "127.0.0.1:25565";
-pub const MT_SERVER_ADDR: &str = "127.0.0.1:30000";
+pub const CONF_FALLBACK: &str ="# CHANGEME!! 
+texture_pack_path = \"\"
+mc_server_addr = \"127.0.0.1:25565\"
+mt_server_addr = \"127.0.0.1:30000\"
+";
 
 /*
  * 0: Display every recieved packet

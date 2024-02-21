@@ -23,7 +23,7 @@ use dirs;
 async fn main() {
     let settings: Config = load_config();
     println!("{}", settings.cache);
-    start_client_handler(settings).await;
+    //start_client_handler(settings).await;
 }
 
 pub struct MTServerState {
@@ -56,7 +56,7 @@ fn load_config() -> Config {
     if !Path::new(config_file_path.as_path()).exists() {
         // Create config and set defaults
         let mut data_file = File::create(config_file_path.as_path()).expect("creation failed");
-        data_file.write("texture_pack_path = \"\"".as_bytes()).expect("write failed");
+        data_file.write(settings::CONF_FALLBACK.as_bytes()).expect("write failed");
     }
     let builder = Config::builder()
         .set_default("texture_pack_path", "").unwrap()
