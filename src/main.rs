@@ -22,6 +22,7 @@ use dirs;
 #[tokio::main]
 async fn main() {
     let settings: Config = load_config();
+    mt_definitions::validate_texture_pack(&settings).await;
     start_client_handler(settings).await;
 }
 

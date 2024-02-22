@@ -8,6 +8,19 @@ use minetest_protocol::CommandRef;
 use minetest_protocol::CommandDirection;
 use azalea_client::Event;
 use azalea_protocol::packets::game::ClientboundGamePacket;
+use std::path::Path;
+use std::path::PathBuf;
+
+pub fn possibly_create_dir(path: &PathBuf) -> bool {
+    if !Path::new(path.as_path()).exists() {
+        logger(&format!("Creating directory \"{}\"", path.display()), 0);
+        let _ = std::fs::create_dir(path); // TODO check if this worked
+        return true;
+    } else {
+        logger(&format!("Found \"{}\", not creating it", path.display()), 0);
+        return false;
+    }
+}
 
 pub fn show_mt_command(command: &dyn CommandRef) {
     let dir = match command.direction() {
@@ -15,7 +28,7 @@ pub fn show_mt_command(command: &dyn CommandRef) {
         CommandDirection::ToServer => "C->S",
     };
     logger(&format!("[Minetest] {} {}", dir, command.command_name()), 0);
-    //println!("{} {:#?}", dir, command); // verbose
+    //println!("{} {:#?}", dir, command); // overly verbose
 }
 
 pub fn logger(text: &str, level: i8) {

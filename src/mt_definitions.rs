@@ -2,6 +2,7 @@
 // the functions are actually more like consts but
 // the "String" type cant be a constant so :shrug:
 
+use azalea::entity::metadata::Text;
 use minetest_protocol::wire::command::{ItemdefSpec, NodedefSpec, ToClientCommand};
 use minetest_protocol::wire::types::{s16, Option16, v3f, SColor, SimpleSoundSpec, // generic types
     ItemdefList, ItemDef, ToolCapabilities, ToolGroupCap, ItemAlias, ItemType, // item specific
@@ -10,6 +11,13 @@ use minetest_protocol::wire::types::{s16, Option16, v3f, SColor, SimpleSoundSpec
 
 use alloc::boxed::Box;
 use config::Config;
+
+use std::path::{ Path, PathBuf };
+use std::fs::{ File,  remove_dir_all, read_to_string };
+use std::io::{ Cursor, Write };
+
+use crate::utils;
+
 
 pub fn get_item_def_command() -> ToClientCommand{
     pub struct Defaults {
@@ -183,6 +191,61 @@ pub fn get_node_def_command() -> ToClientCommand {
     return nodedef_command;
 }
 
+/*
+ * data_folder               -- dir::data_local_dir/bridgetest
+ * |- url.dsv                -- contains "timestamp:url", where "url" is the url of the pack currently present and "timestamp" the time of download
+ * |- textures.zip           -- the file downloaded from the url
+ * \- textures               -- this file, but decompressed
+ *    |- pack.mcmeta
+ *    |- pack.png
+ *    \- other stuff         -- all the other stuff in a valid mc texturepack
+ */
+
+pub async fn validate_texture_pack(settings: &Config) -> bool {
+    // check (and possibly fix) the texture pack
+    let texture_pack_url = settings.get_string("texture_pack_url").expect("Failed to read config!");
+    let mut do_download: bool = false;
+    // ensure the data folder exists
+    let data_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/"); // if this fails, your system got bigger issues
+    utils::possibly_create_dir(&data_folder);
+    // check if url.dsv exists
+    if !Path::new(data_folder.join("url.dsv").as_path()).exists() {
+        // url.dsv does not exist
+        utils::logger("url.dsv is missing, creating it.", 1);
+        let dsv_content = format!("{}:{}", chrono::Utc::now().timestamp(), texture_pack_url);
+        let mut url_dsv = File::create(data_folder.join("url.dsv").as_path()).expect("Creating url.dsv failed!");
+        url_dsv.write(dsv_content.as_bytes()).expect("Writing data to url.dsv failed!");
+        // we need to re-download in this case
+        do_download = true;
+    } else {
+        // url.dsv does exist
+        // example dsv_content = "1708635188:https://database.faithfulpack.net/packs/32x-Java/December%202023/Faithful%2032x%20-%201.20.4.zip"
+        let dsv_content = read_to_string(data_folder.join("url.dsv").as_path()).expect("Failed to read url.dsv, but it exists! (Check permissions?)");
+        if !dsv_content.contains(&texture_pack_url) {
+            // url.dsv does not contain our pack URL, so we need to re-download.
+            utils::logger("url.dsv does exist, but contains the wrong URL. re-writing it.", 1);
+            let new_dsv_content = format!("{}:{}", chrono::Utc::now().timestamp(), texture_pack_url);
+            let mut url_dsv = File::open(data_folder.join("url.dsv").as_path()).expect("Opening url.dsv failed!");
+            url_dsv.write(new_dsv_content.as_bytes()).expect("Writing data to url.dsv failed!");
+            do_download = true;
+        }
+    };
+    if do_download {
+        utils::logger("Preparing texture pack -- This might take a while, depending on your internet speed.", 1);
+        if Path::new(data_folder.join("textures/").as_path()).exists() {
+            utils::logger("Detected old texture folder in data_dir, deleting it.", 1);
+            let _ = remove_dir_all(data_folder.join("textures/").as_path()); // TODO: rn assuming this works
+        }
+        utils::logger("Downloading textures.zip (into memory)", 1);
+        let resp = reqwest::get(texture_pack_url).await.expect("Failed to request texture pack!");
+        let texture_pack_data = resp.text().await.expect("Recieved invalid response! This might be caused by not supplying a direct download link.");
+        utils::logger("Unpacking textures.zip to data_dir/textures", 1);
+        zip_extract::extract(Cursor::new(texture_pack_data), &data_folder.join("textures/").as_path(), true).expect("Failed to extract! Check Permissions!");
+    } // else everything is fine
+    return do_download;
+}
+
 pub fn get_texture_media_command(settings: &Config) -> ToClientCommand {
-    todo!();
+    validate_texture_pack(settings);
+    return todo!();
 }
