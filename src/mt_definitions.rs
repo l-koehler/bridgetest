@@ -238,7 +238,7 @@ pub async fn validate_texture_pack(settings: &Config) -> bool {
         }
         utils::logger("Downloading textures.zip (into memory)", 1);
         let resp = reqwest::get(texture_pack_url).await.expect("Failed to request texture pack!");
-        let texture_pack_data = resp.text().await.expect("Recieved invalid response! This might be caused by not supplying a direct download link.");
+        let texture_pack_data = resp.bytes().await.expect("Recieved invalid response! This might be caused by not supplying a direct download link.");
         utils::logger("Unpacking textures.zip to data_dir/textures", 1);
         zip_extract::extract(Cursor::new(texture_pack_data), &data_folder.join("textures/").as_path(), true).expect("Failed to extract! Check Permissions!");
     } // else everything is fine
