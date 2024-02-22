@@ -47,13 +47,22 @@ Technical Limitations:
   on that if it won't take too long. PRs fixing windows will be accepted.  
   for now, i'd prefer getting this mess to work at all :3  
 
-* The upstream library for the minecraft protocol needs to be the latest git version,
-  for that purpose just clone [[TODO explain this!]]
-  
-#### Isn't this violating Microsofts IP?
+* The upstream library for the minecraft protocol  
+  needs to be the bleeding-edge git version, but you can simply ignore  
+  this warning here if you only want to *use* this program.  
 
-The protocol is implemented by another library, not by me.
-The textures sent to the client are not made or endorsed by microsoft,  
-It sends the [Faithful x32](https://faithfulpack.net) texture pack by default,  
-but you can replace this pack if you like, it is pulled from CONF_DIR/textures.  
-CONF_DIR can differ from system to system, the path will be shown on each start.  
+#### Isn't this violating Microsofts Intellectual Property?
+
+The minecraft protocol is implemented by another library, not by me.  
+
+The textures this server is sending are NOT the official minecraft resources.  
+This repository contains NO textures, but the program will offer to download  
+the [Faithful x32](https://faithfulpack.net/) texture pack ([license](https://faithfulpack.net/license)) if no pack is found.  
+You can change what pack is used by changing the folder the config file  
+(at `~/.config/bridgetest.toml`) points to or by changing the texture pack  
+itself, at `~/.local/share/bridgetest/pack`).  
+(these paths are dirs::data_dir and dirs::config_dir, not hardcoded)  
+
+#### Where is the documentation?
+
+gone :3  

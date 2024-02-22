@@ -15,13 +15,10 @@ use minetest_protocol::wire::command::ToServerCommand;
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::MinetestServer;
 
-use azalea;
 use azalea_client::Event;
-use azalea_protocol::packets::game::ClientboundGamePacket;
+use config::Config;
 
-use tokio::sync::mpsc::UnboundedReceiver;
-
-pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestConnection, mut mt_server_state: MTServerState) {
+pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestConnection, mut mt_server_state: MTServerState, settings: Config) {
     println!("[Debug] async translator::client_handler()");
     /*
      * The first few packets (handshake) are outside the main loop, because
@@ -42,7 +39,7 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
         };
 
     }
-    let (mc_client, mut mc_conn) = commands::handshake(command, &mut mt_conn, &mut mt_server_state).await;
+    let (mc_client, mut mc_conn) = commands::handshake(command, &mut mt_conn, &mut mt_server_state, &settings).await;
     // Await a LOGIN packet
     // It verifies that the client is now in the server world
     utils::logger("[Minecraft] Awaiting S->C Login confirmation...", 1);
@@ -61,6 +58,8 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     utils::logger("[Minetest] S->C Itemdef", 1);
     let _ = mt_conn.send(mt_definitions::get_node_def_command()).await;
     utils::logger("[Minetest] S->C Nodedef", 1);
+    // TODO
+    let _ = mt_conn.send(mt_definitions::get_texture_media_command(&settings)).await;
     /*
      * Main Loop.
      * At this point, both the minetest client and the minecraft server

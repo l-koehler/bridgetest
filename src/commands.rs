@@ -5,6 +5,8 @@
  * Minecraft client.
  */
 
+use std::net::ToSocketAddrs;
+
 use crate::utils;
 use crate::settings;
 use crate::clientbound_translator;
@@ -26,6 +28,8 @@ use tokio::sync::mpsc::UnboundedReceiver;
 use alloc::boxed::Box;
 use azalea_client::Event;
 use azalea_protocol::packets::game::ClientboundGamePacket;
+use config::Config;
+use std::net::SocketAddr;
 
 pub async fn mt_auto(command: ToServerCommand, conn: &mut MinetestConnection, mc_client: &azalea::Client) {
     match command {
@@ -52,7 +56,7 @@ pub async fn mc_auto(command: azalea_client::Event, conn: &mut MinetestConnectio
     }
 }
 
-pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) -> (azalea::Client, UnboundedReceiver<azalea::Event>) {
+pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState, settings: &Config) -> (azalea::Client, UnboundedReceiver<azalea::Event>) {
     // command is guaranteed to be ToServerCommand::Init(Box<InitSpec>)
     let init_command: Box<InitSpec>;
     if let ToServerCommand::Init(extracted_box) = command {
@@ -103,7 +107,9 @@ pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection, 
     utils::logger("[Minecraft] Logging in...", 1);
     
     // TODO: Change this line to allow online accounts
+    let mc_server_addr: SocketAddr = settings.get_string("mc_server_addr").expect("Failed to read config!")
+                                             .parse().expect("Failed to parse mc_server_addr!");
     let mc_account: Account = Account::offline(player_name.as_str());
-    let (mut mc_client, mut rx) = Client::join(&mc_account, settings::MC_SERVER_ADDR).await.expect("[Minecraft] Failed to log in!");
+    let (mut mc_client, mut rx) = Client::join(&mc_account, mc_server_addr).await.expect("[Minecraft] Failed to log in!");
     return (mc_client, rx)
 }

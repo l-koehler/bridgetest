@@ -1,4 +1,6 @@
 // ItemDefinitions and BlockDefinitions to be sent to the minetest client
+// the functions are actually more like consts but
+// the "String" type cant be a constant so :shrug:
 
 use minetest_protocol::wire::command::{ItemdefSpec, NodedefSpec, ToClientCommand};
 use minetest_protocol::wire::types::{s16, Option16, v3f, SColor, SimpleSoundSpec, // generic types
@@ -7,6 +9,7 @@ use minetest_protocol::wire::types::{s16, Option16, v3f, SColor, SimpleSoundSpec
     };
 
 use alloc::boxed::Box;
+use config::Config;
 
 pub fn get_item_def_command() -> ToClientCommand{
     pub struct Defaults {
@@ -17,7 +20,7 @@ pub fn get_item_def_command() -> ToClientCommand{
 
     let placeholder: Defaults = Defaults {
         simplesound: SimpleSoundSpec {
-            name: "[[ERROR]]".to_string(),
+            name: String::from("[[ERROR]]"),
             gain: 1.0,
             pitch: 1.0,
             fade: 1.0,
@@ -25,10 +28,10 @@ pub fn get_item_def_command() -> ToClientCommand{
         itemdef: ItemDef {
             version: 6, // https://github.com/minetest/minetest/blob/master/src/itemdef.cpp#L192
             item_type: ItemType::None,
-            name: "[[ERROR]]".to_string(),
-            description: "A unexpected (actually expected) error occured. The proxy was unable to map a MC item to MT".to_string(),
-            inventory_image: "".to_string(), // TODO: That is not an image.
-            wield_image: "".to_string(),
+            name: String::from("[[ERROR]]"),
+            description: String::from("A unexpected (actually very expected) error occured. The proxy was unable to map a MC item to MT"),
+            inventory_image: String::from(""), // TODO: That is not an image.
+            wield_image: String::from(""),
             wield_scale: v3f {
                 x: 1.0,
                 y: 1.0,
@@ -39,37 +42,37 @@ pub fn get_item_def_command() -> ToClientCommand{
             liquids_pointable: false,
             tool_capabilities: Option16::None,
             groups: Vec::new(),
-            node_placement_prediction: "".to_string(),
+            node_placement_prediction: String::from(""),
             sound_place: SimpleSoundSpec {
-                name: "[[ERROR]]".to_string(),
+                name: String::from("[[ERROR]]"),
                 gain: 1.0,
                 pitch: 1.0,
                 fade: 1.0,
             },
             sound_place_failed: SimpleSoundSpec {
-                name: "[[ERROR]]".to_string(),
+                name: String::from("[[ERROR]]"),
                 gain: 1.0,
                 pitch: 1.0,
                 fade: 1.0,
             },
             range: 5.0,
-            palette_image: "".to_string(),
+            palette_image: String::from(""),
             color: SColor {
                 r: 100,
                 g: 70,
                 b: 85,
                 a: 20,
             },
-            inventory_overlay: "".to_string(),
-            wield_overlay: "".to_string(),
-            short_description: Some("Proxy fucked up, sorry!".to_string()),
+            inventory_overlay: String::from(""),
+            wield_overlay: String::from(""),
+            short_description: Some(String::from("Proxy fucked up, sorry!")),
             place_param2: None,
             sound_use: None,
             sound_use_air: None
         },
         itemalias: ItemAlias {
-            name: "".to_string(),
-            convert_to: "".to_string()
+            name: String::from(""),
+            convert_to: String::from("")
 
         }
     };
@@ -91,13 +94,13 @@ pub fn get_item_def_command() -> ToClientCommand{
 
 pub fn get_node_def_command() -> ToClientCommand {
     let simplesound_placeholder: SimpleSoundSpec = SimpleSoundSpec {
-        name: "[[ERROR]]".to_string(),
+        name: String::from("[[ERROR]]"),
         gain: 1.0,
         pitch: 1.0,
         fade: 1.0,
     };
     let tiledef_placeholder: TileDef = TileDef {
-        name: "[[ERROR]]".to_string(),
+        name: String::from("[[ERROR]]"),
         animation: TileAnimationParams::None,
         backface_culling: false,
         tileable_horizontal: false,
@@ -110,12 +113,12 @@ pub fn get_node_def_command() -> ToClientCommand {
     let tiledef_sides = [tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone()];
     let contentfeatures_placeholder: ContentFeatures = ContentFeatures {
         version: 13, // https://github.com/minetest/minetest/blob/master/src/nodedef.h#L313
-        name: "[[ERROR]]".to_string(),
-        groups: vec![("".to_string(), 1)], // [(String, i16), (String, i16)]
+        name: String::from("[[ERROR]]"),
+        groups: vec![(String::from(""), 1)], // [(String, i16), (String, i16)]
         param_type: 0,
         param_type_2: 0,
         drawtype: DrawType::Normal,
-        mesh: "".to_string(),
+        mesh: String::from(""),
         visual_scale: 1.0,
         unused_six: 6, // unused? idk what does this even do
         tiledef: tiledef_sides.clone(),
@@ -126,7 +129,7 @@ pub fn get_node_def_command() -> ToClientCommand {
         red: 100,
         green: 70,
         blue: 85,
-        palette_name: "".to_string(),
+        palette_name: String::from(""),
         waving: 0,
         connect_sides: 0,
         connects_to_ids: Vec::new(),
@@ -149,8 +152,8 @@ pub fn get_node_def_command() -> ToClientCommand {
         rightclickable: false,
         damage_per_second: 0,
         liquid_type_bc: 0,
-        liquid_alternative_flowing: "".to_string(),
-        liquid_alternative_source: "".to_string(),
+        liquid_alternative_flowing: String::from(""),
+        liquid_alternative_source: String::from(""),
         liquid_viscosity: 0,
         liquid_renewable: false,
         liquid_range: 0,
@@ -180,6 +183,6 @@ pub fn get_node_def_command() -> ToClientCommand {
     return nodedef_command;
 }
 
-pub fn get_texture_media_command() -> ToClientCommand {
+pub fn get_texture_media_command(settings: &Config) -> ToClientCommand {
     todo!();
 }
