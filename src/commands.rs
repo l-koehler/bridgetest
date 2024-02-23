@@ -43,13 +43,13 @@ pub async fn mt_auto(command: ToServerCommand, conn: &mut MinetestConnection, mc
     }
 }
 
-pub async fn mc_auto(command: azalea_client::Event, conn: &mut MinetestConnection, mc_client: &azalea::Client, mt_server_state: &mut MTServerState) {
+pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnection, mc_client: &azalea::Client, mt_server_state: &mut MTServerState, mc_conn: &mut UnboundedReceiver<Event>) {
     let command_clone = command.clone(); //  The borrow checker is my only mortal enemy
     let command_name = utils::mc_packet_name(&command_clone);
     match command {
-        Event::AddPlayer(player_data) => clientbound_translator::add_player(player_data, conn, mt_server_state).await,
+        Event::AddPlayer(player_data) => clientbound_translator::add_player(player_data, mt_conn, mt_server_state).await,
         Event::Packet(packet_value) => match *packet_value {
-            ClientboundGamePacket::UpdateRecipes(_) => (),
+            ClientboundGamePacket::ChunkBatchStart(_) => clientbound_translator::chunkbatch(mt_conn, mc_conn, &mc_client).await,
             _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),
         },
         _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),

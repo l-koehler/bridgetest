@@ -779,14 +779,17 @@ version = "0.1.0"
 dependencies = [
  "azalea",
  "azalea-client",
+ "azalea-core",
  "azalea-protocol",
  "azalea-world",
+ "base64",
  "bytes",
  "chrono",
  "config",
  "dirs",
  "minetest-protocol",
  "reqwest",
+ "sha1",
  "tokio",
  "zip-extract",
 ]

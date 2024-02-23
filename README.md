@@ -4,14 +4,15 @@
 
 This program is supposed to let a unmodified [Minetest](https://github.com/minetest/minetest) client connect to  
 another (mostly) unmodified Minecraft (Java Edition) server.  
+The Java server must support the 1.20.2 network protocol.  
 It compiles to a standalone executable, which will listen on 127.0.0.1:30000  
 for minetest and then proxy to a minecraft server specified in CONF_DIR/config.txt  
+
+you need nightly rust to build some dependencies (`rustup default nightly`).  
 
 #### Things that should be added:
 
 still nearly everything, but for now:  
-
-* Config file parsing  
 
 * Sending a texture pack (MT S->C)  
 
@@ -43,7 +44,7 @@ Technical Limitations:
   does not allow me to rip the entire engine networking out and replace it.  
 
 * The program *might* work on Windows, but I am not testing this.  
-  If you find a windows-bug, feel free to open a issue, but I will only work  
+  If you find a windows bug, feel free to open a issue, but I will only work  
   on that if it won't take too long. PRs fixing windows will be accepted.  
   for now, i'd prefer getting this mess to work at all :3  
 
@@ -58,11 +59,7 @@ The minecraft protocol is implemented by another library, not by me.
 The textures this server is sending are NOT the official minecraft resources.  
 This repository contains NO textures, but the program will offer to download  
 the [Faithful x32](https://faithfulpack.net/) texture pack ([license](https://faithfulpack.net/license)) if no pack is found.  
-You can change what pack is used by changing the folder the config file  
+You can change what pack is used by changing the URL the config file  
 (at `~/.config/bridgetest.toml`) points to or by changing the texture pack  
-itself, at `~/.local/share/bridgetest/pack`).  
-(these paths are dirs::data_dir and dirs::config_dir, not hardcoded)  
-
-#### Where is the documentation?
-
-gone :3  
+itself, at `~/.local/share/bridgetest/textures`).  
+(these paths are dirs::local_data_dir and dirs::config_dir, not hardcoded)  

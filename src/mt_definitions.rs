@@ -2,22 +2,26 @@
 // the functions are actually more like consts but
 // the "String" type cant be a constant so :shrug:
 
+use azalea::core::particle;
 use azalea::entity::metadata::Text;
-use minetest_protocol::wire::command::{ItemdefSpec, NodedefSpec, ToClientCommand};
+use minetest_protocol::wire::command::{AnnounceMediaSpec, MediaSpec, ItemdefSpec, NodedefSpec, ToClientCommand};
 use minetest_protocol::wire::types::{s16, Option16, v3f, SColor, SimpleSoundSpec, // generic types
     ItemdefList, ItemDef, ToolCapabilities, ToolGroupCap, ItemAlias, ItemType, // item specific
-    NodeDefManager, ContentFeatures, TileDef, AlignStyle, TileAnimationParams, NodeBox, AlphaMode, DrawType // node specific (even more complicated than items qwq)
+    NodeDefManager, ContentFeatures, TileDef, AlignStyle, TileAnimationParams, NodeBox, AlphaMode, DrawType, // node specific (even more complicated than items qwq)
+    MediaFileData, MediaAnnouncement // the fool i was, thinking items were bad,,
     };
 
 use alloc::boxed::Box;
 use config::Config;
 
+use std::ffi::OsString;
 use std::path::{ Path, PathBuf };
-use std::fs::{ File,  remove_dir_all, read_to_string };
-use std::io::{ Cursor, Write };
+use std::fs;
+use std::io::{ Cursor, Write, Read };
 
 use crate::utils;
-
+use sha1::{Sha1, Digest};
+use base64::{Engine as _, engine::general_purpose};
 
 pub fn get_item_def_command() -> ToClientCommand{
     pub struct Defaults {
@@ -194,11 +198,20 @@ pub fn get_node_def_command() -> ToClientCommand {
 /*
  * data_folder               -- dir::data_local_dir/bridgetest
  * |- url.dsv                -- contains "timestamp:url", where "url" is the url of the pack currently present and "timestamp" the time of download
- * |- textures.zip           -- the file downloaded from the url
- * \- textures               -- this file, but decompressed
+ * \- textures               -- a valid minecraft texturepack, uncompressed
  *    |- pack.mcmeta
  *    |- pack.png
- *    \- other stuff         -- all the other stuff in a valid mc texturepack
+ *    \- assets
+ *       \- minecraft
+ *          \- textures
+ *             |- block
+ *             |  \- a bunch of PNGs (block-name.png)
+ *             |- item
+ *             |  \- a bunch of PNGs (item-name.png)
+ *             |- entity
+ *             |  \- a bunch of PNGs (entity-name.png)
+ *             |
+ *             \~ a bunch of other folders this program does not care about
  */
 
 pub async fn validate_texture_pack(settings: &Config) -> bool {
@@ -213,39 +226,123 @@ pub async fn validate_texture_pack(settings: &Config) -> bool {
         // url.dsv does not exist
         utils::logger("url.dsv is missing, creating it.", 1);
         let dsv_content = format!("{}:{}", chrono::Utc::now().timestamp(), texture_pack_url);
-        let mut url_dsv = File::create(data_folder.join("url.dsv").as_path()).expect("Creating url.dsv failed!");
+        let mut url_dsv = fs::File::create(data_folder.join("url.dsv").as_path()).expect("Creating url.dsv failed!");
         url_dsv.write(dsv_content.as_bytes()).expect("Writing data to url.dsv failed!");
         // we need to re-download in this case
         do_download = true;
     } else {
         // url.dsv does exist
         // example dsv_content = "1708635188:https://database.faithfulpack.net/packs/32x-Java/December%202023/Faithful%2032x%20-%201.20.4.zip"
-        let dsv_content = read_to_string(data_folder.join("url.dsv").as_path()).expect("Failed to read url.dsv, but it exists! (Check permissions?)");
+        let dsv_content = fs::read_to_string(data_folder.join("url.dsv").as_path()).expect("Failed to read url.dsv, but it exists! (Check permissions?)");
         if !dsv_content.contains(&texture_pack_url) {
             // url.dsv does not contain our pack URL, so we need to re-download.
             utils::logger("url.dsv does exist, but contains the wrong URL. re-writing it.", 1);
             let new_dsv_content = format!("{}:{}", chrono::Utc::now().timestamp(), texture_pack_url);
-            let mut url_dsv = File::open(data_folder.join("url.dsv").as_path()).expect("Opening url.dsv failed!");
+            let mut url_dsv = fs::File::open(data_folder.join("url.dsv").as_path()).expect("Opening url.dsv failed!");
             url_dsv.write(new_dsv_content.as_bytes()).expect("Writing data to url.dsv failed!");
             do_download = true;
+        } else {
+            utils::logger(&format!("Found url.dsv at {}", data_folder.join("url.dsv").display()), 1)
         }
     };
     if do_download {
-        utils::logger("Preparing texture pack -- This might take a while, depending on your internet speed.", 1);
-        if Path::new(data_folder.join("textures/").as_path()).exists() {
-            utils::logger("Detected old texture folder in data_dir, deleting it.", 1);
-            let _ = remove_dir_all(data_folder.join("textures/").as_path()); // TODO: rn assuming this works
+        if !utils::ask_confirm("No texture pack found! Download faithfulpack.net? [Y/N]: ") {
+            // the user denied downloading the pack.
+            let config_file_path: PathBuf = dirs::config_dir().unwrap().join("bridgetest.toml");
+            println!("A texture pack is needed for this program to run.
+    You can change what pack will be downloaded by editing the URL in {}", config_file_path.display());
+            std::process::exit(0);
+        } else {
+            utils::logger("Preparing texture pack -- This might take a while, depending on your internet speed.", 1);
+            if Path::new(data_folder.join("textures/").as_path()).exists() {
+                utils::logger("Detected old texture folder in data_dir, deleting it.", 1);
+                let _ = fs::remove_dir_all(data_folder.join("textures/").as_path()); // TODO: rn assuming this works
+            }
+            utils::logger("Downloading textures.zip (into memory)", 1);
+            let resp = reqwest::get(texture_pack_url).await.expect("Failed to request texture pack!");
+            let texture_pack_data = resp.bytes().await.expect("Recieved invalid response! This might be caused by not supplying a direct download link.");
+            utils::logger("Unpacking textures.zip to data_dir/textures", 1);
+            zip_extract::extract(Cursor::new(texture_pack_data), &data_folder.join("textures/").as_path(), true).expect("Failed to extract! Check Permissions!");
         }
-        utils::logger("Downloading textures.zip (into memory)", 1);
-        let resp = reqwest::get(texture_pack_url).await.expect("Failed to request texture pack!");
-        let texture_pack_data = resp.bytes().await.expect("Recieved invalid response! This might be caused by not supplying a direct download link.");
-        utils::logger("Unpacking textures.zip to data_dir/textures", 1);
-        zip_extract::extract(Cursor::new(texture_pack_data), &data_folder.join("textures/").as_path(), true).expect("Failed to extract! Check Permissions!");
-    } // else everything is fine
+    } // else the textures are already installed
     return do_download;
 }
 
-pub fn get_texture_media_command(settings: &Config) -> ToClientCommand {
-    validate_texture_pack(settings);
-    return todo!();
+pub fn get_mediafilevecs(filename: PathBuf, name: &str) -> (MediaFileData, MediaAnnouncement) {
+    let mut texture_file = fs::File::open(&filename).unwrap();
+    let metadata = fs::metadata(&filename).expect("Unable to read File Metadata! (Check Permissions?)");
+    let mut buffer = vec![0; metadata.len() as usize];
+    texture_file.read(&mut buffer).expect("File Metadata lied about File Size. This should NOT happen, what the hell is wrong with your device?");
+    // buffer: Vec<u8> with the png's content.
+    let filedata = MediaFileData {
+        name: String::from(name),
+        data: buffer.clone()
+    };
+    // buffer_hash_b64 is base64encode( sha1hash( buffer ) )
+    let mut hasher = Sha1::new();
+    hasher.update(buffer);
+    let mut buffer_hash_b64 = String::new();
+    general_purpose::STANDARD.encode_string(hasher.finalize(), &mut buffer_hash_b64);
+    let fileannounce = MediaAnnouncement {
+        name: String::from(name),
+        sha1_base64: buffer_hash_b64,
+    };
+    return (filedata, fileannounce);
+}
+
+fn texture_vec_iterator(texture_vec: &mut Vec<(PathBuf, String)>, iterator: fs::ReadDir, prefix: &str) {
+    let mut name: String;
+    let mut name_sanitized: String;
+    let mut path: PathBuf;
+    for item in iterator {
+        name = item.as_ref().unwrap().file_name().into_string().unwrap();
+        if name.ends_with("png") {
+            name_sanitized = name.replace(".png", "");
+            path = item.as_ref().unwrap().path();
+            texture_vec.push((path, format!("{}-{}", prefix, name_sanitized)));
+        };
+    }
+}
+
+pub async fn get_texture_media_commands(settings: &Config) -> (ToClientCommand, ToClientCommand) {
+    // TODO: This is *very* inefficient. not that bad, its only run once each start, but still..
+    // returns (announcemedia, media)
+    // ensure a texture pack exists
+    validate_texture_pack(settings).await;
+    // foreach texture, generate announce and send specs
+    // TODO: This currently will have every texture loaded into RAM at the same time
+    let textures_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/assets/minecraft/textures/");
+    let block_textures = fs::read_dir(textures_folder.join("block/")).unwrap();
+    let particle_textures = fs::read_dir(textures_folder.join("particle/")).unwrap();
+    let entity_textures = fs::read_dir(textures_folder.join("entity/")).unwrap();
+    let item_textures = fs::read_dir(textures_folder.join("item/")).unwrap();
+    // iterate over each
+    let mut texture_vec: Vec<(PathBuf, String)> = Vec::new();
+    texture_vec_iterator(&mut texture_vec, block_textures, "block");
+    texture_vec_iterator(&mut texture_vec, particle_textures, "particle");
+    texture_vec_iterator(&mut texture_vec, entity_textures, "entity");
+    texture_vec_iterator(&mut texture_vec, item_textures, "block");
+    // texture_vec = [("/path/to/allay.png", "entity-allay"), ("/path/to/cactus_bottom.png", "block-cactus_bottom"), ...]
+    // call get_mediafilevecs on each entry tuple in texture_vec
+    let mut media_vec: Vec<(MediaFileData, MediaAnnouncement)> = Vec::new();
+    for path_name_tuple in texture_vec {
+        media_vec.push(get_mediafilevecs(path_name_tuple.0, &path_name_tuple.1));
+    }
+    // media_vec is a list of tuples, one per file. tuple.0 is a MediaFileData, tuple.1 is a MediaAnnouncement
+    // split this into two actual vectors.
+    let (mediafiledata_vec, mediaannouncement_vec): (Vec<_>, Vec<_>) = media_vec.into_iter().unzip();
+    let announcemedia = ToClientCommand::AnnounceMedia(
+        Box::new(AnnounceMediaSpec {
+            files: mediaannouncement_vec,
+            remote_servers: String::from("") // IDK what this means or does, but it works if left alone. (meee :3)
+        })
+    );
+    let mediapacket = ToClientCommand::Media(
+        Box::new(MediaSpec {
+            num_bunches: 1, // TODO: will fail in interesting ways when sending more than 65535 files
+            bunch_index: 1,
+            files: mediafiledata_vec
+        })
+    );
+    return (announcemedia, mediapacket);
 }

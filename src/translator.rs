@@ -59,7 +59,11 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     let _ = mt_conn.send(mt_definitions::get_node_def_command()).await;
     utils::logger("[Minetest] S->C Nodedef", 1);
     // TODO
-    let _ = mt_conn.send(mt_definitions::get_texture_media_command(&settings)).await;
+    let media_packets = mt_definitions::get_texture_media_commands(&settings).await;
+    utils::logger("[Minetest] S->C MediaAnnouncement", 1);
+    let _ = mt_conn.send(media_packets.0).await;
+    utils::logger("[Minetest] S->C Media", 1);
+    let _ = mt_conn.send(media_packets.1).await;
     /*
      * Main Loop.
      * At this point, both the minetest client and the minecraft server
@@ -102,7 +106,7 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
                     Some(_) => {
                         let mc_command = t.expect("[Minecraft] Failed to unwrap non-empty packet from Server!");
                         utils::show_mc_command(&mc_command);
-                        commands::mc_auto(mc_command, &mut mt_conn, &mc_client, &mut mt_server_state).await;
+                        commands::mc_auto(mc_command, &mut mt_conn, &mc_client, &mut mt_server_state, &mut mc_conn).await;
                     },
                     None => utils::logger(&format!("[Minecraft] Recieved empty/none, skipping: {:#?}", t), 2),
                 }

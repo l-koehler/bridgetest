@@ -10,6 +10,17 @@ use azalea_client::Event;
 use azalea_protocol::packets::game::ClientboundGamePacket;
 use std::path::Path;
 use std::path::PathBuf;
+use std::io::Read;
+
+pub fn ask_confirm(question: &str) -> bool {
+    println!("{}",question);
+    let mut input = [0];
+    let _ = std::io::stdin().read(&mut input);
+    match char::from_u32(input[0].into()).expect("Failed to read STDIN") {
+        'y' | 'Y' => return true,
+        _ => return false,
+    }
+}
 
 pub fn possibly_create_dir(path: &PathBuf) -> bool {
     if !Path::new(path.as_path()).exists() {
@@ -71,8 +82,8 @@ pub fn mc_packet_name(command: &Event) -> &str {
         Event::Tick => "Tick",
         Event::Packet(packet_value) => match **packet_value {
             // There are 117 possible cases here and most of them do not matter
-            // Uncomment if you actually need this
-            //_ => "GamePacket"
+            // Uncomment below if you do not actually need this
+            //_ => "GamePacket: Detail disabled!",
             ClientboundGamePacket::Bundle(_) => "GamePacket: Bundle",
             ClientboundGamePacket::AddEntity(_) => "GamePacket: AddEntity",
             ClientboundGamePacket::AddExperienceOrb(_) => "GamePacket: AddExperienceOrb",
