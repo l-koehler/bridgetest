@@ -21,26 +21,69 @@ use sha1::{Sha1, Digest};
 use base64::{Engine as _, engine::general_purpose};
 use serde_json;
 
-pub fn get_item_def_command(settings: &Config) -> ToClientCommand {
+pub async fn get_item_def_command(settings: &Config) -> ToClientCommand {
+    // ensure arcticdata_items exists
+    let data_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/");
+    if !Path::new(data_folder.join("arcticdata_items.json").as_path()).exists() {
+        let data_url = settings.get_string("arcticdata_items").expect("Failed to read config!");
+        utils::logger(&format!("arcticdata_items.json missing, downloading it from {}.", data_url), 2);
+        let resp = reqwest::get(data_url).await.expect("Failed to request texture pack!");
+        let arctic_items_data = resp.text().await.expect("Recieved invalid response! This might be caused by not supplying a direct download link.");
+        let mut json_file = fs::File::create(data_folder.join("arcticdata_items.json").as_path()).expect("Creating arcticdata_items.json failed!");
+        json_file.write(arctic_items_data.as_bytes()).expect("Writing data to arcticdata_items.json failed!");
+    }
+    // parse arcticdata_blocks.json
+    let arcticdata_items: std::collections::HashMap<String, serde_json::Value> = 
+    serde_json::from_str(&fs::read_to_string(data_folder.join("arcticdata_items.json"))
+    .expect("Failed to read arcticdata_items.json"))
+    .expect("Failed to parse arcticdata_items.json!");
+    
+    let mut mc_name: String;
+    let mut texture_name: String;
+    let mut stacklimit: i16;
+    let mut item_definitions: Vec<ItemDef> = Vec::new();
+    for item in arcticdata_items {
+        mc_name = item.0;
+        texture_name = format!("item-{}.png", mc_name.replace("minecraft:", ""));
+        stacklimit = item.1.get("maxStackSize").expect("Found a item without Stack Size!").as_u64().unwrap().try_into().unwrap(); // serde only offers as_u64, cant read u16 from file directly (qwq)
+        println!("{} MAPPED -> {}", mc_name, texture_name);
+        item_definitions.push(generate_itemdef(&mc_name, "TODO remove this :3", stacklimit, &texture_name));
+    }
+    
+    let alias_definitions: Vec<ItemAlias> = vec![ItemAlias {name: String::from(""), convert_to: String::from("")}];
+
+    let itemdef_command = ToClientCommand::Itemdef(
+        Box::new(ItemdefSpec {
+            item_def: ItemdefList {
+                itemdef_manager_version: 0, // https://github.com/minetest/minetest/blob/master/src/itemdef.cpp#L616
+                 defs: item_definitions,
+                 aliases: alias_definitions
+            }
+        })
+    );
+    return itemdef_command;
+}
+
+pub fn generate_itemdef(name: &str, description: &str, stacklimit: i16, inventory_image: &str) -> ItemDef {
     let simplesound_placeholder: SimpleSoundSpec = SimpleSoundSpec {
         name: String::from("[[ERROR]]"),
         gain: 1.0,
         pitch: 1.0,
         fade: 1.0,
     };
-    let itemdef_placeholder: ItemDef = ItemDef {
+    ItemDef {
         version: 6, // https://github.com/minetest/minetest/blob/master/src/itemdef.cpp#L192
         item_type: ItemType::None,
-        name: String::from("[[ERROR]]"),
-        description: String::from("A unexpected (actually very expected) error occured. The proxy was unable to map a MC item to MT"),
-        inventory_image: String::from(""), // TODO: That is not an image.
-        wield_image: String::from(""),
+        name: String::from(name),
+        description: String::from(description),
+        inventory_image: String::from(inventory_image),
+        wield_image: String::from(inventory_image), // TODO what is a wield image doing and can i just decide to ignore it?
         wield_scale: v3f {
             x: 1.0,
             y: 1.0,
             z: 1.0,
         },
-        stack_max: 64,
+        stack_max: stacklimit,
         usable: false,
         liquids_pointable: false,
         tool_capabilities: Option16::None,
@@ -62,26 +105,7 @@ pub fn get_item_def_command(settings: &Config) -> ToClientCommand {
         place_param2: None,
         sound_use: None,
         sound_use_air: None
-    };
-    let itemalias_placeholder: ItemAlias = ItemAlias {
-        name: String::from(""),
-        convert_to: String::from("")
-
-    };
-
-    let item_definitions: Vec<ItemDef> = vec![itemdef_placeholder];
-    let alias_definitions: Vec<ItemAlias> = vec![itemalias_placeholder];
-
-    let itemdef_command = ToClientCommand::Itemdef(
-        Box::new(ItemdefSpec {
-            item_def: ItemdefList {
-                itemdef_manager_version: 0, // https://github.com/minetest/minetest/blob/master/src/itemdef.cpp#L616
-                 defs: item_definitions,
-                 aliases: alias_definitions
-            }
-        })
-    );
-    return itemdef_command;
+    }
 }
 
 pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
@@ -92,26 +116,38 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
         utils::logger(&format!("arcticdata_blocks.json missing, downloading it from {}.", data_url), 2);
         let resp = reqwest::get(data_url).await.expect("Failed to request texture pack!");
         let arctic_block_data = resp.text().await.expect("Recieved invalid response! This might be caused by not supplying a direct download link.");
-        let mut json_file = fs::File::create(data_folder.join("url.dsv").as_path()).expect("Creating url.dsv failed!");
-        json_file.write(arctic_block_data.as_bytes()).expect("Writing data to url.dsv failed!");
+        let mut json_file = fs::File::create(data_folder.join("arcticdata_blocks.json").as_path()).expect("Creating arcticdata_blocks.json failed!");
+        json_file.write(arctic_block_data.as_bytes()).expect("Writing data to arcticdata_blocks.json failed!");
     }
-    // read it (TODO: this isnt code golf you should use multiple lines,,)
-    let arcticdata_blocks: serde_json::Value = serde_json::from_str(&fs::read_to_string(data_folder.join("arcticdata_blocks.json")).unwrap()).unwrap()
+    // parse arcticdata_blocks.json
+    let arcticdata_blocks: std::collections::HashMap<String, serde_json::Value> = 
+    serde_json::from_str(&fs::read_to_string(data_folder.join("arcticdata_blocks.json"))
+    .expect("Failed to read arcticdata_blocks.json"))
+    .expect("Failed to parse arcticdata_blocks.json!");
     
-    
-    
-    let contentfeatures_placeholder = generate_contentfeature(1, "default");
+    let mut mc_name: String;
+    let mut texture_name: String;
+    let mut id: u16;
+    let mut content_features: Vec<(u16, ContentFeatures)> = Vec::new();
+    for block in arcticdata_blocks {
+        mc_name = block.0;
+        texture_name = format!("block-{}.png", mc_name.replace("minecraft:", ""));
+        id = block.1.get("id").expect("Found a block without ID!").as_u64().unwrap().try_into().unwrap(); // serde only offers as_u64, cant read u16 from file directly (qwq)
+        println!("{} MAPPED -> {}", mc_name, texture_name);
+        content_features.push(generate_contentfeature(id, &mc_name, &texture_name));
+    }
     let nodedef_command = ToClientCommand::Nodedef(
         Box::new(NodedefSpec {
             node_def: NodeDefManager {
-                content_features: vec![(1, contentfeatures_placeholder)]
+                content_features: content_features,
             }
         })
     );
     return nodedef_command;
 }
 
-pub fn generate_contentfeature(id: u16, name: &str) -> ContentFeatures {
+// TODO: This uses a bunch of only somewhat sane defaults. Add more options or just pass the JSON.
+pub fn generate_contentfeature(id: u16, name: &str, texture_name: &str) -> (u16, ContentFeatures) {
     let simplesound_placeholder: SimpleSoundSpec = SimpleSoundSpec {
         name: String::from("[[ERROR]]"),
         gain: 1.0,
@@ -119,7 +155,7 @@ pub fn generate_contentfeature(id: u16, name: &str) -> ContentFeatures {
         fade: 1.0,
     };
     let tiledef_placeholder: TileDef = TileDef {
-        name: String::from("block-jungle_planks.png"),
+        name: String::from(texture_name),
         animation: TileAnimationParams::None,
         backface_culling: false,
         tileable_horizontal: false,
@@ -192,7 +228,7 @@ pub fn generate_contentfeature(id: u16, name: &str) -> ContentFeatures {
         move_resistance: None,
         liquid_move_physics: None
     };
-    return contentfeatures
+    return (id, contentfeatures)
 }
 
 /*

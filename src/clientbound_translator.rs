@@ -22,8 +22,6 @@ use azalea_protocol::packets::game::clientbound_level_chunk_with_light_packet::{
 use std::sync::Arc;
 use azalea_core::position::ChunkPos;
 
-use std::io::Cursor;
-
 pub async fn add_player(player_data: PlayerInfo, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
     let new_user: String = player_data.profile.name.to_string();
     mt_server_state.players.push(new_user);

@@ -781,6 +781,7 @@ dependencies = [
  "azalea-client",
  "azalea-core",
  "azalea-protocol",
+ "azalea-registry",
  "azalea-world",
  "base64",
  "bytes",

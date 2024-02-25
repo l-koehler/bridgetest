@@ -68,7 +68,7 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     let _ = mt_conn.send(media_packets.4).await;
     
     utils::logger("[Minetest] S->C Itemdef", 1);
-    let _ = mt_conn.send(mt_definitions::get_item_def_command(&settings)).await;
+    let _ = mt_conn.send(mt_definitions::get_item_def_command(&settings).await).await;
     utils::logger("[Minetest] S->C Nodedef", 1);
     let _ = mt_conn.send(mt_definitions::get_node_def_command(&settings).await).await;
 
