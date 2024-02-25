@@ -78,12 +78,9 @@ fn store_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket, mc_clie
     let ClientboundLevelChunkPacketData { heightmaps: chunk_heightmaps, data: chunk_data, block_entities: chunk_entities } = chunk_packet_data;
     utils::logger(&format!("[Minecraft] Server sent chunk x/z {}/{}", chunk_x_pos, chunk_z_pos), 1);
     let chunk_location: ChunkPos = ChunkPos { x: *chunk_x_pos, z: *chunk_z_pos };
-    // // Update world
-    // utils::logger("Skipping World Update: NOT IMPLEMENTED", 3);
-    // let world = mc_client.partial_world();
-    // let world_full = mc_client.world();
-    // let mut chunkstorage = &mut world_full.read().chunks;
-    // world.read().chunks.replace_with_packet_data(&chunk_location, &mut Cursor::new(&chunk_data), chunk_heightmaps, chunkstorage);
+    // send chunk over
+    // TODO: this is terribly slow. it iterates the chunk, pushing each node one-at-a-time.
+    
 }
 
 async fn send_all_chunks(mt_conn: &MinetestConnection, mt_client: &Client) {

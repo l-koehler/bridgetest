@@ -5,10 +5,7 @@
 use azalea::core::particle;
 use azalea::entity::metadata::Text;
 use minetest_protocol::wire::command::{AnnounceMediaSpec, MediaSpec, ItemdefSpec, NodedefSpec, ToClientCommand};
-use minetest_protocol::wire::types::{s16, Option16, v3f, SColor, SimpleSoundSpec, // generic types
-    ItemdefList, ItemDef, ToolCapabilities, ToolGroupCap, ItemAlias, ItemType, // item specific
-    NodeDefManager, ContentFeatures, TileDef, AlignStyle, TileAnimationParams, NodeBox, AlphaMode, DrawType, // node specific (even more complicated than items qwq)
-    MediaFileData, MediaAnnouncement // the fool i was, thinking items were bad,,
+use minetest_protocol::wire::types::{s16, v3f, AlignStyle, AlphaMode, ContentFeatures, DrawType, ItemAlias, ItemDef, ItemType, ItemdefList, MediaAnnouncement, MediaFileData, NodeBox, NodeBoxWallmounted, NodeDefManager, Option16, SColor, SimpleSoundSpec, TileAnimationParams, TileDef, ToolCapabilities, ToolGroupCap // the fool i was, thinking items were bad,,
     };
 
 use alloc::boxed::Box;
@@ -17,80 +14,63 @@ use config::Config;
 use std::ffi::OsString;
 use std::path::{ Path, PathBuf };
 use std::fs;
-use std::io::{ Cursor, Write, Read };
+use std::io::{ Cursor, Write, Read, copy };
 
 use crate::utils;
 use sha1::{Sha1, Digest};
 use base64::{Engine as _, engine::general_purpose};
+use serde_json;
 
-pub fn get_item_def_command() -> ToClientCommand{
-    pub struct Defaults {
-        simplesound: SimpleSoundSpec,
-        itemdef: ItemDef,
-        itemalias: ItemAlias,
-    }
-
-    let placeholder: Defaults = Defaults {
-        simplesound: SimpleSoundSpec {
-            name: String::from("[[ERROR]]"),
-            gain: 1.0,
-            pitch: 1.0,
-            fade: 1.0,
+pub fn get_item_def_command(settings: &Config) -> ToClientCommand {
+    let simplesound_placeholder: SimpleSoundSpec = SimpleSoundSpec {
+        name: String::from("[[ERROR]]"),
+        gain: 1.0,
+        pitch: 1.0,
+        fade: 1.0,
+    };
+    let itemdef_placeholder: ItemDef = ItemDef {
+        version: 6, // https://github.com/minetest/minetest/blob/master/src/itemdef.cpp#L192
+        item_type: ItemType::None,
+        name: String::from("[[ERROR]]"),
+        description: String::from("A unexpected (actually very expected) error occured. The proxy was unable to map a MC item to MT"),
+        inventory_image: String::from(""), // TODO: That is not an image.
+        wield_image: String::from(""),
+        wield_scale: v3f {
+            x: 1.0,
+            y: 1.0,
+            z: 1.0,
         },
-        itemdef: ItemDef {
-            version: 6, // https://github.com/minetest/minetest/blob/master/src/itemdef.cpp#L192
-            item_type: ItemType::None,
-            name: String::from("[[ERROR]]"),
-            description: String::from("A unexpected (actually very expected) error occured. The proxy was unable to map a MC item to MT"),
-            inventory_image: String::from(""), // TODO: That is not an image.
-            wield_image: String::from(""),
-            wield_scale: v3f {
-                x: 1.0,
-                y: 1.0,
-                z: 1.0,
-            },
-            stack_max: 64,
-            usable: false,
-            liquids_pointable: false,
-            tool_capabilities: Option16::None,
-            groups: Vec::new(),
-            node_placement_prediction: String::from(""),
-            sound_place: SimpleSoundSpec {
-                name: String::from("[[ERROR]]"),
-                gain: 1.0,
-                pitch: 1.0,
-                fade: 1.0,
-            },
-            sound_place_failed: SimpleSoundSpec {
-                name: String::from("[[ERROR]]"),
-                gain: 1.0,
-                pitch: 1.0,
-                fade: 1.0,
-            },
-            range: 5.0,
-            palette_image: String::from(""),
-            color: SColor {
-                r: 100,
-                g: 70,
-                b: 85,
-                a: 20,
-            },
-            inventory_overlay: String::from(""),
-            wield_overlay: String::from(""),
-            short_description: Some(String::from("Proxy fucked up, sorry!")),
-            place_param2: None,
-            sound_use: None,
-            sound_use_air: None
+        stack_max: 64,
+        usable: false,
+        liquids_pointable: false,
+        tool_capabilities: Option16::None,
+        groups: Vec::new(),
+        node_placement_prediction: String::from(""),
+        sound_place: simplesound_placeholder.clone(),
+        sound_place_failed: simplesound_placeholder,
+        range: 5.0,
+        palette_image: String::from(""),
+        color: SColor {
+            r: 100,
+            g: 70,
+            b: 85,
+            a: 20,
         },
-        itemalias: ItemAlias {
-            name: String::from(""),
-            convert_to: String::from("")
+        inventory_overlay: String::from(""),
+        wield_overlay: String::from(""),
+        short_description: Some(String::from("Proxy fucked up, sorry!")),
+        place_param2: None,
+        sound_use: None,
+        sound_use_air: None
+    };
+    let itemalias_placeholder: ItemAlias = ItemAlias {
+        name: String::from(""),
+        convert_to: String::from("")
 
-        }
     };
 
-    let item_definitions: Vec<ItemDef> = vec![placeholder.itemdef];
-    let alias_definitions: Vec<ItemAlias> = vec![placeholder.itemalias];
+    let item_definitions: Vec<ItemDef> = vec![itemdef_placeholder];
+    let alias_definitions: Vec<ItemAlias> = vec![itemalias_placeholder];
 
     let itemdef_command = ToClientCommand::Itemdef(
         Box::new(ItemdefSpec {
@@ -104,7 +84,34 @@ pub fn get_item_def_command() -> ToClientCommand{
     return itemdef_command;
 }
 
-pub fn get_node_def_command() -> ToClientCommand {
+pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
+    // ensure arcticdata_blocks exists
+    let data_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/");
+    if !Path::new(data_folder.join("arcticdata_blocks.json").as_path()).exists() {
+        let data_url = settings.get_string("arcticdata_blocks").expect("Failed to read config!");
+        utils::logger(&format!("arcticdata_blocks.json missing, downloading it from {}.", data_url), 2);
+        let resp = reqwest::get(data_url).await.expect("Failed to request texture pack!");
+        let arctic_block_data = resp.text().await.expect("Recieved invalid response! This might be caused by not supplying a direct download link.");
+        let mut json_file = fs::File::create(data_folder.join("url.dsv").as_path()).expect("Creating url.dsv failed!");
+        json_file.write(arctic_block_data.as_bytes()).expect("Writing data to url.dsv failed!");
+    }
+    // read it (TODO: this isnt code golf you should use multiple lines,,)
+    let arcticdata_blocks: serde_json::Value = serde_json::from_str(&fs::read_to_string(data_folder.join("arcticdata_blocks.json")).unwrap()).unwrap()
+    
+    
+    
+    let contentfeatures_placeholder = generate_contentfeature(1, "default");
+    let nodedef_command = ToClientCommand::Nodedef(
+        Box::new(NodedefSpec {
+            node_def: NodeDefManager {
+                content_features: vec![(1, contentfeatures_placeholder)]
+            }
+        })
+    );
+    return nodedef_command;
+}
+
+pub fn generate_contentfeature(id: u16, name: &str) -> ContentFeatures {
     let simplesound_placeholder: SimpleSoundSpec = SimpleSoundSpec {
         name: String::from("[[ERROR]]"),
         gain: 1.0,
@@ -112,7 +119,7 @@ pub fn get_node_def_command() -> ToClientCommand {
         fade: 1.0,
     };
     let tiledef_placeholder: TileDef = TileDef {
-        name: String::from("[[ERROR]]"),
+        name: String::from("block-jungle_planks.png"),
         animation: TileAnimationParams::None,
         backface_culling: false,
         tileable_horizontal: false,
@@ -123,10 +130,10 @@ pub fn get_node_def_command() -> ToClientCommand {
     };
     // like [tiledef_placeholder; 6] if it were slow qwq
     let tiledef_sides = [tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone()];
-    let contentfeatures_placeholder: ContentFeatures = ContentFeatures {
+    let contentfeatures: ContentFeatures = ContentFeatures {
         version: 13, // https://github.com/minetest/minetest/blob/master/src/nodedef.h#L313
-        name: String::from("[[ERROR]]"),
-        groups: vec![(String::from(""), 1)], // [(String, i16), (String, i16)]
+        name: String::from(name),
+        groups: vec![(String::from(""), 1)], // [(String, i16), (String, i16)], IDK what this does
         param_type: 0,
         param_type_2: 0,
         drawtype: DrawType::Normal,
@@ -185,17 +192,16 @@ pub fn get_node_def_command() -> ToClientCommand {
         move_resistance: None,
         liquid_move_physics: None
     };
-    let nodedef_command = ToClientCommand::Nodedef(
-        Box::new(NodedefSpec {
-            node_def: NodeDefManager {
-                content_features: vec![(1, contentfeatures_placeholder)]
-            }
-        })
-    );
-    return nodedef_command;
+    return contentfeatures
 }
 
 /*
+ * Texture pack sender/generators:
+ * validate_texture_pack()
+ * get_mediafilevecs()
+ * texture_vec_iterator()
+ * get_texture_media_commands()
+ * Folder Structure
  * data_folder               -- dir::data_local_dir/bridgetest
  * |- url.dsv                -- contains "timestamp:url", where "url" is the url of the pack currently present and "timestamp" the time of download
  * \- textures               -- a valid minecraft texturepack, uncompressed
@@ -292,19 +298,17 @@ pub fn get_mediafilevecs(filename: PathBuf, name: &str) -> (MediaFileData, Media
 
 fn texture_vec_iterator(texture_vec: &mut Vec<(PathBuf, String)>, iterator: fs::ReadDir, prefix: &str) {
     let mut name: String;
-    let mut name_sanitized: String;
     let mut path: PathBuf;
     for item in iterator {
         name = item.as_ref().unwrap().file_name().into_string().unwrap();
         if name.ends_with("png") {
-            name_sanitized = name.replace(".png", "");
             path = item.as_ref().unwrap().path();
-            texture_vec.push((path, format!("{}-{}", prefix, name_sanitized)));
+            texture_vec.push((path, format!("{}-{}", prefix, name)));
         };
     }
 }
 
-pub async fn get_texture_media_commands(settings: &Config) -> (ToClientCommand, ToClientCommand) {
+pub async fn get_texture_media_commands(settings: &Config) -> (ToClientCommand, ToClientCommand, ToClientCommand, ToClientCommand, ToClientCommand) {
     // TODO: This is *very* inefficient. not that bad, its only run once each start, but still..
     // returns (announcemedia, media)
     // ensure a texture pack exists
@@ -317,32 +321,76 @@ pub async fn get_texture_media_commands(settings: &Config) -> (ToClientCommand, 
     let entity_textures = fs::read_dir(textures_folder.join("entity/")).unwrap();
     let item_textures = fs::read_dir(textures_folder.join("item/")).unwrap();
     // iterate over each
-    let mut texture_vec: Vec<(PathBuf, String)> = Vec::new();
-    texture_vec_iterator(&mut texture_vec, block_textures, "block");
-    texture_vec_iterator(&mut texture_vec, particle_textures, "particle");
-    texture_vec_iterator(&mut texture_vec, entity_textures, "entity");
-    texture_vec_iterator(&mut texture_vec, item_textures, "block");
+    let mut block_texture_vec: Vec<(PathBuf, String)> = Vec::new();
+    let mut particle_texture_vec: Vec<(PathBuf, String)> = Vec::new();
+    let mut entity_texture_vec: Vec<(PathBuf, String)> = Vec::new();
+    let mut item_texture_vec: Vec<(PathBuf, String)> = Vec::new();
+    texture_vec_iterator(&mut block_texture_vec, block_textures, "block");
+    texture_vec_iterator(&mut particle_texture_vec, particle_textures, "particle");
+    texture_vec_iterator(&mut entity_texture_vec, entity_textures, "entity");
+    texture_vec_iterator(&mut item_texture_vec, item_textures, "item");
     // texture_vec = [("/path/to/allay.png", "entity-allay"), ("/path/to/cactus_bottom.png", "block-cactus_bottom"), ...]
-    // call get_mediafilevecs on each entry tuple in texture_vec
-    let mut media_vec: Vec<(MediaFileData, MediaAnnouncement)> = Vec::new();
-    for path_name_tuple in texture_vec {
-        media_vec.push(get_mediafilevecs(path_name_tuple.0, &path_name_tuple.1));
+    // call get_mediafilevecs on each entry tuple in *_texture_vec
+    let mut announcement_vec: Vec<MediaAnnouncement> = Vec::new();
+    let mut block_file_vec: Vec<MediaFileData> = Vec::new();
+    let mut particle_file_vec: Vec<MediaFileData> = Vec::new();
+    let mut entity_file_vec: Vec<MediaFileData> = Vec::new();
+    let mut item_file_vec: Vec<MediaFileData> = Vec::new();
+    let mut mediafilevecs;
+    for path_name_tuple in block_texture_vec {
+        mediafilevecs = get_mediafilevecs(path_name_tuple.0, &path_name_tuple.1);
+        announcement_vec.push(mediafilevecs.1);
+        block_file_vec.push(mediafilevecs.0);
     }
-    // media_vec is a list of tuples, one per file. tuple.0 is a MediaFileData, tuple.1 is a MediaAnnouncement
-    // split this into two actual vectors.
-    let (mediafiledata_vec, mediaannouncement_vec): (Vec<_>, Vec<_>) = media_vec.into_iter().unzip();
+    for path_name_tuple in particle_texture_vec {
+        mediafilevecs = get_mediafilevecs(path_name_tuple.0, &path_name_tuple.1);
+        announcement_vec.push(mediafilevecs.1);
+        particle_file_vec.push(mediafilevecs.0);
+    }
+    for path_name_tuple in entity_texture_vec {
+        mediafilevecs = get_mediafilevecs(path_name_tuple.0, &path_name_tuple.1);
+        announcement_vec.push(mediafilevecs.1);
+        entity_file_vec.push(mediafilevecs.0);
+    }
+    for path_name_tuple in item_texture_vec {
+        mediafilevecs = get_mediafilevecs(path_name_tuple.0, &path_name_tuple.1);
+        announcement_vec.push(mediafilevecs.1);
+        item_file_vec.push(mediafilevecs.0);
+    }
     let announcemedia = ToClientCommand::AnnounceMedia(
         Box::new(AnnounceMediaSpec {
-            files: mediaannouncement_vec,
+            files: announcement_vec,
             remote_servers: String::from("") // IDK what this means or does, but it works if left alone. (meee :3)
         })
     );
-    let mediapacket = ToClientCommand::Media(
+    // split texture packets across 4 packets
+    let block_media_packet = ToClientCommand::Media(
         Box::new(MediaSpec {
-            num_bunches: 1, // TODO: will fail in interesting ways when sending more than 65535 files
+            num_bunches: 4,
             bunch_index: 1,
-            files: mediafiledata_vec
+            files: block_file_vec.clone()
         })
     );
-    return (announcemedia, mediapacket);
+    let particle_media_packet = ToClientCommand::Media(
+        Box::new(MediaSpec {
+            num_bunches: 4,
+            bunch_index: 2,
+            files: particle_file_vec.clone()
+        })
+    );
+    let entity_media_packet = ToClientCommand::Media(
+        Box::new(MediaSpec {
+            num_bunches: 4,
+            bunch_index: 3,
+            files: entity_file_vec.clone()
+        })
+    );
+    let item_media_packet = ToClientCommand::Media(
+        Box::new(MediaSpec {
+            num_bunches: 4,
+            bunch_index: 4,
+            files: item_file_vec
+        })
+    );
+    return (announcemedia, block_media_packet, particle_media_packet, entity_media_packet, item_media_packet);
 }

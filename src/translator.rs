@@ -54,16 +54,24 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     }
 
     utils::logger("Authenticated with both client and server.", 1);
-    let _ = mt_conn.send(mt_definitions::get_item_def_command()).await;
-    utils::logger("[Minetest] S->C Itemdef", 1);
-    let _ = mt_conn.send(mt_definitions::get_node_def_command()).await;
-    utils::logger("[Minetest] S->C Nodedef", 1);
-    // TODO
+    
     let media_packets = mt_definitions::get_texture_media_commands(&settings).await;
-    utils::logger("[Minetest] S->C MediaAnnouncement", 1);
+    utils::logger("[Minetest] S->C MediaAnnouncement", 1); // This will cause cached media to load, breaking stuff (idc)
     let _ = mt_conn.send(media_packets.0).await;
-    utils::logger("[Minetest] S->C Media", 1);
+    utils::logger("[Minetest] S->C Media (Blocks)", 1);
     let _ = mt_conn.send(media_packets.1).await;
+    utils::logger("[Minetest] S->C Media (Particle)", 1);
+    let _ = mt_conn.send(media_packets.2).await;
+    utils::logger("[Minetest] S->C Media (Entity)", 1);
+    let _ = mt_conn.send(media_packets.3).await;
+    utils::logger("[Minetest] S->C Media (Item)", 1);
+    let _ = mt_conn.send(media_packets.4).await;
+    
+    utils::logger("[Minetest] S->C Itemdef", 1);
+    let _ = mt_conn.send(mt_definitions::get_item_def_command(&settings)).await;
+    utils::logger("[Minetest] S->C Nodedef", 1);
+    let _ = mt_conn.send(mt_definitions::get_node_def_command(&settings).await).await;
+
     /*
      * Main Loop.
      * At this point, both the minetest client and the minecraft server

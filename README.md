@@ -8,15 +8,20 @@ The Java server must support the 1.20.2 network protocol.
 It compiles to a standalone executable, which will listen on 127.0.0.1:30000  
 for minetest and then proxy to a minecraft server specified in CONF_DIR/config.txt  
 
-you need nightly rust to build some dependencies (`rustup default nightly`).  
+You need nightly rust to build some dependencies (`rustup default nightly`).  
+
+As a minetest client assumes nearly everything is provided by the server  
+while the server assumes textures, blocks and items are known by the client,  
+this program does NOT ONLY proxy all traffic, but also sends a texture  
+pack and block/item/entity definitions, which are obtained from [ArcticData](https://github.com/Articdive/ArticData).  
 
 #### Things that should be added:
 
 still nearly everything, but for now:  
 
-* Sending a texture pack (MT S->C)  
-
 * Sending default/empty values for all required packets  
+
+* All the basic interaction with the MT Client (set blocks, spawn entities)  
 
 #### Limitations:
 
