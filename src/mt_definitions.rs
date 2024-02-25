@@ -64,6 +64,7 @@ pub async fn get_item_def_command(settings: &Config) -> ToClientCommand {
     return itemdef_command;
 }
 
+// TODO: just like the nodedef thing, this uses bad defaults and needs to get the whole JSON to get rid of these
 pub fn generate_itemdef(name: &str, description: &str, stacklimit: i16, inventory_image: &str) -> ItemDef {
     let simplesound_placeholder: SimpleSoundSpec = SimpleSoundSpec {
         name: String::from("[[ERROR]]"),

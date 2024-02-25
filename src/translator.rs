@@ -7,6 +7,7 @@
 use crate::mt_definitions;
 use crate::utils;
 use crate::commands;
+use crate::clientbound_translator;
 use crate::MTServerState; // ok this is stupid to do whatever it works
 
 use minetest_protocol::peer::peer::PeerError;
@@ -71,6 +72,9 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     let _ = mt_conn.send(mt_definitions::get_item_def_command(&settings).await).await;
     utils::logger("[Minetest] S->C Nodedef", 1);
     let _ = mt_conn.send(mt_definitions::get_node_def_command(&settings).await).await;
+
+    utils::logger("going to something stupid!!", 3);
+    clientbound_translator::addblock(&mut mt_conn).await;
 
     /*
      * Main Loop.

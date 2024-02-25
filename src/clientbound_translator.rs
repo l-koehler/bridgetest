@@ -8,9 +8,12 @@ extern crate alloc;
 use crate::utils;
 use crate::MTServerState;
 
-use minetest_protocol::wire::command::ToClientCommand;
+use azalea::mining::MineBlockPos;
+use azalea::BlockPos;
+use minetest_protocol::wire::command::{ToClientCommand, AddnodeSpec};
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::wire;
+use minetest_protocol::wire::types::{v3s16, MapNodesBulk, MapNode, MapBlock, NodeMetadataList, NodeMetadata, Inventory, StringVar, InventoryEntry};
 
 use azalea_client::PlayerInfo;
 use azalea_client::Client;
@@ -21,6 +24,57 @@ use azalea_protocol::packets::game::ClientboundGamePacket;
 use azalea_protocol::packets::game::clientbound_level_chunk_with_light_packet::{ClientboundLevelChunkWithLightPacket, ClientboundLevelChunkPacketData};
 use std::sync::Arc;
 use azalea_core::position::ChunkPos;
+
+pub async fn addblock(conn: &mut MinetestConnection) {
+    //TODO this does not do things. i want it to do things tho
+    utils::logger("addblock called", 3);
+    // let addblockcommand = ToClientCommand::Blockdata(
+    //     Box::new(wire::command::BlockdataSpec {
+    //         pos: v3s16 { x: 0, y: 0, z: 0 },
+    //         block: MapBlock {
+    //             is_underground: false,
+    //              day_night_diff: false,
+    //              generated: true,
+    //              lighting_complete: None,
+    //              nodes: MapNodesBulk {
+    //                  nodes: [MapNode {param0:0, param1:0, param2:0}; 4096],
+    //             },
+    //             node_metadata: NodeMetadataList {
+    //                 metadata: vec![(
+    //                     minetest_protocol::wire::types::BlockPos {raw:0},
+    //                     NodeMetadata {
+    //                         stringvars:vec![StringVar {
+    //                             name: String::from("default"),
+    //                             value: vec![0],
+    //                             is_private: true
+    //                         }],
+    //                         inventory: Inventory {
+    //                             entries: vec![InventoryEntry::KeepList(String::from(""))],
+    //                         }
+    //                     }
+    //                 )]
+    //             }
+    //         },
+    //         network_specific_version: 0
+    //     })
+    // );
+    for i in -100..100 {
+        // why is this not doing stuff??
+        let addblockcommand = ToClientCommand::Addnode(
+            Box::new(wire::command::AddnodeSpec {
+                pos: v3s16 { x: 0, y: i, z: 0 },
+                keep_metadata: false,
+                node: MapNode {
+                    param0: 0x0000,
+                    param1: 1,
+                    param2: 1,
+                }
+            })
+        );
+        let eee = conn.send(addblockcommand).await;
+        println!("{:#?}", eee);
+    }
+}
 
 pub async fn add_player(player_data: PlayerInfo, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
     let new_user: String = player_data.profile.name.to_string();
