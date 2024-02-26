@@ -8,7 +8,7 @@
 use std::net::ToSocketAddrs;
 
 use crate::utils;
-use crate::settings;
+use crate::serverbound_translator;
 use crate::clientbound_translator;
 use crate::MTServerState;
 extern crate alloc;
@@ -39,6 +39,7 @@ pub async fn mt_auto(command: ToServerCommand, conn: &mut MinetestConnection, mc
         ToServerCommand::ModchannelJoin(_) => utils::logger("[Minetest] Client sent ModchannelJoin, this does not exist in MC", 2),
         ToServerCommand::ModchannelLeave(_) => utils::logger("[Minetest] Client sent ModchannelLeave, this does not exist in MC", 2),
         ToServerCommand::TSModchannelMsg(_) => utils::logger("[Minetest] Client sent TSModchannelMsg, this does not exist in MC", 2),
+        ToServerCommand::TSChatMessage(specbox) => serverbound_translator::send_message(&mc_client, specbox),
         _ => utils::logger("[Minetest] Got unimplemented command, dropping packet!", 2) // Drop packet if unable to match
     }
 }

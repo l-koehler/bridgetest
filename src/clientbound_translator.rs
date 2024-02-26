@@ -42,10 +42,10 @@ pub async fn addblock(conn: &mut MinetestConnection) {
             block: MapBlock {
                 is_underground: false,
                  day_night_diff: false,
-                 generated: true,
-                 lighting_complete: Some(1),
+                 generated: false,
+                 lighting_complete: None,
                  nodes: MapNodesBulk {
-                     nodes: [MapNode {param0:17, param1:1, param2:1}; 4096],
+                     nodes: [MapNode {param0:130, param1:1, param2:1}; 4096],
                 },
                 node_metadata: NodeMetadataList {
                     metadata: metadata_vec,
