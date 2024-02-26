@@ -9,14 +9,14 @@ use crate::utils;
 use crate::mt_definitions;
 use crate::MTServerState;
 
-use azalea::mining::MineBlockPos;
-use minetest_protocol::wire::command::{ToClientCommand, AddnodeSpec};
+use minetest_protocol::wire::command::ToClientCommand;
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::wire;
-use minetest_protocol::wire::types::{v3s16, MapNodesBulk, MapNode, MapBlock, NodeMetadataList, NodeMetadata, Inventory, StringVar, InventoryEntry, BlockPos};
+use minetest_protocol::wire::types::{v3s16, MapNodesBulk, MapNode, MapBlock, NodeMetadataList};
 
 use azalea_client::PlayerInfo;
 use azalea_client::Client;
+use azalea_client::chat::ChatPacket;
 
 use tokio::sync::mpsc::UnboundedReceiver;
 use azalea_client::Event;
@@ -24,6 +24,19 @@ use azalea_protocol::packets::game::ClientboundGamePacket;
 use azalea_protocol::packets::game::clientbound_level_chunk_with_light_packet::{ClientboundLevelChunkWithLightPacket, ClientboundLevelChunkPacketData};
 use std::sync::Arc;
 use azalea_core::position::ChunkPos;
+
+pub async fn send_message(conn: &mut MinetestConnection, message: ChatPacket) {
+    let chat_packet = ToClientCommand::TCChatMessage(
+        Box::new(wire::command::TCChatMessageSpec {
+            version: 1,
+            message_type: 1,
+            sender: message.username().expect("Got message without username!"),
+            message: message.message().to_string(),
+            timestamp: chrono::Utc::now().timestamp().try_into().expect("Unix timestamp is negative. This program only works after 1969, sorry!"),
+        })
+    );
+    let _ = conn.send(chat_packet).await;
+}
 
 pub async fn addblock(conn: &mut MinetestConnection) {
     //TODO this does not do things. i want it to do things tho
