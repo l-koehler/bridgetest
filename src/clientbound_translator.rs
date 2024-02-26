@@ -30,9 +30,9 @@ pub async fn send_message(conn: &mut MinetestConnection, message: ChatPacket) {
         Box::new(wire::command::TCChatMessageSpec {
             version: 1,
             message_type: 1,
-            sender: message.username().expect("Got message without username!"),
+            sender: message.username().unwrap_or(String::from("")),
             message: message.message().to_string(),
-            timestamp: chrono::Utc::now().timestamp().try_into().expect("Unix timestamp is negative. This program only works after 1969, sorry!"),
+            timestamp: chrono::Utc::now().timestamp().try_into().unwrap_or(0),
         })
     );
     let _ = conn.send(chat_packet).await;
