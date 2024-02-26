@@ -5,8 +5,7 @@
 use azalea::core::particle;
 use azalea::entity::metadata::Text;
 use minetest_protocol::wire::command::{AnnounceMediaSpec, MediaSpec, ItemdefSpec, NodedefSpec, ToClientCommand};
-use minetest_protocol::wire::types::{s16, v3f, AlignStyle, AlphaMode, ContentFeatures, DrawType, ItemAlias, ItemDef, ItemType, ItemdefList, MediaAnnouncement, MediaFileData, NodeBox, NodeBoxWallmounted, NodeDefManager, Option16, SColor, SimpleSoundSpec, TileAnimationParams, TileDef, ToolCapabilities, ToolGroupCap // the fool i was, thinking items were bad,,
-    };
+use minetest_protocol::wire::types::{ v3f, AlignStyle, ContentFeatures, DrawType, ItemAlias, ItemDef, ItemType, ItemdefList, MediaAnnouncement, MediaFileData, NodeBox, Option16, SColor, SimpleSoundSpec, TileAnimationParams, TileDef, BlockPos, NodeMetadata, StringVar, Inventory, NodeDefManager }; // AAAAAA
 
 use alloc::boxed::Box;
 use config::Config;
@@ -20,6 +19,25 @@ use crate::utils;
 use sha1::{Sha1, Digest};
 use base64::{Engine as _, engine::general_purpose};
 use serde_json;
+
+pub fn get_metadata_placeholder(x_pos: u16, y_pos: u16, z_pos: u16) -> (BlockPos, NodeMetadata) {
+    let blockpos = BlockPos {
+        raw: (16*z_pos + y_pos)*16 + x_pos,
+    };
+    let metadata = NodeMetadata {
+        stringvars: vec![
+            StringVar {
+                name: String::from("UNUSED METADATA!"),
+                value: vec![0],
+                is_private: false
+            }
+        ],
+        inventory: Inventory {
+            entries: vec![]
+        }
+    };
+    return (blockpos, metadata)
+}
 
 pub async fn get_item_def_command(settings: &Config) -> ToClientCommand {
     // ensure arcticdata_items exists
