@@ -50,12 +50,20 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
     match command {
         Event::AddPlayer(player_data) => clientbound_translator::add_player(player_data, mt_conn, mt_server_state).await,
         Event::Chat(message) => clientbound_translator::send_message(mt_conn, message).await,
+        Event::Tick => on_minecraft_tick(mt_conn, mc_client, mt_server_state).await,
         Event::Packet(packet_value) => match *packet_value {
             ClientboundGamePacket::ChunkBatchStart(_) => clientbound_translator::chunkbatch(mt_conn, mc_conn, &mc_client).await,
             _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),
         },
         _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),
     }
+}
+
+pub async fn on_minecraft_tick(mt_conn: &mut MinetestConnection, mc_client: &azalea::Client, mt_server_state: &mut MTServerState) {
+    // stuff to do on each tick
+    utils::logger("[Minecraft] S->C Tick, regular each-tick stuff will be done", 1);
+    // sync the inventory from mc_client over to the minetest client (if it changed)
+    resync_inventory(mc_client, mt_conn).await;
 }
 
 pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState, settings: &Config) -> (azalea::Client, UnboundedReceiver<azalea::Event>) {
@@ -115,3 +123,14 @@ pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection, 
     let (mut mc_client, mut rx) = Client::join(&mc_account, mc_server_addr).await.expect("[Minecraft] Failed to log in!");
     return (mc_client, rx)
 }
+
+pub async fn resync_inventory(mc_client: &Client, mt_conn: &mut MinetestConnection) {
+    // TODO take the inventory of mc_client and move it to mt_conn
+}
+
+
+
+
+
+
+

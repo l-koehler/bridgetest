@@ -28,8 +28,8 @@ use azalea_core::position::ChunkPos;
 pub async fn send_message(conn: &mut MinetestConnection, message: ChatPacket) {
     let chat_packet = ToClientCommand::TCChatMessage(
         Box::new(wire::command::TCChatMessageSpec {
-            version: 1,
-            message_type: 1,
+            version: 1, // idk what this or message_type do
+            message_type: 1, // but it works, dont touch it
             sender: message.username().unwrap_or(String::from("")),
             message: message.message().to_string(),
             timestamp: chrono::Utc::now().timestamp().try_into().unwrap_or(0),
@@ -38,8 +38,8 @@ pub async fn send_message(conn: &mut MinetestConnection, message: ChatPacket) {
     let _ = conn.send(chat_packet).await;
 }
 
+// TODO THIS FUNCTION IS ONLY HERE TO TEST STUFF
 pub async fn addblock(conn: &mut MinetestConnection) {
-    //TODO this does not do things. i want it to do things tho
     utils::logger("addblock called", 3);
     let mut metadata_vec = Vec::new();
     for x in 0..15 {

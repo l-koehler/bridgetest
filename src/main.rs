@@ -28,8 +28,7 @@ async fn main() {
 }
 
 pub struct MTServerState {
-    players: Vec<String>,
-    address: String,
+    players: Vec<String>, // names of all players
     // add other stuff i might need to keep track of
 }
 
@@ -41,7 +40,6 @@ async fn start_client_handler(settings: Config) {
     // Define a server state with stuff to keep track of
     let mt_server_state = MTServerState {
         players: Vec::new(),
-        address: mt_server_addr,
     };
 
     // Wait for a client to join
