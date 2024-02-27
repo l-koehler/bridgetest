@@ -134,7 +134,7 @@ pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut Unbounde
     // called by a ChunkBatchStart
     // first let azalea do everything until ChunkBatchFinished,
     // then move the azalea world over to the client
-    println!("chunkbatch");
+    utils::logger("chunkbatch", 3);
     loop {
         tokio::select! {
             t = mc_conn.recv() => {
@@ -166,7 +166,6 @@ pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut Unbounde
 }
 
 pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket, mt_conn: &mut MinetestConnection) {
-    println!("haii :3");
     // Parse packet
     let ClientboundLevelChunkWithLightPacket {x: chunk_x_pos, z: chunk_z_pos, chunk_data: chunk_packet_data, light_data: light_packet_data} = packet_data;
     let ClientboundLevelChunkPacketData { heightmaps: chunk_heightmaps, data: chunk_data, block_entities: chunk_entities } = chunk_packet_data;

@@ -65,10 +65,7 @@ pub fn logger(text: &str, level: i8) {
 }
 
 pub fn show_mc_command(command: &Event) {
-    match command {
-        // Events are always sent by the server, no need to check direction
-        _ => logger(&format!("[Minecraft] S->C {}", mc_packet_name(command)), 0),
-    }
+    logger(&format!("[Minecraft] S->C {}", mc_packet_name(command)), 1);
 }
 
 pub fn mc_packet_name(command: &Event) -> &str {
