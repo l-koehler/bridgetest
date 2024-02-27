@@ -116,21 +116,6 @@ pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &mut
     let _ = conn.send(addblockcommand).await;
 }
 
-pub async fn setblock(x: i16, y: i16, z: i16, id: u16, mt_conn: &mut MinetestConnection) {
-    let addblockcommand = ToClientCommand::Addnode(
-        Box::new(wire::command::AddnodeSpec {
-            pos: v3s16 { x, y, z },
-            keep_metadata: true,
-            node: MapNode {
-                param0: id,
-                param1: 1,
-                param2: 1,
-            }
-        })
-    );
-    let _ = mt_conn.send(addblockcommand).await;
-}
-
 pub async fn add_player(player_data: PlayerInfo, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
     let new_user: String = player_data.profile.name.to_string();
     mt_server_state.players.push(new_user);
@@ -149,6 +134,7 @@ pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut Unbounde
     // called by a ChunkBatchStart
     // first let azalea do everything until ChunkBatchFinished,
     // then move the azalea world over to the client
+    println!("chunkbatch");
     loop {
         tokio::select! {
             t = mc_conn.recv() => {
@@ -160,7 +146,7 @@ pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut Unbounde
                             Event::Packet(packet_value) => match Arc::unwrap_or_clone(packet_value) {
                                 ClientboundGamePacket::LevelChunkWithLight(packet_data) => {
                                     utils::logger("[Minecraft] S->C LevelchunkWithLight", 1);
-                                    store_level_chunk(&packet_data, mc_client);
+                                    send_level_chunk(&packet_data, mt_conn).await;
                                 },
                                 ClientboundGamePacket::ChunkBatchFinished(_) => {
                                     utils::logger("[Minecraft] S->C ChunkBatchFinished", 1);
@@ -179,15 +165,28 @@ pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut Unbounde
     }
 }
 
-fn store_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket, mc_client: &Client) {
+pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket, mt_conn: &mut MinetestConnection) {
+    println!("haii :3");
     // Parse packet
     let ClientboundLevelChunkWithLightPacket {x: chunk_x_pos, z: chunk_z_pos, chunk_data: chunk_packet_data, light_data: light_packet_data} = packet_data;
     let ClientboundLevelChunkPacketData { heightmaps: chunk_heightmaps, data: chunk_data, block_entities: chunk_entities } = chunk_packet_data;
     utils::logger(&format!("[Minecraft] Server sent chunk x/z {}/{}", chunk_x_pos, chunk_z_pos), 1);
-    let chunk_location: ChunkPos = ChunkPos { x: *chunk_x_pos, z: *chunk_z_pos };
-    // send chunk over
-    // TODO: this is terribly slow. it iterates the chunk, pushing each node one-at-a-time.
-    
+    //let chunk_location: ChunkPos = ChunkPos { x: *chunk_x_pos, z: *chunk_z_pos }; // unused
+    // send chunk to the MT client
+    let mut nodearr: [MapNode; 4096] = [MapNode { param0: 0, param1: 1, param2: 1 }; 4096];
+    let mut node: MapNode;
+    // for each y level (mc chunks go from top to bottom, while mt chunks are 16 nodes high)
+    for chunk_y_pos in -4..20 {
+        for array_node in nodearr.iter_mut() {
+            println!("CHUNKU8LEN {}", chunk_data.len());
+            // detailed explanation of this iterator hidden in initialize_16node_chunk
+            // but it basically assigns each node that will be sent to mt an ID as a value
+            node = MapNode { param0: 17, param1: 1, param2: 1 };
+            *array_node = node;
+        }
+        // map the i32 mc chunks to i16 mt ones, possibly overflowing them (intentionally, better than crashing ig)
+        initialize_16node_chunk(*chunk_x_pos as i16, chunk_y_pos, *chunk_z_pos as i16, mt_conn, nodearr).await;
+    }
 }
 
 async fn send_all_chunks(mt_conn: &MinetestConnection, mc_client: &Client) {

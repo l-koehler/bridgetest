@@ -42,34 +42,29 @@ pub async fn mt_auto(command: ToServerCommand, conn: &mut MinetestConnection, mc
         ToServerCommand::ModchannelLeave(_) => utils::logger("[Minetest] Client sent ModchannelLeave, this does not exist in MC", 2),
         ToServerCommand::TSModchannelMsg(_) => utils::logger("[Minetest] Client sent TSModchannelMsg, this does not exist in MC", 2),
         ToServerCommand::TSChatMessage(specbox) => serverbound_translator::send_message(&mc_client, specbox),
-        _ => utils::logger("[Minetest] Got unimplemented command, dropping packet!", 2) // Drop packet if unable to match
+        _ => utils::logger(&format!("[Minetest] Got unimplemented command, dropping packet {:?}!", command), 2) // Drop packet if unable to match
     }
 }
 
 pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnection, mc_client: &azalea::Client, mt_server_state: &mut MTServerState, mc_conn: &mut UnboundedReceiver<Event>) {
     let cloned_command = command.clone();
     let command_name = utils::mc_packet_name(&cloned_command);
-    match command {
+    match command { // ik i shouldn't match strings but i fought the borrow checker about this for ONE HOUR, giving up
         Event::AddPlayer(player_data) => clientbound_translator::add_player(player_data, mt_conn, mt_server_state).await,
         Event::Chat(message) => clientbound_translator::send_message(mt_conn, message).await,
         Event::Tick => on_minecraft_tick(mt_conn, mc_client, mt_server_state).await,
-        Event::Packet(packet_value) => mc_gamepack_auto(packet_value, mt_conn, mc_client, mc_conn, command_name).await,
-        _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),
-    }
-}
-
-pub async fn mc_gamepack_auto(command: Arc<ClientboundGamePacket>, mt_conn: &mut MinetestConnection, mc_client: &azalea::Client, mc_conn: &mut UnboundedReceiver<Event>, command_name: &str) {
-    let packet_value: &ClientboundGamePacket = &*command; // not entirely useless, derefs a Arc<>
-    match packet_value {
-        ClientboundGamePacket::ChunkBatchStart(_) => clientbound_translator::chunkbatch(mt_conn, mc_conn, &mc_client).await,
-        ClientboundGamePacket::SystemChat(message) => clientbound_translator::send_sys_message(mt_conn, &message.clone()).await,
+        Event::Packet(packet_value) => match (*packet_value).clone() {
+            ClientboundGamePacket::ChunkBatchStart(_) => clientbound_translator::chunkbatch(mt_conn, mc_conn, &mc_client).await,
+            ClientboundGamePacket::SystemChat(message) => clientbound_translator::send_sys_message(mt_conn, &message.clone()).await,
+            _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),
+        }
         _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),
     }
 }
 
 pub async fn on_minecraft_tick(mt_conn: &mut MinetestConnection, mc_client: &azalea::Client, mt_server_state: &mut MTServerState) {
     // sync the inventory from mc_client over to the minetest client (if it changed)
-    resync_inventory(mc_client, mt_conn).await;
+    //resync_inventory(mc_client, mt_conn).await;
 }
 
 pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState, settings: &Config) -> (azalea::Client, UnboundedReceiver<azalea::Event>) {

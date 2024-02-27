@@ -14,6 +14,8 @@ As a minetest client assumes nearly everything is provided by the server
 while the server assumes textures, blocks and items are known by the client,  
 this program does NOT ONLY proxy all traffic, but also sends a texture  
 pack and block/item/entity definitions, which are obtained from [ArcticData](https://github.com/Articdive/ArticData).  
+You can generate these definitions yourself if you don't want to use ArcticData,  
+possibly by using [Minecrafts inbuilt Data Generators](https://wiki.vg/Data_Generators) instead of it.
 
 #### Things that should be added:
 
