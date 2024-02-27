@@ -17,13 +17,22 @@ use minetest_protocol::wire::types::{v3s16, MapNodesBulk, MapNode, MapBlock, Nod
 use azalea_client::PlayerInfo;
 use azalea_client::Client;
 use azalea_client::chat::ChatPacket;
+use azalea::inventory::ItemSlotData;
 
 use tokio::sync::mpsc::UnboundedReceiver;
 use azalea_client::Event;
 use azalea_protocol::packets::game::ClientboundGamePacket;
 use azalea_protocol::packets::game::clientbound_level_chunk_with_light_packet::{ClientboundLevelChunkWithLightPacket, ClientboundLevelChunkPacketData};
+use azalea_protocol::packets::game::clientbound_system_chat_packet::ClientboundSystemChatPacket;
 use std::sync::Arc;
 use azalea_core::position::ChunkPos;
+
+pub async fn send_item_if_missing(slotdata: ItemSlotData, slot_id: usize) {
+    todo!();
+    let item = slotdata.kind;
+    let count = slotdata.count;
+    println!("MC Client has INV:SLOT {} with ITEM {}", slot_id, item);
+}
 
 pub async fn send_message(conn: &mut MinetestConnection, message: ChatPacket) {
     let chat_packet = ToClientCommand::TCChatMessage(
@@ -38,9 +47,28 @@ pub async fn send_message(conn: &mut MinetestConnection, message: ChatPacket) {
     let _ = conn.send(chat_packet).await;
 }
 
+pub async fn send_sys_message(conn: &mut MinetestConnection, message: &ClientboundSystemChatPacket) {
+    match &message.content {
+        azalea_chat::FormattedText::Text(component) => {
+            let chat_packet = ToClientCommand::TCChatMessage(
+                Box::new(wire::command::TCChatMessageSpec {
+                    version: 1, // idk what this or message_type do
+                    message_type: 1, // but it works, dont touch it
+                    sender: String::from("System"),
+                    message: component.text.to_string(),
+                    timestamp: chrono::Utc::now().timestamp().try_into().unwrap_or(0),
+                })
+            );
+            let _ = conn.send(chat_packet).await;
+        },
+        _ => (),
+    }
+
+}
+
 // TODO THIS FUNCTION IS ONLY HERE TO TEST STUFF
 pub async fn addblock(conn: &mut MinetestConnection) {
-    utils::logger("addblock called", 3);
+    utils::logger("addblock called", 3); // :3
     let mut metadata_vec = Vec::new();
     for x in 0..15 {
         for y in 0..15 {
@@ -58,7 +86,7 @@ pub async fn addblock(conn: &mut MinetestConnection) {
                  generated: false,
                  lighting_complete: None,
                  nodes: MapNodesBulk {
-                     nodes: [MapNode {param0:130, param1:1, param2:1}; 4096],
+                     nodes: [MapNode {param0:0, param1:1, param2:1}; 4096],
                 },
                 node_metadata: NodeMetadataList {
                     metadata: metadata_vec,
@@ -142,8 +170,7 @@ fn store_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket, mc_clie
     
 }
 
-async fn send_all_chunks(mt_conn: &MinetestConnection, mt_client: &Client) {
+async fn send_all_chunks(mt_conn: &MinetestConnection, mc_client: &Client) {
     utils::logger("Skipping sending new chunk: NOT IMPLEMENTED", 3);
-    
 }
 

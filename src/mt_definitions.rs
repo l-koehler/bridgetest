@@ -4,8 +4,9 @@
 
 use azalea::core::particle;
 use azalea::entity::metadata::Text;
-use minetest_protocol::wire::command::{AnnounceMediaSpec, MediaSpec, ItemdefSpec, NodedefSpec, ToClientCommand};
-use minetest_protocol::wire::types::{ v3f, AlignStyle, ContentFeatures, DrawType, ItemAlias, ItemDef, ItemType, ItemdefList, MediaAnnouncement, MediaFileData, NodeBox, Option16, SColor, SimpleSoundSpec, TileAnimationParams, TileDef, BlockPos, NodeMetadata, StringVar, Inventory, NodeDefManager }; // AAAAAA
+use minetest_protocol::wire::command::{AnnounceMediaSpec, MediaSpec, ItemdefSpec, NodedefSpec, ToClientCommand, InventoryFormspecSpec};
+use minetest_protocol::wire::types::{ v3f, AlignStyle, ContentFeatures, DrawType, ItemAlias, ItemDef, ItemType, ItemdefList, MediaAnnouncement, MediaFileData, NodeBox, Option16, SColor, SimpleSoundSpec, TileAnimationParams, TileDef, BlockPos, NodeMetadata, StringVar, Inventory, NodeDefManager
+}; // AAAAAA
 
 use alloc::boxed::Box;
 use config::Config;
@@ -16,9 +17,19 @@ use std::fs;
 use std::io::{ Cursor, Write, Read, copy };
 
 use crate::utils;
+use crate::settings;
 use sha1::{Sha1, Digest};
 use base64::{Engine as _, engine::general_purpose};
 use serde_json;
+
+pub fn get_inventory_formspec() -> ToClientCommand {
+    let formspec_command = ToClientCommand::InventoryFormspec(
+        Box::new(InventoryFormspecSpec{
+            formspec: String::from(settings::INV_FORMSPEC),
+        })
+    );
+    return formspec_command;
+}
 
 pub fn get_metadata_placeholder(x_pos: u16, y_pos: u16, z_pos: u16) -> (BlockPos, NodeMetadata) {
     let blockpos = BlockPos {
