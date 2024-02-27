@@ -88,7 +88,7 @@ pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &mut
      * z=1: 0,0,0, 0,0,0, 0,0,0, \___ gets repeated for each Z, to be a 3^3 cube
      * z=0: 0,0,0, 0,0,0, 0,0,0, /
      */
-    utils::logger(&format!("[Minetest] S->C Initializing 16^3 nodes at {}{}{}", x_pos, y_pos, z_pos), 1);
+    utils::logger(&format!("[Minetest] S->C Initializing 16^3 nodes at {}/{}/{}", x_pos, y_pos, z_pos), 1);
     // TODO this does not support metadata
     let mut metadata_vec = Vec::new();
     for x in 0..15 {
@@ -153,7 +153,6 @@ pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut Unbounde
                                 },
                                 ClientboundGamePacket::ChunkBatchFinished(_) => {
                                     utils::logger("[Minecraft] S->C ChunkBatchFinished", 1);
-                                    send_all_chunks(mt_conn, mc_client).await;
                                     return; // Done
                                 },
                                 _ => (),
@@ -170,8 +169,8 @@ pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut Unbounde
 
 pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket, mt_conn: &mut MinetestConnection) {
     // Parse packet
-    let ClientboundLevelChunkWithLightPacket {x: chunk_x_pos, z: chunk_z_pos, chunk_data: chunk_packet_data, light_data: light_packet_data} = packet_data;
-    let ClientboundLevelChunkPacketData { heightmaps: chunk_heightmaps, data: chunk_data, block_entities: chunk_entities } = chunk_packet_data;
+    let ClientboundLevelChunkWithLightPacket {x: chunk_x_pos, z: chunk_z_pos, chunk_data: chunk_packet_data, light_data: _} = packet_data;
+    let ClientboundLevelChunkPacketData { heightmaps: chunk_heightmaps, data: chunk_data, block_entities: _ } = chunk_packet_data;
     utils::logger(&format!("[Minecraft] Server sent chunk x/z {}/{}", chunk_x_pos, chunk_z_pos), 1);
     //let chunk_location: ChunkPos = ChunkPos { x: *chunk_x_pos, z: *chunk_z_pos }; // unused
     // send chunk to the MT client
@@ -184,7 +183,7 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
     .expect("Failed to parse chunk!");
     // -64/16 .. 320/16
     
-    // TODO this is iterating a reasonable amount of times (not really)
+    // TODO this is iterating a reasonable amount of times (not really) (AAAAAAAA)
     for chunk_y_pos in (settings::Y_LOWER/16)..(settings::Y_UPPER/16) { // foreach possible section height (-4 .. 20)
         // chunk_data: array of chunk sections
         for array_node in nodearr.iter_mut() {
@@ -203,8 +202,3 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
         initialize_16node_chunk(*chunk_x_pos as i16, chunk_y_pos, *chunk_z_pos as i16, mt_conn, nodearr).await;
     }
 }
-
-async fn send_all_chunks(mt_conn: &MinetestConnection, mc_client: &Client) {
-    utils::logger("Skipping sending new chunk: NOT IMPLEMENTED", 3);
-}
-

@@ -66,6 +66,8 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     let _ = mt_conn.send(media_packets.3).await;
     utils::logger("[Minetest] S->C Media (Item)", 1);
     let _ = mt_conn.send(media_packets.4).await;
+    utils::logger("[Minetest] S->C Media (Misc)", 1);
+    let _ = mt_conn.send(media_packets.5).await;
     // utils::logger("[Minetest] S->C Inventory Formspec", 1);
     // let _ = mt_conn.send(mt_definitions::get_inventory_formspec()).await;
 
@@ -73,6 +75,12 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     let _ = mt_conn.send(mt_definitions::get_item_def_command(&settings).await).await;
     utils::logger("[Minetest] S->C Nodedef", 1);
     let _ = mt_conn.send(mt_definitions::get_node_def_command(&settings).await).await;
+    
+    utils::logger("[Minetest] S->C SetSun", 1);
+    let _ = mt_conn.send(mt_definitions::get_sun_def_command()).await;
+    
+    utils::logger("[Minetest] S->C SetLighting", 1);
+    let _ = mt_conn.send(mt_definitions::get_lighting_def_command()).await;
 
     /*
      * Main Loop.

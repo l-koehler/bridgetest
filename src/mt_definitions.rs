@@ -4,8 +4,8 @@
 
 use azalea::core::particle;
 use azalea::entity::metadata::Text;
-use minetest_protocol::wire::command::{AnnounceMediaSpec, MediaSpec, ItemdefSpec, NodedefSpec, ToClientCommand, InventoryFormspecSpec};
-use minetest_protocol::wire::types::{ v3f, AlignStyle, ContentFeatures, DrawType, ItemAlias, ItemDef, ItemType, ItemdefList, MediaAnnouncement, MediaFileData, NodeBox, Option16, SColor, SimpleSoundSpec, TileAnimationParams, TileDef, BlockPos, NodeMetadata, StringVar, Inventory, NodeDefManager
+use minetest_protocol::wire::command::{AnnounceMediaSpec, InventoryFormspecSpec, ItemdefSpec, MediaSpec, NodedefSpec, SetSunSpec, SetLightingSpec, ToClientCommand};
+use minetest_protocol::wire::types::{ v3f, AlignStyle, ContentFeatures, DrawType, ItemAlias, ItemDef, ItemType, ItemdefList, MediaAnnouncement, MediaFileData, NodeBox, Option16, SColor, SimpleSoundSpec, TileAnimationParams, TileDef, BlockPos, NodeMetadata, StringVar, Inventory, NodeDefManager, SunParams, Lighting, AutoExposure
 }; // AAAAAA
 
 use alloc::boxed::Box;
@@ -21,6 +21,43 @@ use crate::settings;
 use sha1::{Sha1, Digest};
 use base64::{Engine as _, engine::general_purpose};
 use serde_json;
+
+pub fn get_lighting_def_command() -> ToClientCommand {
+    let setlight_command = ToClientCommand::SetLighting(
+        Box::new(SetLightingSpec {
+            lighting: Lighting { 
+                shadow_intensity: 0.0,
+                saturation: 100.0,
+                 // IDFK what half this stuff means can someone translate this to "didnt study color theory"?
+                exposure: AutoExposure {
+                    luminance_min: 50.0,
+                    luminance_max: 100.0,
+                    exposure_correction: 1.0,
+                    speed_dark_bright: 1.0,
+                    speed_bright_dark: 1.0,
+                    center_weight_power: 1.0
+                }
+            }
+        })
+    );
+    return setlight_command;
+}
+
+pub fn get_sun_def_command() -> ToClientCommand {
+    let setsun_command = ToClientCommand::SetSun(
+        Box::new(SetSunSpec{
+            sun: SunParams {
+                visible: true,
+                 texture: String::from("misc-sun.png"),
+                 tonemap: String::from(""),
+                 sunrise: String::from(""),
+                 sunrise_visible: true,
+                 scale: 1.0
+            }
+        })
+    );
+    return setsun_command;
+}
 
 pub fn get_inventory_formspec() -> ToClientCommand {
     let formspec_command = ToClientCommand::InventoryFormspec(
@@ -374,7 +411,7 @@ fn texture_vec_iterator(texture_vec: &mut Vec<(PathBuf, String)>, iterator: fs::
     }
 }
 
-pub async fn get_texture_media_commands(settings: &Config) -> (ToClientCommand, ToClientCommand, ToClientCommand, ToClientCommand, ToClientCommand) {
+pub async fn get_texture_media_commands(settings: &Config) -> (ToClientCommand, ToClientCommand, ToClientCommand, ToClientCommand, ToClientCommand, ToClientCommand) {
     // TODO: This is *very* inefficient. not that bad, its only run once each start, but still..
     // returns (announcemedia, media)
     // ensure a texture pack exists
@@ -386,15 +423,18 @@ pub async fn get_texture_media_commands(settings: &Config) -> (ToClientCommand, 
     let particle_textures = fs::read_dir(textures_folder.join("particle/")).unwrap();
     let entity_textures = fs::read_dir(textures_folder.join("entity/")).unwrap();
     let item_textures = fs::read_dir(textures_folder.join("item/")).unwrap();
+    let misc_textures = fs::read_dir(textures_folder.join("environment/")).unwrap();
     // iterate over each
     let mut block_texture_vec: Vec<(PathBuf, String)> = Vec::new();
     let mut particle_texture_vec: Vec<(PathBuf, String)> = Vec::new();
     let mut entity_texture_vec: Vec<(PathBuf, String)> = Vec::new();
     let mut item_texture_vec: Vec<(PathBuf, String)> = Vec::new();
+    let mut misc_texture_vec: Vec<(PathBuf, String)> = Vec::new();
     texture_vec_iterator(&mut block_texture_vec, block_textures, "block");
     texture_vec_iterator(&mut particle_texture_vec, particle_textures, "particle");
     texture_vec_iterator(&mut entity_texture_vec, entity_textures, "entity");
     texture_vec_iterator(&mut item_texture_vec, item_textures, "item");
+    texture_vec_iterator(&mut misc_texture_vec, misc_textures, "misc");
     // texture_vec = [("/path/to/allay.png", "entity-allay"), ("/path/to/cactus_bottom.png", "block-cactus_bottom"), ...]
     // call get_mediafilevecs on each entry tuple in *_texture_vec
     let mut announcement_vec: Vec<MediaAnnouncement> = Vec::new();
@@ -402,6 +442,7 @@ pub async fn get_texture_media_commands(settings: &Config) -> (ToClientCommand, 
     let mut particle_file_vec: Vec<MediaFileData> = Vec::new();
     let mut entity_file_vec: Vec<MediaFileData> = Vec::new();
     let mut item_file_vec: Vec<MediaFileData> = Vec::new();
+    let mut misc_file_vec: Vec<MediaFileData> = Vec::new();
     let mut mediafilevecs;
     for path_name_tuple in block_texture_vec {
         mediafilevecs = get_mediafilevecs(path_name_tuple.0, &path_name_tuple.1);
@@ -423,6 +464,11 @@ pub async fn get_texture_media_commands(settings: &Config) -> (ToClientCommand, 
         announcement_vec.push(mediafilevecs.1);
         item_file_vec.push(mediafilevecs.0);
     }
+    for path_name_tuple in misc_texture_vec {
+        mediafilevecs = get_mediafilevecs(path_name_tuple.0, &path_name_tuple.1);
+        announcement_vec.push(mediafilevecs.1);
+        misc_file_vec.push(mediafilevecs.0);
+    }
     let announcemedia = ToClientCommand::AnnounceMedia(
         Box::new(AnnounceMediaSpec {
             files: announcement_vec,
@@ -432,31 +478,38 @@ pub async fn get_texture_media_commands(settings: &Config) -> (ToClientCommand, 
     // split texture packets across 4 packets
     let block_media_packet = ToClientCommand::Media(
         Box::new(MediaSpec {
-            num_bunches: 4,
+            num_bunches: 5,
             bunch_index: 1,
-            files: block_file_vec.clone()
+            files: block_file_vec
         })
     );
     let particle_media_packet = ToClientCommand::Media(
         Box::new(MediaSpec {
-            num_bunches: 4,
+            num_bunches: 5,
             bunch_index: 2,
-            files: particle_file_vec.clone()
+            files: particle_file_vec
         })
     );
     let entity_media_packet = ToClientCommand::Media(
         Box::new(MediaSpec {
-            num_bunches: 4,
+            num_bunches: 5,
             bunch_index: 3,
-            files: entity_file_vec.clone()
+            files: entity_file_vec
         })
     );
     let item_media_packet = ToClientCommand::Media(
         Box::new(MediaSpec {
-            num_bunches: 4,
+            num_bunches: 5,
             bunch_index: 4,
             files: item_file_vec
         })
     );
-    return (announcemedia, block_media_packet, particle_media_packet, entity_media_packet, item_media_packet);
+    let misc_media_packet = ToClientCommand::Media(
+        Box::new(MediaSpec {
+            num_bunches: 5,
+            bunch_index: 5,
+            files: misc_file_vec
+        })
+    );
+    return (announcemedia, block_media_packet, particle_media_packet, entity_media_packet, item_media_packet, misc_media_packet);
 }
