@@ -5,6 +5,9 @@
  * Also some other constants and hacks
  */
 
+pub const Y_LOWER: i16 = -64;
+pub const Y_UPPER: i16 = 320;
+
 pub const CONF_FALLBACK: &str ="\
 ## feel free to change these values, shouldn't break anything important.
 # download link to a complete minecraft texture pack

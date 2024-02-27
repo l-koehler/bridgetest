@@ -5,6 +5,7 @@
 
 extern crate alloc;
 
+use crate::settings;
 use crate::utils;
 use crate::mt_definitions;
 use crate::MTServerState;
@@ -26,7 +27,9 @@ use azalea_protocol::packets::game::ClientboundGamePacket;
 use azalea_protocol::packets::game::clientbound_level_chunk_with_light_packet::{ClientboundLevelChunkWithLightPacket, ClientboundLevelChunkPacketData};
 use azalea_protocol::packets::game::clientbound_system_chat_packet::ClientboundSystemChatPacket;
 use std::sync::Arc;
-use azalea_core::position::ChunkPos;
+use std::io::Cursor;
+use azalea_core::position::ChunkBlockPos;
+use azalea_world::chunk_storage;
 
 /*
  * slot_id maps to slots in the players inventory.
@@ -175,13 +178,26 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
     let mut nodearr: [MapNode; 4096] = [MapNode { param0: 0, param1: 1, param2: 1 }; 4096];
     let mut node: MapNode;
     // for each y level (mc chunks go from top to bottom, while mt chunks are 16 nodes high)
-    for chunk_y_pos in -4..20 {
+    let mut chunk_data_cursor = Cursor::new(chunk_data.as_slice());
+    let dimension_height = i16::abs_diff(settings::Y_LOWER, settings::Y_UPPER);
+    let mc_chunk: chunk_storage::Chunk = chunk_storage::Chunk::read_with_dimension_height(&mut chunk_data_cursor, dimension_height.into(), settings::Y_LOWER.into(), chunk_heightmaps)
+    .expect("Failed to parse chunk!");
+    // -64/16 .. 320/16
+    
+    // TODO this is iterating a reasonable amount of times (not really)
+    for chunk_y_pos in (settings::Y_LOWER/16)..(settings::Y_UPPER/16) { // foreach possible section height (-4 .. 20)
+        // chunk_data: array of chunk sections
         for array_node in nodearr.iter_mut() {
-            println!("CHUNKU8LEN {}", chunk_data.len());
+            for z in 0..15 {
+                for y in 0..15 {
+                    for x in 0..15 {
+                        node = MapNode { param0: mc_chunk.get(&ChunkBlockPos { x, y, z }, dimension_height.into()).unwrap_or(azalea::blocks::BlockState { id: 0 }).id.try_into().unwrap(), param1: 1, param2: 1 };
+                        *array_node = node;
+                    }
+                }
+            }
             // detailed explanation of this iterator hidden in initialize_16node_chunk
             // but it basically assigns each node that will be sent to mt an ID as a value
-            node = MapNode { param0: 17, param1: 1, param2: 1 };
-            *array_node = node;
         }
         // map the i32 mc chunks to i16 mt ones, possibly overflowing them (intentionally, better than crashing ig)
         initialize_16node_chunk(*chunk_x_pos as i16, chunk_y_pos, *chunk_z_pos as i16, mt_conn, nodearr).await;
