@@ -66,9 +66,6 @@ pub fn logger(text: &str, level: i8) {
 
 pub fn show_mc_command(command: &Event) {
     match command {
-        // Do not show generic data/tick packets, they happen all the time and are boring
-        //Event::Packet(_) => (),
-        Event::Tick => (),
         // Events are always sent by the server, no need to check direction
         _ => logger(&format!("[Minecraft] S->C {}", mc_packet_name(command)), 0),
     }

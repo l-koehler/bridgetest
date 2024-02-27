@@ -7,8 +7,7 @@
 use crate::mt_definitions;
 use crate::utils;
 use crate::commands;
-use crate::clientbound_translator;
-use crate::MTServerState; // ok this is stupid to do whatever it works
+use crate::MTServerState; // ok this is stupid to do whatever it works (i need global variables) (for normal reasons)
 
 use minetest_protocol::peer::peer::PeerError;
 use minetest_protocol::wire::command::CommandProperties;
@@ -75,9 +74,6 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     utils::logger("[Minetest] S->C Nodedef", 1);
     let _ = mt_conn.send(mt_definitions::get_node_def_command(&settings).await).await;
 
-    utils::logger("going to something stupid!!", 3);
-    clientbound_translator::addblock(&mut mt_conn).await;
-
     /*
      * Main Loop.
      * At this point, both the minetest client and the minecraft server
@@ -109,13 +105,12 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
                         break; // Exit the client handler on client disconnect
                     }
                 }
-                let mt_command = t.unwrap();
+                let mt_command = t.expect("[Minetest] Failed to unwrap Ok(_) packet from Client!");
                 utils::show_mt_command(&mt_command);
                 commands::mt_auto(mt_command, &mut mt_conn, &mc_client).await;
             },
             // or the minecraft connection
             t = mc_conn.recv() => {
-                // t: azalea_client::Event
                 match t {
                     Some(_) => {
                         let mc_command = t.expect("[Minecraft] Failed to unwrap non-empty packet from Server!");

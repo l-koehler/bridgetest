@@ -47,8 +47,8 @@ pub async fn mt_auto(command: ToServerCommand, conn: &mut MinetestConnection, mc
 }
 
 pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnection, mc_client: &azalea::Client, mt_server_state: &mut MTServerState, mc_conn: &mut UnboundedReceiver<Event>) {
-    let command_clone = command.clone(); //  The borrow checker is my only mortal enemy
-    let command_name = utils::mc_packet_name(&command_clone);
+    let cloned_command = command.clone();
+    let command_name = utils::mc_packet_name(&cloned_command);
     match command {
         Event::AddPlayer(player_data) => clientbound_translator::add_player(player_data, mt_conn, mt_server_state).await,
         Event::Chat(message) => clientbound_translator::send_message(mt_conn, message).await,
@@ -68,8 +68,6 @@ pub async fn mc_gamepack_auto(command: Arc<ClientboundGamePacket>, mt_conn: &mut
 }
 
 pub async fn on_minecraft_tick(mt_conn: &mut MinetestConnection, mc_client: &azalea::Client, mt_server_state: &mut MTServerState) {
-    // stuff to do on each tick
-    utils::logger("[Minecraft] S->C Tick", 1);
     // sync the inventory from mc_client over to the minetest client (if it changed)
     resync_inventory(mc_client, mt_conn).await;
 }

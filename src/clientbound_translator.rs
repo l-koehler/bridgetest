@@ -9,6 +9,7 @@ use crate::utils;
 use crate::mt_definitions;
 use crate::MTServerState;
 
+use azalea_registry::Registry;
 use minetest_protocol::wire::command::ToClientCommand;
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::wire;
@@ -27,11 +28,13 @@ use azalea_protocol::packets::game::clientbound_system_chat_packet::ClientboundS
 use std::sync::Arc;
 use azalea_core::position::ChunkPos;
 
+/*
+ * slot_id maps to slots in the players inventory.
+ */
 pub async fn send_item_if_missing(slotdata: ItemSlotData, slot_id: usize) {
-    todo!();
     let item = slotdata.kind;
     let count = slotdata.count;
-    println!("MC Client has INV:SLOT {} with ITEM {}", slot_id, item);
+    utils::logger(&format!("[Minecraft] Unimplemented InvSync Slot:{} Item:{}*{} [ID:{}]", slot_id, count, item, item.to_u32()), 2);
 }
 
 pub async fn send_message(conn: &mut MinetestConnection, message: ChatPacket) {
@@ -66,9 +69,24 @@ pub async fn send_sys_message(conn: &mut MinetestConnection, message: &Clientbou
 
 }
 
-// TODO THIS FUNCTION IS ONLY HERE TO TEST STUFF
-pub async fn addblock(conn: &mut MinetestConnection) {
-    utils::logger("addblock called", 3); // :3
+pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &mut MinetestConnection, node_arr: [MapNode; 4096]) {
+    // Fills a 16^3 area with a vector of map nodes, where param0 is a MC-compatible ID.
+    // remember that this is limited to 16 blocks of heigth, while a MC chunk goes from -64 to 320
+    // y_pos of 0 -> actual y filled from 0 to 16
+    // so call it with y values ranging from -4 to 20 in order to fill a chunk
+    
+    /* simplified representation of the array, for a 3^3 cube.
+     * in actual use, its a 16^3 cube. each number is a minecraft blockid.
+     *
+     *      one "line" along the X axis
+     *        |
+     *      /---\  /------/------------- gets repeated for each Y, to be a 3^2 slice
+     * z=2: 0,0,0, 0,0,0, 0,0,0,
+     * z=1: 0,0,0, 0,0,0, 0,0,0, \___ gets repeated for each Z, to be a 3^3 cube
+     * z=0: 0,0,0, 0,0,0, 0,0,0, /
+     */
+    utils::logger(&format!("[Minetest] S->C Initializing 16^3 nodes at {}{}{}", x_pos, y_pos, z_pos), 1);
+    // TODO this does not support metadata
     let mut metadata_vec = Vec::new();
     for x in 0..15 {
         for y in 0..15 {
@@ -79,14 +97,14 @@ pub async fn addblock(conn: &mut MinetestConnection) {
     }
     let addblockcommand = ToClientCommand::Blockdata(
         Box::new(wire::command::BlockdataSpec {
-            pos: v3s16 { x: 2, y: 0, z: 0 },
+            pos: v3s16 { x: x_pos, y: y_pos, z: z_pos },
             block: MapBlock {
                 is_underground: false,
                  day_night_diff: false,
                  generated: false,
                  lighting_complete: None,
                  nodes: MapNodesBulk {
-                     nodes: [MapNode {param0:0, param1:1, param2:1}; 4096],
+                     nodes: node_arr,
                 },
                 node_metadata: NodeMetadataList {
                     metadata: metadata_vec,
@@ -95,20 +113,22 @@ pub async fn addblock(conn: &mut MinetestConnection) {
             network_specific_version: 44
         })
     );
-    // why is this not doing stuff??
-    // let addblockcommand = ToClientCommand::Addnode(
-    //     Box::new(wire::command::AddnodeSpec {
-    //         pos: v3s16 { x: 0, y: 0, z: 0 },
-    //         keep_metadata: false,
-    //         node: MapNode {
-    //             param0: 17,
-    //             param1: 1,
-    //             param2: 1,
-    //         }
-    //     })
-    // );
-    let eee = conn.send(addblockcommand).await;
-    println!("{:#?}", eee);
+    let _ = conn.send(addblockcommand).await;
+}
+
+pub async fn setblock(x: i16, y: i16, z: i16, id: u16, mt_conn: &mut MinetestConnection) {
+    let addblockcommand = ToClientCommand::Addnode(
+        Box::new(wire::command::AddnodeSpec {
+            pos: v3s16 { x, y, z },
+            keep_metadata: true,
+            node: MapNode {
+                param0: id,
+                param1: 1,
+                param2: 1,
+            }
+        })
+    );
+    let _ = mt_conn.send(addblockcommand).await;
 }
 
 pub async fn add_player(player_data: PlayerInfo, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
