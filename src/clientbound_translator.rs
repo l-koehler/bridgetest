@@ -206,8 +206,6 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
     // TODO this is iterating a reasonable amount of times (not really) (AAAAAAAA)
     for chunk_y_pos in (settings::Y_LOWER/16)..(settings::Y_UPPER/16) { // foreach possible section height (-4 .. 20)
         // chunk_data: array of chunk sections        
-        
-        for _ in -4..20 {
             for z in 0..15 {
                 for y in 0..15 {
                     for x in 0..15 {
@@ -220,7 +218,6 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
 
             // detailed explanation of this iterator hidden in initialize_16node_chunk
             // but it basically assigns each node that will be sent to mt an ID as a value
-        }
         // map the i32 mc chunks to i16 mt ones, possibly overflowing them (intentionally, better than crashing ig)
         initialize_16node_chunk(*chunk_x_pos as i16, chunk_y_pos, *chunk_z_pos as i16, mt_conn, nodearr).await;
     }
