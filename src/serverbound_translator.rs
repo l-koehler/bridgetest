@@ -9,13 +9,16 @@ use alloc::boxed::Box;
 use minetest_protocol::wire::command::{TSChatMessageSpec, PlayerposSpec};
 use minetest_protocol::wire::types::{PlayerPos, v3f};
 
+use tokio::sync::mpsc::UnboundedReceiver;
+use azalea_client::Event;
+
 pub fn send_message(mc_client: &Client, specbox: Box<TSChatMessageSpec>) {
     utils::logger("[Minetest] C->S Forwarding Message sent by client", 1);
     let TSChatMessageSpec { message } = *specbox;
     mc_client.chat(&message);
 }
 
-pub fn playerpos(mc_client: &Client, specbox: Box<PlayerposSpec>) {
+pub async fn playerpos(mc_client: &Client, specbox: Box<PlayerposSpec>) {
     let PlayerposSpec { player_pos } = *specbox; // vvv what does this do please let me ignore it
     let PlayerPos { position, speed, pitch, yaw, keys_pressed: _, fov: _, wanted_range: _ } = player_pos;
     let v3f {x, y, z } = position;
@@ -24,7 +27,6 @@ pub fn playerpos(mc_client: &Client, specbox: Box<PlayerposSpec>) {
     // azalea-client library does not give the user direct access
     // to the vectors that will be sent and translating MT C->S movement vectors
     // into whatever azalea is using is too difficult.
-
 
     // y_rot: yaw
     // x_rot: pitch
@@ -40,4 +42,5 @@ pub fn playerpos(mc_client: &Client, specbox: Box<PlayerposSpec>) {
         }
     };
     // TODO send that thing over the raw connection
+    let _ = mc_client.write_packet(movement_packet);
 }
