@@ -195,7 +195,6 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
     //let chunk_location: ChunkPos = ChunkPos { x: *chunk_x_pos, z: *chunk_z_pos }; // unused
     // send chunk to the MT client
     let mut nodearr: [MapNode; 4096] = [MapNode { param0: 0, param1: 1, param2: 1 }; 4096];
-    let mut node: MapNode;
     // for each y level (mc chunks go from top to bottom, while mt chunks are 16 nodes high)
     let mut chunk_data_cursor = Cursor::new(chunk_data.as_slice());
     let dimension_height = i16::abs_diff(settings::Y_LOWER, settings::Y_UPPER);
@@ -203,18 +202,22 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
     .expect("Failed to parse chunk!");
     // -64/16 .. 320/16
     
+    let mut current_id: u16;
     // TODO this is iterating a reasonable amount of times (not really) (AAAAAAAA)
     for chunk_y_pos in (settings::Y_LOWER/16)..(settings::Y_UPPER/16) { // foreach possible section height (-4 .. 20)
-        // chunk_data: array of chunk sections
-        for array_node in nodearr.iter_mut() {
+        // chunk_data: array of chunk sections        
+        
+        for _ in -4..20 {
             for z in 0..15 {
                 for y in 0..15 {
                     for x in 0..15 {
-                        node = MapNode { param0: mc_chunk.get(&ChunkBlockPos { x, y, z }, dimension_height.into()).unwrap_or(azalea::blocks::BlockState { id: 0 }).id.try_into().unwrap(), param1: 1, param2: 1 };
-                        *array_node = node;
+                        current_id = mc_chunk.get(&ChunkBlockPos { x: x as u8, y: y as i32, z: z as u8 }, dimension_height.into()).unwrap_or(azalea::blocks::BlockState { id: 0 }).id.try_into().unwrap();
+                        nodearr[(x*y)*z] = MapNode { param0: current_id, param1: 1, param2: 1 };
+
                     }
                 }
             }
+
             // detailed explanation of this iterator hidden in initialize_16node_chunk
             // but it basically assigns each node that will be sent to mt an ID as a value
         }

@@ -248,7 +248,7 @@ pub fn generate_contentfeature(id: u16, name: &str, texture_name: &str) -> (u16,
         tileable_horizontal: false,
         tileable_vertical: false,
         color_rgb: None,
-        scale: 1,
+        scale: 0,
         align_style: AlignStyle::Node
     };
     // like [tiledef_placeholder; 6] if it were slow qwq
@@ -271,7 +271,7 @@ pub fn generate_contentfeature(id: u16, name: &str, texture_name: &str) -> (u16,
         red: 100,
         green: 70,
         blue: 85,
-        palette_name: String::from(""),
+        palette_name: String::from("block-white_concrete.png"),
         waving: 0,
         connect_sides: 0,
         connects_to_ids: Vec::new(),
