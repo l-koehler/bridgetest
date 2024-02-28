@@ -16,7 +16,7 @@ use std::path::{ Path, PathBuf };
 use std::fs;
 use std::io::{ Cursor, Write, Read, copy };
 
-use crate::utils;
+use crate::utils::{self, possibly_create_dir};
 use crate::settings;
 use sha1::{Sha1, Digest};
 use base64::{Engine as _, engine::general_purpose};
@@ -219,7 +219,7 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
     for block in arcticdata_blocks {
         mc_name = block.0;
         texture_name = format!("block-{}.png", mc_name.replace("minecraft:", ""));
-        id = block.1.get("id").expect("Found a block without ID!").as_u64().unwrap().try_into().unwrap(); // serde only offers as_u64, cant read u16 from file directly (qwq)
+        id = block.1.get("id").expect("Found a block without ID!").as_u64().unwrap() as u16 + 128; // builtin nodes are below 128
         println!("{} MAPPED -> {}", mc_name, texture_name);
         content_features.push(generate_contentfeature(id, &mc_name, &texture_name));
     }
@@ -324,6 +324,8 @@ pub fn generate_contentfeature(id: u16, name: &str, texture_name: &str) -> (u16,
  * get_mediafilevecs()
  * texture_vec_iterator()
  * get_texture_media_commands()
+ * alternate_exists()
+ * 
  * Folder Structure
  * data_folder               -- dir::data_local_dir/bridgetest
  * |- url.dsv                -- contains "timestamp:url", where "url" is the url of the pack currently present and "timestamp" the time of download
@@ -404,7 +406,7 @@ pub fn get_mediafilevecs(filename: PathBuf, name: &str) -> (MediaFileData, Media
     texture_file.read(&mut buffer).expect("File Metadata lied about File Size. This should NOT happen, what the hell is wrong with your device?");
     // buffer: Vec<u8> with the png's content.
     let filedata = MediaFileData {
-        name: String::from(name),
+        name: String::from(name.replace("_bottom.png", "").replace("_side", "").replace("_top", "")),
         data: buffer.clone()
     };
     // buffer_hash_b64 is base64encode( sha1hash( buffer ) )
@@ -413,21 +415,53 @@ pub fn get_mediafilevecs(filename: PathBuf, name: &str) -> (MediaFileData, Media
     let mut buffer_hash_b64 = String::new();
     general_purpose::STANDARD.encode_string(hasher.finalize(), &mut buffer_hash_b64);
     let fileannounce = MediaAnnouncement {
-        name: String::from(name),
+        name: String::from(name.replace("_bottom.png", "").replace("_side", "").replace("_top", "")),
         sha1_base64: buffer_hash_b64,
     };
     return (filedata, fileannounce);
 }
 
-fn texture_vec_iterator(texture_vec: &mut Vec<(PathBuf, String)>, iterator: fs::ReadDir, prefix: &str) {
+fn alternate_exists(media_folder: &PathBuf, name: &str, prefers: Vec<String>) -> bool {
+    let base_name = name.replace("_bottom", "").replace("_side", "").replace("_top", "");
+    let mut better_name: String;
+    for better_option in prefers {
+        better_name = format!("{}{}.png", base_name, better_option);
+        if Path::new(media_folder.join(better_name).as_path()).exists() {
+            // a better option exists
+            return true;
+        }
+    }
+    false
+}
+
+fn texture_vec_iterator(texture_vec: &mut Vec<(PathBuf, String)>, media_folder: PathBuf, prefix: &str) {
     let mut name: String;
     let mut path: PathBuf;
+    let mut preferred: Vec<String>;
+    let iterator = fs::read_dir(&media_folder).expect("Failed to read media");
     for item in iterator {
+        preferred = Vec::new();
         name = item.as_ref().unwrap().file_name().into_string().unwrap();
-        if name.ends_with("png") {
-            path = item.as_ref().unwrap().path();
-            texture_vec.push((path, format!("{}-{}", prefix, name)));
-        };
+        // handle preferred variations
+        if name.ends_with("_bottom.png") {
+            preferred.push(String::from(""));
+            preferred.push(String::from("_side"));
+            preferred.push(String::from("_top"));
+        } 
+        if name.ends_with("_top.png") {
+            preferred.push(String::from(""));
+            preferred.push(String::from("_side"));
+        } 
+        if name.ends_with("_side.png") {
+            preferred.push(String::from(""));
+        }
+        
+        if preferred.is_empty() || !alternate_exists(&media_folder, &name, preferred) {
+            if name.ends_with(".png") {
+                path = item.as_ref().unwrap().path();
+                texture_vec.push((path, format!("{}-{}", prefix, name)));
+            };
+        }
     }
 }
 
@@ -439,22 +473,19 @@ pub async fn get_texture_media_commands(settings: &Config) -> (ToClientCommand, 
     // foreach texture, generate announce and send specs
     // TODO: This currently will have every texture loaded into RAM at the same time
     let textures_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/assets/minecraft/textures/");
-    let block_textures = fs::read_dir(textures_folder.join("block/")).unwrap();
-    let particle_textures = fs::read_dir(textures_folder.join("particle/")).unwrap();
-    let entity_textures = fs::read_dir(textures_folder.join("entity/")).unwrap();
-    let item_textures = fs::read_dir(textures_folder.join("item/")).unwrap();
-    let misc_textures = fs::read_dir(textures_folder.join("environment/")).unwrap();
+
     // iterate over each
     let mut block_texture_vec: Vec<(PathBuf, String)> = Vec::new();
     let mut particle_texture_vec: Vec<(PathBuf, String)> = Vec::new();
     let mut entity_texture_vec: Vec<(PathBuf, String)> = Vec::new();
     let mut item_texture_vec: Vec<(PathBuf, String)> = Vec::new();
     let mut misc_texture_vec: Vec<(PathBuf, String)> = Vec::new();
-    texture_vec_iterator(&mut block_texture_vec, block_textures, "block");
-    texture_vec_iterator(&mut particle_texture_vec, particle_textures, "particle");
-    texture_vec_iterator(&mut entity_texture_vec, entity_textures, "entity");
-    texture_vec_iterator(&mut item_texture_vec, item_textures, "item");
-    texture_vec_iterator(&mut misc_texture_vec, misc_textures, "misc");
+    texture_vec_iterator(&mut block_texture_vec, textures_folder.join("block/"), "block");
+    texture_vec_iterator(&mut particle_texture_vec, textures_folder.join("particle/"), "particle");
+    texture_vec_iterator(&mut entity_texture_vec, textures_folder.join("entity/"), "entity");
+    texture_vec_iterator(&mut item_texture_vec, textures_folder.join("item/"), "item");
+    texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("environment/"), "misc");
+
     // texture_vec = [("/path/to/allay.png", "entity-allay"), ("/path/to/cactus_bottom.png", "block-cactus_bottom"), ...]
     // call get_mediafilevecs on each entry tuple in *_texture_vec
     let mut announcement_vec: Vec<MediaAnnouncement> = Vec::new();

@@ -109,12 +109,13 @@ pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &mut
      * z=0: 0,0,0, 0,0,0, 0,0,0, /
      */
     utils::logger(&format!("[Minetest] S->C Initializing 16^3 nodes at {}/{}/{}", x_pos, y_pos, z_pos), 1);
-    // TODO this does not support metadata
+    // TODO this does not support actual metadata
     let mut metadata_vec = Vec::new();
-    for x in 0..15 {
-        for y in 0..15 {
-            for z in 0..15 {
-                metadata_vec.push(mt_definitions::get_metadata_placeholder(x, y, z))
+    // subcoordinates within the chunk
+    for sub_x in 0..15 {
+        for sub_y in 0..15 {
+            for sub_z in 0..15 {
+                metadata_vec.push(mt_definitions::get_metadata_placeholder(sub_x, sub_y, sub_z)) //(x_pos*16+sub_x) as u16, (y_pos*16+sub_y) as u16, (z_pos*16+sub_z) as u16)
             }
         }
     }
@@ -122,10 +123,10 @@ pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &mut
         Box::new(wire::command::BlockdataSpec {
             pos: v3s16 { x: x_pos, y: y_pos, z: z_pos },
             block: MapBlock {
-                is_underground: false,
+                 is_underground: false,
                  day_night_diff: false,
-                 generated: false,
-                 lighting_complete: None,
+                 generated: true,
+                 lighting_complete: Some(0),
                  nodes: MapNodesBulk {
                      nodes: node_arr,
                 },
@@ -191,34 +192,43 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
     // Parse packet
     let ClientboundLevelChunkWithLightPacket {x: chunk_x_pos, z: chunk_z_pos, chunk_data: chunk_packet_data, light_data: _} = packet_data;
     let ClientboundLevelChunkPacketData { heightmaps: chunk_heightmaps, data: chunk_data, block_entities: _ } = chunk_packet_data;
-    utils::logger(&format!("[Minecraft] Server sent chunk x/z {}/{}", chunk_x_pos, chunk_z_pos), 1);
+    utils::logger(&format!("[Minecraft] Server sent chunk x/z {}/{}", chunk_x_pos, chunk_z_pos), 0);
     //let chunk_location: ChunkPos = ChunkPos { x: *chunk_x_pos, z: *chunk_z_pos }; // unused
     // send chunk to the MT client
-    let mut nodearr: [MapNode; 4096] = [MapNode { param0: 0, param1: 1, param2: 1 }; 4096];
+    let mut nodearr: [MapNode; 4096] = [MapNode { param0: 127, param1: 0, param2: 0 }; 4096];
+    let default_block = azalea::blocks::BlockState { id: 0 };
     // for each y level (mc chunks go from top to bottom, while mt chunks are 16 nodes high)
     let mut chunk_data_cursor = Cursor::new(chunk_data.as_slice());
     let dimension_height = i16::abs_diff(settings::Y_LOWER, settings::Y_UPPER);
-    let mc_chunk: chunk_storage::Chunk = chunk_storage::Chunk::read_with_dimension_height(&mut chunk_data_cursor, dimension_height.into(), settings::Y_LOWER.into(), chunk_heightmaps)
+    let mc_chunk: chunk_storage::Chunk = chunk_storage::Chunk::read_with_dimension_height(&mut chunk_data_cursor, 384, -64, chunk_heightmaps)
     .expect("Failed to parse chunk!");
-    // -64/16 .. 320/16
+    let chunk_storage::Chunk { sections, heightmaps } = &mc_chunk;
     
     let mut current_id: u16;
-    // TODO this is iterating a reasonable amount of times (not really) (AAAAAAAA)
-    for chunk_y_pos in (settings::Y_LOWER/16)..(settings::Y_UPPER/16) { // foreach possible section height (-4 .. 20)
-        // chunk_data: array of chunk sections        
-            for z in 0..15 {
-                for y in 0..15 {
-                    for x in 0..15 {
-                        current_id = mc_chunk.get(&ChunkBlockPos { x: x as u8, y: y as i32, z: z as u8 }, dimension_height.into()).unwrap_or(azalea::blocks::BlockState { id: 0 }).id.try_into().unwrap();
-                        nodearr[(x*y)*z] = MapNode { param0: current_id, param1: 1, param2: 1 };
+    /*
+     * Default (engine-reserved) Nodes according to src/mapnode.h
+     * 125: Unknown (A solid walkable node with the texture unknown_node.png.)
+     * 126: Air (The common material through which the player can walk and which is transparent to light)
+     * 127: Ignored (The stuff unloaded chunks are considered to consist of)
+     */
 
+    let mut chunk_y_pos = 0;
+    for section in sections { // foreach possible section height (-4 .. 20)
+        // for each block in the 16^3 chunk
+        for z in 0..15 {
+            for y in 0..15 {
+                for x in 0..15 {
+                    //current_id = mc_chunk.get(&ChunkBlockPos { x: x as u8, y: (y as i32)+(chunk_y_pos as i32), z: z as u8 }, -64).unwrap_or(default_block).id as u16 + 128; // sub128 engine res
+                    current_id = section.get(azalea_core::position::ChunkSectionBlockPos { x: x as u8, y: y as u8, z: z as u8}).id as u16;
+                    if current_id == 129 { // MC: 1 + 128 to prevent collision - air node
+                        current_id = 126 // MT engine reserved node
                     }
+                    nodearr[x + y*16 + z*16*16] = MapNode { param0: 126, param1: 0, param2: 0 }
                 }
             }
-
-            // detailed explanation of this iterator hidden in initialize_16node_chunk
-            // but it basically assigns each node that will be sent to mt an ID as a value
+        }
         // map the i32 mc chunks to i16 mt ones, possibly overflowing them (intentionally, better than crashing ig)
         initialize_16node_chunk(*chunk_x_pos as i16, chunk_y_pos, *chunk_z_pos as i16, mt_conn, nodearr).await;
+        chunk_y_pos += 1;
     }
 }

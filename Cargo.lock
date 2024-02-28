@@ -785,7 +785,6 @@ dependencies = [
  "azalea-registry",
  "azalea-world",
  "base64",
- "bytes",
  "chrono",
  "config",
  "dirs",

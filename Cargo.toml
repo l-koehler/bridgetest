@@ -15,7 +15,6 @@ azalea-core = { git = "https://github.com/azalea-rs/azalea" }
 azalea-registry = { git = "https://github.com/azalea-rs/azalea" }
 azalea-chat = { git = "https://github.com/azalea-rs/azalea" }
 base64 = "0.21.7"
-bytes = "1.5.0"
 chrono = "0.4.34"
 config = "0.14.0"
 dirs = "5.0.1"
