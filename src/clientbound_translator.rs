@@ -40,6 +40,10 @@ pub async fn send_item_if_missing(slotdata: ItemSlotData, slot_id: usize) {
     utils::logger(&format!("[Minecraft] Unimplemented InvSync Slot:{} Item:{}*{} [ID:{}]", slot_id, count, item, item.to_u32()), 2);
 }
 
+pub async fn set_player_pos(x: i16, y: i16, z: i16, conn: &mut MinetestConnection) {
+    () //let setpos_packet = ToClientCommand::SetPlayerpos
+}
+
 pub async fn send_message(conn: &mut MinetestConnection, message: ChatPacket) {
     let chat_packet = ToClientCommand::TCChatMessage(
         Box::new(wire::command::TCChatMessageSpec {

@@ -4,7 +4,7 @@
 
 use azalea::core::particle;
 use azalea::entity::metadata::Text;
-use minetest_protocol::wire::command::{AnnounceMediaSpec, InventoryFormspecSpec, ItemdefSpec, MediaSpec, NodedefSpec, SetSunSpec, SetLightingSpec, ToClientCommand};
+use minetest_protocol::wire::command::{AnnounceMediaSpec, InventoryFormspecSpec, ItemdefSpec, MediaSpec, NodedefSpec, SetSunSpec, SetLightingSpec, ToClientCommand, MovementSpec };
 use minetest_protocol::wire::types::{ v3f, AlignStyle, ContentFeatures, DrawType, ItemAlias, ItemDef, ItemType, ItemdefList, MediaAnnouncement, MediaFileData, NodeBox, Option16, SColor, SimpleSoundSpec, TileAnimationParams, TileDef, BlockPos, NodeMetadata, StringVar, Inventory, NodeDefManager, SunParams, Lighting, AutoExposure
 }; // AAAAAA
 
@@ -21,6 +21,26 @@ use crate::settings;
 use sha1::{Sha1, Digest};
 use base64::{Engine as _, engine::general_purpose};
 use serde_json;
+
+pub fn get_movementspec() -> ToClientCommand {
+    let movement_command = ToClientCommand::Movement(
+        Box::new(MovementSpec {
+            acceleration_default: 1.0,
+            acceleration_air: 1.33,
+            acceleration_fast: 1.33,
+            speed_walk: 1.0,
+            speed_crouch: 0.8,
+            speed_fast: 1.33,
+            speed_climb: 0.6,
+            speed_jump: 1.2,
+            liquid_fluidity: 1.0,
+            liquid_fluidity_smooth: 0.8,
+            liquid_sink: 0.3,
+            gravity: 9.81 // (?)
+        })
+    );
+    return movement_command;
+}
 
 pub fn get_lighting_def_command() -> ToClientCommand {
     let setlight_command = ToClientCommand::SetLighting(

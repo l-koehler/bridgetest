@@ -82,6 +82,9 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     utils::logger("[Minetest] S->C SetLighting", 1);
     let _ = mt_conn.send(mt_definitions::get_lighting_def_command()).await;
 
+    utils::logger("[Minetest] S->C Movement", 1);
+    let _ = mt_conn.send(mt_definitions::get_movementspec()).await;
+
     /*
      * Main Loop.
      * At this point, both the minetest client and the minecraft server
@@ -115,7 +118,7 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
                 }
                 let mt_command = t.expect("[Minetest] Failed to unwrap Ok(_) packet from Client!");
                 utils::show_mt_command(&mt_command);
-                commands::mt_auto(mt_command, &mut mt_conn, &mc_client).await;
+                commands::mt_auto(mt_command, &mut mt_conn, &mc_client, &mt_server_state).await;
             },
             // or the minecraft connection
             t = mc_conn.recv() => {
