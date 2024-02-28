@@ -7,6 +7,7 @@
 use crate::mt_definitions;
 use crate::utils;
 use crate::commands;
+use crate::clientbound_translator;
 use crate::MTServerState; // ok this is stupid to do whatever it works (i need global variables) (for normal reasons)
 
 use minetest_protocol::peer::peer::PeerError;

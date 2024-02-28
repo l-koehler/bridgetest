@@ -14,7 +14,7 @@ use azalea_registry::Registry;
 use minetest_protocol::wire::command::ToClientCommand;
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::wire;
-use minetest_protocol::wire::types::{v3s16, MapNodesBulk, MapNode, MapBlock, NodeMetadataList};
+use minetest_protocol::wire::types::{v3s16, v3f, MapNodesBulk, MapNode, MapBlock, NodeMetadataList};
 
 use azalea_client::PlayerInfo;
 use azalea_client::Client;
@@ -23,7 +23,7 @@ use azalea::inventory::ItemSlotData;
 
 use tokio::sync::mpsc::UnboundedReceiver;
 use azalea_client::Event;
-use azalea_protocol::packets::game::ClientboundGamePacket;
+use azalea_protocol::packets::game::{ClientboundGamePacket, clientbound_player_position_packet::ClientboundPlayerPositionPacket};
 use azalea_protocol::packets::game::clientbound_level_chunk_with_light_packet::{ClientboundLevelChunkWithLightPacket, ClientboundLevelChunkPacketData};
 use azalea_protocol::packets::game::clientbound_system_chat_packet::ClientboundSystemChatPacket;
 use std::sync::Arc;
@@ -40,8 +40,24 @@ pub async fn send_item_if_missing(slotdata: ItemSlotData, slot_id: usize) {
     utils::logger(&format!("[Minecraft] Unimplemented InvSync Slot:{} Item:{}*{} [ID:{}]", slot_id, count, item, item.to_u32()), 2);
 }
 
-pub async fn set_player_pos(x: i16, y: i16, z: i16, conn: &mut MinetestConnection) {
-    () //let setpos_packet = ToClientCommand::SetPlayerpos
+
+pub async fn set_player_pos(source_packet: &ClientboundPlayerPositionPacket, conn: &MinetestConnection) {
+    // y_rot: yaw
+    // x_rot: pitch
+    // source: https://en.wikipedia.org/wiki/Aircraft_principal_axes
+    let ClientboundPlayerPositionPacket {x: source_x, y: source_y, z: source_z, y_rot: source_yaw, x_rot: source_pitch, relative_arguments: _, id: _} = source_packet;
+    let dest_x = (*source_x as f32) * 10.0;
+    let dest_y = (*source_y as f32) * 10.0;
+    let dest_z = (*source_z as f32) * 10.0;
+
+    let setpos_packet = ToClientCommand::MovePlayer(
+        Box::new(wire::command::MovePlayerSpec {
+            pos: v3f {x: dest_x, y: dest_y, z: dest_z},
+            pitch: *source_pitch,
+            yaw: *source_yaw
+        })
+    );
+    let _ = conn.send(setpos_packet).await;
 }
 
 pub async fn send_message(conn: &mut MinetestConnection, message: ChatPacket) {
