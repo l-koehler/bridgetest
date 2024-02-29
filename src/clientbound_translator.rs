@@ -227,7 +227,7 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
                         current_p1 = 0xE0; // light passes through (u8 storing two 4-bit values? what the heck even is this protocol aaa)
                     }
                     // index ranges from 0 (0/0/0) to 4095 (15/15/15), as described in initialize_16node_chunk()
-                    nodearr[x+(y*16)+(z*16^2)] = MapNode { param0: current_id, param1: current_p1, param2: 0x00 };
+                    nodearr[x+(y*16)+(z*256)] = MapNode { param0: current_id, param1: current_p1, param2: 0x00 };
                 }
             }
         }
