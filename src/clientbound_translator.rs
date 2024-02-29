@@ -108,7 +108,7 @@ pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &mut
      * z=1: 0,0,0, 0,0,0, 0,0,0, \___ gets repeated for each Z, to be a 3^3 cube
      * z=0: 0,0,0, 0,0,0, 0,0,0, /
      */
-    utils::logger(&format!("[Minetest] S->C Initializing 16^3 nodes at {}/{}/{}", x_pos, y_pos, z_pos), 1);
+    utils::logger(&format!("[Minetest] S->C Initializing 16^3 nodes at {}/{}/{}", x_pos, y_pos, z_pos), 0);
     // TODO this does not support actual metadata
     let mut metadata_vec = Vec::new();
     // subcoordinates within the chunk
@@ -201,9 +201,9 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
     // for each y level (mc chunks go from top to bottom, while mt chunks are 16 nodes high)
     let mut chunk_data_cursor = Cursor::new(chunk_data.as_slice());
     let dimension_height = i16::abs_diff(settings::Y_LOWER, settings::Y_UPPER).into();
-    let mc_chunk: chunk_storage::Chunk = chunk_storage::Chunk::read_with_dimension_height(&mut chunk_data_cursor, dimension_height, -64, chunk_heightmaps)
+    let mc_chunk: chunk_storage::Chunk = chunk_storage::Chunk::read_with_dimension_height(&mut chunk_data_cursor, dimension_height, settings::Y_LOWER.into(), chunk_heightmaps)
     .expect("Failed to parse chunk!");
-    let chunk_storage::Chunk { sections, heightmaps } = &mc_chunk;
+    let chunk_storage::Chunk { sections, heightmaps: _ } = &mc_chunk; // heightmaps get ignored, these are just chunk_heightmaps
     
     let mut current_id: u16;
     let mut current_p1: u8;
@@ -215,25 +215,23 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
      */
 
     let mut chunk_y_pos = settings::Y_LOWER/16;
-    let mut arr_index = 0;
     for section in sections { // foreach possible section height (-4 .. 20)
         // for each block in the 16^3 chunk
         for z in 0..15 {
             for y in 0..15 {
                 for x in 0..15 {
-                    current_id = section.get(azalea_core::position::ChunkSectionBlockPos { x: x as u8, y: y as u8, z: z as u8}).id as u16;
+                    current_id = section.get(azalea_core::position::ChunkSectionBlockPos { x: x as u8, y: y as u8, z: z as u8}).id as u16 + 128;
                     current_p1 = 0;
-                    if current_id == 129 { // MC: 1 + 128 to prevent collision - air node
-                        current_id = 126; // MT engine reserved node
+                    if current_id == 128 { // MC: 0 + 128 to prevent collision - air node
+                        current_id = 126; // MT engine reserved air node
                         current_p1 = 0xE0; // light passes through (u8 storing two 4-bit values? what the heck even is this protocol aaa)
                     }
-                    nodearr[arr_index] = MapNode { param0: current_id, param1: current_p1, param2: 0x00 };
-                    arr_index += 1;
+                    // index ranges from 0 (0/0/0) to 4095 (15/15/15), as described in initialize_16node_chunk()
+                    nodearr[x+(y*16)+(z*16^2)] = MapNode { param0: current_id, param1: current_p1, param2: 0x00 };
                 }
             }
         }
         initialize_16node_chunk(*chunk_x_pos as i16, chunk_y_pos, *chunk_z_pos as i16, mt_conn, nodearr).await;
         chunk_y_pos += 1;
-        arr_index = 0;
     }
 }

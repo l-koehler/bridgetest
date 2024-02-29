@@ -529,7 +529,7 @@ pub async fn get_texture_media_commands(settings: &Config) -> (ToClientCommand, 
     // split texture packets across 4 packets
     let block_media_packet = ToClientCommand::Media(
         Box::new(MediaSpec {
-            num_bunches: 1, //HACK will only work when the other packs get dropped
+            num_bunches: 5,
             bunch_index: 1,
             files: block_file_vec
         })
