@@ -132,7 +132,7 @@ pub async fn get_item_def_command(settings: &Config) -> ToClientCommand {
         mc_name = item.0;
         texture_name = format!("item-{}.png", mc_name.replace("minecraft:", ""));
         stacklimit = item.1.get("maxStackSize").expect("Found a item without Stack Size!").as_u64().unwrap().try_into().unwrap(); // serde only offers as_u64, cant read u16 from file directly (qwq)
-        println!("{} MAPPED -> {}", mc_name, texture_name);
+        utils::logger(&format!("[Itemdefs] Mapped {} to the texture {}", mc_name, texture_name), 1);
         item_definitions.push(generate_itemdef(&mc_name, "TODO remove this :3", stacklimit, &texture_name));
     }
     
@@ -220,7 +220,7 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
         mc_name = block.0;
         texture_name = format!("block-{}.png", mc_name.replace("minecraft:", ""));
         id = block.1.get("id").expect("Found a block without ID!").as_u64().unwrap() as u16 + 128; // builtin nodes are below 128
-        println!("{} MAPPED -> {}", mc_name, texture_name);
+        utils::logger(&format!("[Nodedefs] Mapped {} to the texture {}", mc_name, texture_name), 1);
         content_features.push(generate_contentfeature(id, &mc_name, &texture_name));
     }
     let nodedef_command = ToClientCommand::Nodedef(
