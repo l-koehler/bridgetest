@@ -131,10 +131,10 @@ pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &mut
                      nodes: node_arr,
                 },
                 node_metadata: NodeMetadataList {
-                    metadata: metadata_vec,
+                    metadata: Vec::new() //metadata_vec,
                 }
             },
-            network_specific_version: 41
+            network_specific_version: 2
         })
     );
     let _ = conn.send(addblockcommand).await;
@@ -204,6 +204,7 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
     let chunk_storage::Chunk { sections, heightmaps } = &mc_chunk;
     
     let mut current_id: u16;
+    let mut current_p1: u8;
     /*
      * Default (engine-reserved) Nodes according to src/mapnode.h
      * 125: Unknown (A solid walkable node with the texture unknown_node.png.)
@@ -219,10 +220,12 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
             for y in 0..15 {
                 for x in 0..15 {
                     current_id = section.get(azalea_core::position::ChunkSectionBlockPos { x: x as u8, y: y as u8, z: z as u8}).id as u16;
-                    // if current_id == 129 { // MC: 1 + 128 to prevent collision - air node
-                    //     current_id = 126 // MT engine reserved node
-                    // }
-                    nodearr[arr_index] = MapNode { param0: current_id, param1: 0, param2: 0 };
+                    current_p1 = 0;
+                    if current_id == 129 { // MC: 1 + 128 to prevent collision - air node
+                        current_id = 126; // MT engine reserved node
+                        current_p1 = 15; // light passes through
+                    }
+                    nodearr[arr_index] = MapNode { param0: current_id, param1: current_p1, param2: 0 };
                     arr_index += 1;
                 }
             }
