@@ -61,14 +61,14 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     let _ = mt_conn.send(media_packets.0).await;
     utils::logger("[Minetest] S->C Media (Blocks)", 1);
     let _ = mt_conn.send(media_packets.1).await;
-    utils::logger("[Minetest] S->C Media (Particle)", 1);
-    let _ = mt_conn.send(media_packets.2).await;
-    utils::logger("[Minetest] S->C Media (Entity)", 1);
-    let _ = mt_conn.send(media_packets.3).await;
-    utils::logger("[Minetest] S->C Media (Item)", 1);
-    let _ = mt_conn.send(media_packets.4).await;
-    utils::logger("[Minetest] S->C Media (Misc)", 1);
-    let _ = mt_conn.send(media_packets.5).await;
+    // utils::logger("[Minetest] S->C Media (Particle)", 1);
+    // let _ = mt_conn.send(media_packets.2).await;
+    // utils::logger("[Minetest] S->C Media (Entity)", 1);
+    // let _ = mt_conn.send(media_packets.3).await;
+    // utils::logger("[Minetest] S->C Media (Item)", 1);
+    // let _ = mt_conn.send(media_packets.4).await;
+    // utils::logger("[Minetest] S->C Media (Misc)", 1);
+    // let _ = mt_conn.send(media_packets.5).await;
     // utils::logger("[Minetest] S->C Inventory Formspec", 1);
     // let _ = mt_conn.send(mt_definitions::get_inventory_formspec()).await;
 

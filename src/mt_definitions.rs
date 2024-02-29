@@ -93,13 +93,13 @@ pub fn get_metadata_placeholder(x_pos: u16, y_pos: u16, z_pos: u16) -> (BlockPos
         raw: (16*z_pos + y_pos)*16 + x_pos,
     };
     let metadata = NodeMetadata {
-        stringvars: vec![
+        stringvars: vec![/*
             StringVar {
                 name: String::from("UNUSED METADATA!"),
                 value: vec![0],
                 is_private: false
             }
-        ],
+        */],
         inventory: Inventory {
             entries: vec![]
         }
@@ -529,7 +529,7 @@ pub async fn get_texture_media_commands(settings: &Config) -> (ToClientCommand, 
     // split texture packets across 4 packets
     let block_media_packet = ToClientCommand::Media(
         Box::new(MediaSpec {
-            num_bunches: 5,
+            num_bunches: 1, //HACK will only work when the other packs get dropped
             bunch_index: 1,
             files: block_file_vec
         })

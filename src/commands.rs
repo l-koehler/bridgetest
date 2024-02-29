@@ -83,8 +83,8 @@ pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection, 
     // Send S->C Hello
     let hello_command = ToClientCommand::Hello(
         Box::new(HelloSpec {
-            serialization_ver: 0,
-            compression_mode: 0,
+            serialization_ver: 29, // as per https://docs.rs/minetest-protocol/0.1.4/src/minetest_protocol/wire/types.rs.html#2256-2262
+            compression_mode: 1,
             proto_ver: 44,
             auth_mechs: types::AuthMechsBitset {
                 legacy_password: false,

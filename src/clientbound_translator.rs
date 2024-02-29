@@ -123,20 +123,22 @@ pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &mut
         Box::new(wire::command::BlockdataSpec {
             pos: v3s16 { x: x_pos, y: y_pos, z: z_pos },
             block: MapBlock {
-                 is_underground: false,
+                 is_underground: (y_pos <= 4), // below 64, likely?
                  day_night_diff: false,
-                 generated: true,
-                 lighting_complete: Some(0),
+                 generated: false, // server does not tell us that
+                 lighting_complete: Some(65535),
                  nodes: MapNodesBulk {
                      nodes: node_arr,
                 },
                 node_metadata: NodeMetadataList {
-                    metadata: Vec::new() //metadata_vec,
+                    metadata: vec![], //metadata_vec,
                 }
             },
-            network_specific_version: 2
+            network_specific_version: 2 // what does this meeeean qwq
         })
     );
+    //println!("{:#?}", addblockcommand);
+    //panic!("done here");
     let _ = conn.send(addblockcommand).await;
 }
 
@@ -212,7 +214,7 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
      * 127: Ignored (The stuff unloaded chunks are considered to consist of)
      */
 
-    let mut chunk_y_pos = 0;
+    let mut chunk_y_pos = settings::Y_LOWER/16;
     let mut arr_index = 0;
     for section in sections { // foreach possible section height (-4 .. 20)
         // for each block in the 16^3 chunk
@@ -223,9 +225,9 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
                     current_p1 = 0;
                     if current_id == 129 { // MC: 1 + 128 to prevent collision - air node
                         current_id = 126; // MT engine reserved node
-                        current_p1 = 15; // light passes through
+                        current_p1 = 0xE0; // light passes through (u8 storing two 4-bit values? what the heck even is this protocol aaa)
                     }
-                    nodearr[arr_index] = MapNode { param0: current_id, param1: current_p1, param2: 0 };
+                    nodearr[arr_index] = MapNode { param0: current_id, param1: current_p1, param2: 0x00 };
                     arr_index += 1;
                 }
             }
