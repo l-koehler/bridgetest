@@ -17,13 +17,13 @@ pack and block/item/entity definitions, which are obtained from [ArcticData](htt
 You can generate these definitions yourself if you don't want to use ArcticData,  
 possibly by using [Minecrafts inbuilt Data Generators](https://wiki.vg/Data_Generators) instead of it.
 
-#### Things that should be added:
+#### Things that are still missing:
 
-still nearly everything, but for now:  
+* Items (and inventory support)
 
-* Sending default/empty values for all required packets  
+* Entitys (including other players and item drops)
 
-* All the basic interaction with the MT Client (set blocks, spawn entities)  
+* Block Entitys (chests and stuff)
 
 #### Limitations:
 
