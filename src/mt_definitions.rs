@@ -2,8 +2,6 @@
 // the functions are actually more like consts but
 // the "String" type cant be a constant so :shrug:
 
-use azalea::core::particle;
-use azalea::entity::metadata::Text;
 use minetest_protocol::wire::command::{AnnounceMediaSpec, InventoryFormspecSpec, ItemdefSpec, MediaSpec, NodedefSpec, SetSunSpec, SetLightingSpec, ToClientCommand, MovementSpec, PrivilegesSpec };
 use minetest_protocol::wire::types::{ v3f, AlignStyle, ContentFeatures, DrawType, ItemAlias, ItemDef, ItemType, ItemdefList, MediaAnnouncement, MediaFileData, NodeBox, Option16, SColor, SimpleSoundSpec, TileAnimationParams, TileDef, BlockPos, NodeMetadata, StringVar, Inventory, NodeDefManager, SunParams, Lighting, AutoExposure
 }; // AAAAAA
@@ -11,12 +9,11 @@ use minetest_protocol::wire::types::{ v3f, AlignStyle, ContentFeatures, DrawType
 use alloc::boxed::Box;
 use config::Config;
 
-use std::ffi::OsString;
 use std::path::{ Path, PathBuf };
 use std::fs;
-use std::io::{ Cursor, Write, Read, copy };
+use std::io::{ Cursor, Write, Read };
 
-use crate::utils::{self, possibly_create_dir};
+use crate::utils;
 use crate::settings;
 use sha1::{Sha1, Digest};
 use base64::{Engine as _, engine::general_purpose};
@@ -28,11 +25,10 @@ pub fn get_defaultpriv() -> ToClientCommand {
             privileges: vec![
                 String::from("interact"),
                 String::from("shout"),
-                String::from("noclip") // HACK bypasses the broken lighting
             ]
         })
     );
-    return priv_command;
+    priv_command
 }
 
 pub fn get_movementspec() -> ToClientCommand {
@@ -52,7 +48,7 @@ pub fn get_movementspec() -> ToClientCommand {
             gravity: 9.81,
         })
     );
-    return movement_command;
+    movement_command
 }
 
 pub fn get_lighting_def_command() -> ToClientCommand {
@@ -73,7 +69,7 @@ pub fn get_lighting_def_command() -> ToClientCommand {
             }
         })
     );
-    return setlight_command;
+    setlight_command
 }
 
 pub fn get_sun_def_command() -> ToClientCommand {
@@ -89,7 +85,7 @@ pub fn get_sun_def_command() -> ToClientCommand {
             }
         })
     );
-    return setsun_command;
+    setsun_command
 }
 
 pub fn get_inventory_formspec() -> ToClientCommand {
@@ -98,7 +94,7 @@ pub fn get_inventory_formspec() -> ToClientCommand {
             formspec: String::from(settings::INV_FORMSPEC),
         })
     );
-    return formspec_command;
+    formspec_command
 }
 
 pub fn get_metadata_placeholder(x_pos: u16, y_pos: u16, z_pos: u16) -> (BlockPos, NodeMetadata) {
@@ -106,18 +102,12 @@ pub fn get_metadata_placeholder(x_pos: u16, y_pos: u16, z_pos: u16) -> (BlockPos
         raw: (16*z_pos + y_pos)*16 + x_pos,
     };
     let metadata = NodeMetadata {
-        stringvars: vec![/*
-            StringVar {
-                name: String::from("UNUSED METADATA!"),
-                value: vec![0],
-                is_private: false
-            }
-        */],
+        stringvars: vec![],
         inventory: Inventory {
             entries: vec![]
         }
     };
-    return (blockpos, metadata)
+    (blockpos, metadata)
 }
 
 pub async fn get_item_def_command(settings: &Config) -> ToClientCommand {

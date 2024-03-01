@@ -10,7 +10,6 @@ use crate::utils;
 use crate::mt_definitions;
 use crate::MTServerState;
 
-use azalea::app::DynEq;
 use azalea_registry::Registry;
 use minetest_protocol::wire::command::ToClientCommand;
 use minetest_protocol::MinetestConnection;
@@ -18,7 +17,6 @@ use minetest_protocol::wire;
 use minetest_protocol::wire::types::{v3s16, v3f, MapNodesBulk, MapNode, MapBlock, NodeMetadataList};
 
 use azalea_client::PlayerInfo;
-use azalea_client::Client;
 use azalea_client::chat::ChatPacket;
 use azalea::inventory::ItemSlotData;
 
@@ -32,9 +30,8 @@ use azalea_protocol::packets::game::clientbound_level_chunk_with_light_packet::{
 use azalea_protocol::packets::game::clientbound_system_chat_packet::ClientboundSystemChatPacket;
 use std::sync::Arc;
 use std::io::Cursor;
-use azalea_core::position::ChunkBlockPos;
 use azalea_world::chunk_storage;
-use azalea_block::{Block, BlockState};
+use azalea_block::BlockState;
 
 /*
  * slot_id maps to slots in the players inventory.
@@ -47,7 +44,7 @@ pub async fn send_item_if_missing(slotdata: ItemSlotData, slot_id: usize) {
 
 
 pub async fn set_time(source_packet: &ClientboundSetTimePacket, conn: &MinetestConnection) {
-    let ClientboundSetTimePacket { game_time, day_time } = source_packet;
+    let ClientboundSetTimePacket { game_time: _, day_time } = source_packet;
     // day_time seems to be the world age in ticks, so mod 24000 is the age of the day
     // age of the day is 0..23999
     // where 0 is 06:00, 6000 is 12:00, 12000 is 18:00, 18000 is 24:00 and 23999 is 05:59
@@ -178,7 +175,7 @@ pub async fn add_player(player_data: PlayerInfo, conn: &mut MinetestConnection, 
     utils::logger("[Minetest] S->C UpdatePlayerList", 1);
 }
 
-pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut UnboundedReceiver<Event>, mc_client: &Client) {
+pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut UnboundedReceiver<Event>) {
     utils::logger("[Minetest] Forwarding ChunkBatch...", 1);
     // called by a ChunkBatchStart
     // first let azalea do everything until ChunkBatchFinished,
@@ -231,7 +228,6 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
     let mut current_id: u16;
     let mut current_state: BlockState;
     let mut current_p1: u8;
-    let mut test: Box<dyn Block>;
     /*
      * Default (engine-reserved) Nodes according to src/mapnode.h
      * 125: Unknown (A solid walkable node with the texture unknown_node.png.)

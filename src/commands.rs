@@ -5,8 +5,6 @@
  * Minecraft client.
  */
 
-use std::net::ToSocketAddrs;
-
 use crate::utils;
 use crate::serverbound_translator;
 use crate::clientbound_translator;
@@ -31,7 +29,6 @@ use azalea_client::Event;
 use azalea_protocol::packets::game::ClientboundGamePacket;
 use config::Config;
 use std::net::SocketAddr;
-use alloc::sync::Arc;
 
 pub async fn mt_auto(command: ToServerCommand, conn: &mut MinetestConnection, mc_client: &azalea::Client, settings: &MTServerState) {
     match command {
@@ -55,7 +52,7 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
         Event::Chat(message) => clientbound_translator::send_message(mt_conn, message).await,
         Event::Tick => on_minecraft_tick(mt_conn, mc_client, mt_server_state).await,
         Event::Packet(packet_value) => match (*packet_value).clone() {
-            ClientboundGamePacket::ChunkBatchStart(_) => clientbound_translator::chunkbatch(mt_conn, mc_conn, &mc_client).await,
+            ClientboundGamePacket::ChunkBatchStart(_) => clientbound_translator::chunkbatch(mt_conn, mc_conn).await,
             ClientboundGamePacket::SystemChat(message) => clientbound_translator::send_sys_message(mt_conn, &message.clone()).await,
             ClientboundGamePacket::PlayerPosition(playerpos_packet) => clientbound_translator::set_player_pos(&playerpos_packet.clone(), mt_conn).await,
             ClientboundGamePacket::SetTime(settime_packet) => clientbound_translator::set_time(&settime_packet.clone(), mt_conn).await,
@@ -67,7 +64,7 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
 
 pub async fn on_minecraft_tick(mt_conn: &mut MinetestConnection, mc_client: &azalea::Client, mt_server_state: &mut MTServerState) {
     // sync the inventory from mc_client over to the minetest client (if it changed)
-    //resync_inventory(mc_client, mt_conn).await;
+    //resync_inventory(mc_client, mt_conn).await; TODO
 }
 
 pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState, settings: &Config) -> (azalea::Client, UnboundedReceiver<azalea::Event>) {
