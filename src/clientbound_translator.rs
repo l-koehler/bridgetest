@@ -111,7 +111,7 @@ pub async fn send_sys_message(conn: &mut MinetestConnection, message: &Clientbou
 
 }
 
-pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &mut MinetestConnection, node_arr: [MapNode; 4096]) {
+pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &mut MinetestConnection, state_arr: [BlockState; 4096]) {
     // Fills a 16^3 area with a vector of map nodes, where param0 is a MC-compatible ID.
     // remember that this is limited to 16 blocks of heigth, while a MC chunk goes from -64 to 320
     // y_pos of 0 -> actual y filled from 0 to 16
@@ -139,6 +139,29 @@ pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &mut
         }
     }
     
+    let mut nodes: [MapNode; 4096] = [MapNode{ param0: 126, param1: 0, param2: 0 }; 4096];
+    let mut state: BlockState;
+    let mut param0: u16;
+    let mut param1: u8;
+    for state_arr_i in 0..4095 {
+        state = state_arr[state_arr_i];
+        param0 = azalea_registry::Block::try_from(state).unwrap().to_u32() as u16 + 128;
+        
+        // param1: transparency i think
+        if state.is_air() {
+            param0 = 126;
+            param1 = 0xEE;
+        } else {
+            param1 = 0x00;
+        }
+        
+        nodes[state_arr_i] = MapNode {
+            param0,
+            param1,
+            param2: 0
+        }
+    }
+    
     let addblockcommand = ToClientCommand::Blockdata(
         Box::new(wire::command::BlockdataSpec {
             pos: v3s16 { x: x_pos, y: y_pos, z: z_pos },
@@ -148,7 +171,7 @@ pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &mut
                  generated: false, // server does not tell us that
                  lighting_complete: Some(65535),
                  nodes: MapNodesBulk {
-                     nodes: node_arr,
+                     nodes
                 },
                 node_metadata: NodeMetadataList {
                     metadata: vec![], //metadata_vec,
@@ -217,7 +240,7 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
     utils::logger(&format!("[Minecraft] Server sent chunk x/z {}/{}", chunk_x_pos, chunk_z_pos), 0);
     //let chunk_location: ChunkPos = ChunkPos { x: *chunk_x_pos, z: *chunk_z_pos }; // unused
     // send chunk to the MT client
-    let mut nodearr: [MapNode; 4096] = [MapNode { param0: 127, param1: 0, param2: 0 }; 4096];
+    let mut nodearr: [BlockState; 4096] = [BlockState{id:0};4096];
     // for each y level (mc chunks go from top to bottom, while mt chunks are 16 nodes high)
     let mut chunk_data_cursor = Cursor::new(chunk_data.as_slice());
     let dimension_height = i16::abs_diff(settings::Y_LOWER, settings::Y_UPPER).into();
@@ -225,9 +248,7 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
     .expect("Failed to parse chunk!");
     let chunk_storage::Chunk { sections, heightmaps: _ } = &mc_chunk; // heightmaps get ignored, these are just chunk_heightmaps
     
-    let mut current_id: u16;
     let mut current_state: BlockState;
-    let mut current_p1: u8;
     /*
      * Default (engine-reserved) Nodes according to src/mapnode.h
      * 125: Unknown (A solid walkable node with the texture unknown_node.png.)
@@ -242,17 +263,8 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
             for y in 0..15 {
                 for x in 0..15 {
                     current_state = section.get(azalea_core::position::ChunkSectionBlockPos { x: x as u8, y: y as u8, z: z as u8});
-                    current_id = azalea_registry::Block::try_from(current_state).unwrap().to_u32() as u16 + 128;
-
-                    // handle air nodes
-                    current_p1 = 0;
-                    if current_state.is_air() {
-                        current_id = 126; // MT engine reserved air node
-                        current_p1 = 0xE0; // light passes through (u8 storing two 4-bit values? what the heck even is this protocol aaa)
-                    }
-                    
                     // index ranges from 0 (0/0/0) to 4095 (15/15/15), as described in initialize_16node_chunk()
-                    nodearr[x+(y*16)+(z*256)] = MapNode { param0: current_id, param1: current_p1, param2: 0x00 };
+                    nodearr[x+(y*16)+(z*256)] = current_state;
                 }
             }
         }
