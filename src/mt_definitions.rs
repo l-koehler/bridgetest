@@ -110,6 +110,8 @@ pub fn get_metadata_placeholder(x_pos: u16, y_pos: u16, z_pos: u16) -> (BlockPos
     (blockpos, metadata)
 }
 
+// item def stuff
+
 pub async fn get_item_def_command(settings: &Config) -> ToClientCommand {
     // ensure arcticdata_items exists
     let data_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/");
@@ -198,6 +200,8 @@ pub fn generate_itemdef(name: &str, description: &str, stacklimit: i16, inventor
     }
 }
 
+// node def stuff
+
 pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
     // ensure arcticdata_blocks exists
     let data_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/");
@@ -223,11 +227,10 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
         mc_name = block.0;
         texture_name = utils::get_block_texture(&mc_name.replace("minecraft:", ""));
         texture_name = format!("block-{}", texture_name.replace("_side", "").replace("_top", "").replace("_bottom", ""));
-        // texture_name = format!("block-{}.png", mc_name.replace("minecraft:", ""));
         id = block.1.get("id").expect("Found a block without ID!").as_u64().unwrap() as u16;
         id += 128; // builtin nodes are below 128
         utils::logger(&format!("[Nodedefs] Mapped {} to the texture {}", mc_name, texture_name), 3);
-        content_features.push((id, generate_contentfeature(&mc_name, &texture_name)));
+        content_features.push((id, generate_contentfeature(&mc_name, block.1, &texture_name)));
     }
     let nodedef_command = ToClientCommand::Nodedef(
         Box::new(NodedefSpec {
@@ -239,8 +242,25 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
     return nodedef_command;
 }
 
-// TODO: This uses a bunch of only somewhat sane defaults. Add more options or just pass the JSON.
-pub fn generate_contentfeature(name: &str, texture_name: &str) -> ContentFeatures {
+pub fn generate_contentfeature(name: &str, block: serde_json::Value, texture_name: &str) -> ContentFeatures {
+    // If *every* possible state is solid, then walkable=true
+    // for light stuff, use the "brightest" state
+    let mut walkable = true;
+    let mut light_source = 0;
+    let mut sunlight_propagates = 0;
+    for state in block.get("states").unwrap().as_array().unwrap() {
+        if !state.get("solid").unwrap().as_bool().unwrap() {
+            walkable = false;
+        };
+        if (state.get("lightEmission").unwrap().as_u64().unwrap() as u8) > light_source {
+            light_source = state.get("lightEmission").unwrap().as_u64().unwrap() as u8;
+        }
+        if state.get("propagatesSkylightDown").unwrap().as_bool().unwrap() && sunlight_propagates == 0 {
+            sunlight_propagates = 15;
+        }
+    }
+    
+    
     let simplesound_placeholder: SimpleSoundSpec = SimpleSoundSpec {
         name: String::from("[[ERROR]]"),
         gain: 1.0,
@@ -277,7 +297,7 @@ pub fn generate_contentfeature(name: &str, texture_name: &str) -> ContentFeature
         red: 100,
         green: 70,
         blue: 85,
-        palette_name: String::from("block-white_concrete.png"),
+        palette_name: String::from(""),
         waving: 0,
         connect_sides: 0,
         connects_to_ids: Vec::new(),
@@ -288,11 +308,11 @@ pub fn generate_contentfeature(name: &str, texture_name: &str) -> ContentFeature
             a: 20,
         },
         leveled: 0,
-        light_propagates: 0,
-        sunlight_propagates: 0,
-        light_source: 0,
+        light_propagates: sunlight_propagates,
+        sunlight_propagates,
+        light_source, // TODO test the effect of this
         is_ground_content: false,
-        walkable: true,
+        walkable,
         pointable: true,
         diggable: true,
         climbable: false,
