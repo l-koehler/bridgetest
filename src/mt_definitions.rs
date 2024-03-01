@@ -306,12 +306,30 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, te
         Block::SweetBerryBush => DrawType::PlantLike,
         Block::PointedDripstone => DrawType::PlantLike, // totally a plant, whatever
         
+        Block::LilyPad     => DrawType::SignLike, // is flat without param2
+        Block::MossCarpet  => DrawType::SignLike,
+        Block::WhiteCarpet => DrawType::SignLike,
+        Block::LightGrayCarpet => DrawType::SignLike,
+        Block::GrayCarpet  => DrawType::SignLike,
+        Block::BlackCarpet => DrawType::SignLike,
+        Block::BrownCarpet => DrawType::SignLike,
+        Block::RedCarpet   => DrawType::SignLike,
+        Block::OrangeCarpet => DrawType::SignLike,
+        Block::YellowCarpet => DrawType::SignLike,
+        Block::LimeCarpet  => DrawType::SignLike,
+        Block::CyanCarpet  => DrawType::SignLike,
+        Block::LightBlueCarpet => DrawType::SignLike,
+        Block::BlueCarpet  => DrawType::SignLike,
+        Block::PurpleCarpet => DrawType::SignLike,
+        Block::MagentaCarpet => DrawType::SignLike,
+        Block::PinkCarpet  => DrawType::SignLike,
+        
         Block::Rail        => DrawType::RailLike,
         Block::PoweredRail => DrawType::RailLike,
         Block::DetectorRail => DrawType::RailLike,
         Block::ActivatorRail => DrawType::RailLike,
         
-        Block::OakSign     => DrawType::SignLike,
+        Block::OakSign     => DrawType::SignLike, // TODO send param2 for these nodes
         Block::SpruceSign  => DrawType::SignLike,
         Block::BirchSign   => DrawType::SignLike,
         Block::JungleSign  => DrawType::SignLike,
@@ -358,7 +376,7 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, te
             backface_culling: true,
             tileable_horizontal: false,
             tileable_vertical: false,
-            color_rgb: None,
+            color_rgb: utils::get_colormap(texture),
             scale: 0,
             align_style: AlignStyle::Node
         }

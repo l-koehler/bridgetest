@@ -12,6 +12,33 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::io::Read;
 
+pub fn get_colormap(texture: &str) -> Option<(u8, u8, u8)> {
+    // use the "Plains" texture. per-biome textures dont really work in mt afaik
+    // https://minecraft.fandom.com/wiki/Color#Block_and_fluid_colors - what blocks use the colormaps
+    // https://minecraft.fandom.com/wiki/Block_colors                 - what colors are to be used
+    let grass_group = ["block-grass_block_top.png", "block-grass_block_side_overlay.png", "block-short_grass.png", "block-tall_grass_bottom.png", "block-tall_grass_top.png", "block-fern.png", "block-large_fern_bottom.png", "block-large_fern_top.png"];
+    if grass_group.contains(&texture) {
+        return Some((0x91, 0xBD, 0x59))
+    }
+    let foliage_group = ["block-oak_leaves.png", "block-jungle_leaves.png", "block-acacia_leaves.png", "block-dark_oak_leaves.png", "block-vine.png"];
+    if foliage_group.contains(&texture) {
+        return Some((0x77, 0xAB, 0x2F))
+    }
+    let water_group = ["block-water_still.png", "block-water_flow.png"];
+    if water_group.contains(&texture) {
+        return Some((0x3F, 0x76, 0xE4))
+    }
+    let stem_group = ["block-attached_melon_stem.png", "block-attached_pumpkin_stem.png", "block-melon_stem.png", "block-pumpkin_stem.png", "pink_petals_stem.png"];
+    if stem_group.contains(&texture) {
+        return Some((0xE0, 0xC7, 0x1C))
+    }
+    // these textures are colormapped but constant for some stupid reason
+    if texture == "block-birch_leaves.png" { return Some((0x80, 0xA7, 0x55)) }
+    if texture == "block-spruce_leaves.png" { return Some((0x61, 0x99, 0x61)) }
+    if texture == "block-lily_pad.png" { return Some((0x20, 0x80, 0x30)) }
+    None
+}
+
 pub fn get_block_texture(block: &str) -> String {
     let texture_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/assets/minecraft/textures/block/");
     
