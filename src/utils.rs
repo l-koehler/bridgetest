@@ -65,7 +65,10 @@ pub fn logger(text: &str, level: i8) {
 }
 
 pub fn show_mc_command(command: &Event) {
-    logger(&format!("[Minecraft] S->C {}", mc_packet_name(command)), 1);
+    match command {
+        Event::Tick => (), // Don't log ticks, these happen far too often for that
+        _ => logger(&format!("[Minecraft] S->C {}", mc_packet_name(command)), 1)
+    }
 }
 
 pub fn mc_packet_name(command: &Event) -> &str {

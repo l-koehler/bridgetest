@@ -23,7 +23,10 @@ use azalea::inventory::ItemSlotData;
 
 use tokio::sync::mpsc::UnboundedReceiver;
 use azalea_client::Event;
-use azalea_protocol::packets::game::{ClientboundGamePacket, clientbound_player_position_packet::ClientboundPlayerPositionPacket};
+use azalea_protocol::packets::game::{ClientboundGamePacket,
+    clientbound_player_position_packet::ClientboundPlayerPositionPacket,
+    clientbound_set_time_packet::ClientboundSetTimePacket
+};
 use azalea_protocol::packets::game::clientbound_level_chunk_with_light_packet::{ClientboundLevelChunkWithLightPacket, ClientboundLevelChunkPacketData};
 use azalea_protocol::packets::game::clientbound_system_chat_packet::ClientboundSystemChatPacket;
 use std::sync::Arc;
@@ -40,6 +43,25 @@ pub async fn send_item_if_missing(slotdata: ItemSlotData, slot_id: usize) {
     utils::logger(&format!("[Minecraft] Unimplemented InvSync Slot:{} Item:{}*{} [ID:{}]", slot_id, count, item, item.to_u32()), 2);
 }
 
+
+pub async fn set_time(source_packet: &ClientboundSetTimePacket, conn: &MinetestConnection) {
+    let ClientboundSetTimePacket { game_time, day_time } = source_packet;
+    // game_time = world age
+    // day_time = 0..24000 (so can be represented in a u16, is a u64 for no good reason?)
+    //     (day_time/1000) is time in hours with
+    //         00 = sunrise/6am
+    //         06 = mid-day
+    //         12 = sunset/6pm
+    //         18 = midnight
+    let mt_time: u16 = *day_time as u16;
+    let settime_packet = ToClientCommand::TimeOfDay(
+        Box::new(wire::command::TimeOfDaySpec {
+            time_of_day: mt_time,
+            time_speed: None // time does pass, but we move it forward manually by resending this packet
+        })
+    );
+    let _ = conn.send(settime_packet).await;
+}
 
 pub async fn set_player_pos(source_packet: &ClientboundPlayerPositionPacket, conn: &MinetestConnection) {
     // y_rot: yaw
