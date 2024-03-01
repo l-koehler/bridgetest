@@ -66,7 +66,7 @@ pub async fn set_player_pos(source_packet: &ClientboundPlayerPositionPacket, con
     // source: https://en.wikipedia.org/wiki/Aircraft_principal_axes
     let ClientboundPlayerPositionPacket {x: source_x, y: source_y, z: source_z, y_rot: source_yaw, x_rot: source_pitch, relative_arguments: _, id: _} = source_packet;
     let dest_x = (*source_x as f32) * 10.0;
-    let dest_y = (*source_y as f32) * 10.0;
+    let dest_y = (*source_y as f32) * 10.0 + 0.33;
     let dest_z = (*source_z as f32) * 10.0;
 
     let setpos_packet = ToClientCommand::MovePlayer(

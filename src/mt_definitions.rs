@@ -232,7 +232,7 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
         // +128 because the MT engine has some builtin nodes below that.
         // generate_contentfeature ignores that and recieves the regular id,
         // everything else must adjust for this offset.
-        content_features.push((id+128, generate_contentfeature(id, &mc_name, block.1, &texture_base_name)));
+        content_features.push((id+128, generate_contentfeature(id, &mc_name, block.1, texture_base_name)));
     }
     let nodedef_command = ToClientCommand::Nodedef(
         Box::new(NodedefSpec {
@@ -244,12 +244,17 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
     return nodedef_command;
 }
 
-pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, texture_base_name: &str) -> ContentFeatures {
+pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mut texture_base_name: String) -> ContentFeatures {
     // If *every* possible state is solid, then walkable=true
     // for light stuff, use the "brightest" state
+    // for everything else, do other stuff idk look at the code
+    let this_block: azalea_registry::Block = (id as u32).try_into().expect("Got invalid ID!");
     let mut walkable = true;
     let mut light_source = 0;
     let mut sunlight_propagates = 0;
+    let mut liquid_range = 0;
+    let mut liquid_viscosity = 0;
+    let mut liquid_renewable = true;
     for state in block.get("states").unwrap().as_array().unwrap() {
         if !state.get("solid").unwrap().as_bool().unwrap() {
             walkable = false;
@@ -257,10 +262,23 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, te
         if (state.get("lightEmission").unwrap().as_u64().unwrap() as u8) > light_source {
             light_source = state.get("lightEmission").unwrap().as_u64().unwrap() as u8;
         }
-        if state.get("propagatesSkylightDown").unwrap().as_bool().unwrap() && sunlight_propagates == 0 {
+        if state.get("propagatesSkylightDown").unwrap().as_bool().unwrap() {
             sunlight_propagates = 15;
         }
     }
+    // liquid stuff
+    if this_block == Block::Water {
+        liquid_renewable = true;
+        liquid_viscosity = 4; // blocks per second spread
+        liquid_range = 7;
+        texture_base_name.push_str("_still"); // water.png does not exist, mc uses water_still.png and water_flow.png
+    } else if this_block == Block::Lava {
+        liquid_renewable = false;
+        liquid_viscosity = 2; // assume overworld speeds, nether has yet to be implemented anyways
+        liquid_range = 4;
+        texture_base_name.push_str("_still");
+    }
+    
     // drawtype is a little complicated, there isn't a field in the json for that.
     /*
      * PlantLike: Texture rendered along both diagonal horizontal lines.
@@ -268,7 +286,6 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, te
      * Liquid: Like Normal, but transparency added + shader stuff
      * other stuff - idk too lazy to type, use common sense
      */
-    let this_block: azalea_registry::Block = (id as u32).try_into().expect("Got invalid ID!");
     // azalea_registry::blockkind would be ideal, but is unused and thus unusable in azalea.
     // so i need to make this ugly thing matching each block with a non-normal drawtype
     let drawtype = match this_block {
@@ -441,9 +458,9 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, te
         liquid_type_bc: 0,
         liquid_alternative_flowing: String::from(""),
         liquid_alternative_source: String::from(""),
-        liquid_viscosity: 0,
-        liquid_renewable: false,
-        liquid_range: 0,
+        liquid_viscosity,
+        liquid_renewable,
+        liquid_range,
         drowning: 0,
         floodable: false,
         node_box: NodeBox::Regular,
