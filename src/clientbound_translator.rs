@@ -127,7 +127,7 @@ pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &mut
      * z=1: 0,0,0, 0,0,0, 0,0,0, \___ gets repeated for each Z, to be a 3^3 cube
      * z=0: 0,0,0, 0,0,0, 0,0,0, /
      */
-    utils::logger(&format!("[Minetest] S->C Initializing 16^3 nodes at {}/{}/{}", x_pos, y_pos, z_pos), 0);
+    utils::logger(&format!("[Minetest] S->C Initializing 16^3 nodes at {}/{}/{}", x_pos, y_pos, z_pos), 1);
     // TODO this does not support actual metadata
     let mut metadata_vec = Vec::new();
     // subcoordinates within the chunk
@@ -174,7 +174,7 @@ pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &mut
                      nodes
                 },
                 node_metadata: NodeMetadataList {
-                    metadata: vec![], //metadata_vec,
+                    metadata: vec![]
                 }
             },
             network_specific_version: 2 // what does this meeeean qwq
@@ -240,7 +240,7 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
     utils::logger(&format!("[Minecraft] Server sent chunk x/z {}/{}", chunk_x_pos, chunk_z_pos), 0);
     //let chunk_location: ChunkPos = ChunkPos { x: *chunk_x_pos, z: *chunk_z_pos }; // unused
     // send chunk to the MT client
-    let mut nodearr: [BlockState; 4096] = [BlockState{id:0};4096];
+    let mut nodearr: [BlockState; 4096] = [BlockState{id:125};4096];
     // for each y level (mc chunks go from top to bottom, while mt chunks are 16 nodes high)
     let mut chunk_data_cursor = Cursor::new(chunk_data.as_slice());
     let dimension_height = i16::abs_diff(settings::Y_LOWER, settings::Y_UPPER).into();
@@ -259,9 +259,9 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
     let mut chunk_y_pos = settings::Y_LOWER/16;
     for section in sections { // foreach possible section height (-4 .. 20)
         // for each block in the 16^3 chunk
-        for z in 0..15 {
-            for y in 0..15 {
-                for x in 0..15 {
+        for z in 0..16 {
+            for y in 0..16 {
+                for x in 0..16 {
                     current_state = section.get(azalea_core::position::ChunkSectionBlockPos { x: x as u8, y: y as u8, z: z as u8});
                     // index ranges from 0 (0/0/0) to 4095 (15/15/15), as described in initialize_16node_chunk()
                     nodearr[x+(y*16)+(z*256)] = current_state;

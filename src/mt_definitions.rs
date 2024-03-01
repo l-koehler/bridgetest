@@ -19,7 +19,7 @@ use sha1::{Sha1, Digest};
 use base64::{Engine as _, engine::general_purpose};
 use serde_json;
 
-use azalea_registry::{self, Registry};
+use azalea_registry::{self, Block};
 
 pub fn get_defaultpriv() -> ToClientCommand {
     let priv_command = ToClientCommand::Privileges(
@@ -270,10 +270,79 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, te
      * Liquid: Like Normal, but transparency added + shader stuff
      * other stuff - idk too lazy to type, use common sense
      */
-    let mut drawtype = DrawType::Normal;
-    let mut this_block: azalea_registry::Block = (id as u32).try_into().expect("Got invalid ID!");
-    // blockkind (homestuck brain damage)
-    let mut this_kind: azalea_registry::BlockKind; // TODO reminder to self: check if there is any way to actually get this
+    let this_block: azalea_registry::Block = (id as u32).try_into().expect("Got invalid ID!");
+    // azalea_registry::blockkind would be ideal, but is unused and thus unusable in azalea.
+    // so i need to make this ugly thing matching each block with a non-normal drawtype
+    let drawtype = match this_block {
+        Block::Water       => DrawType::Liquid,
+        Block::Lava        => DrawType::Liquid,
+        
+        Block::Air         => DrawType::AirLike,
+        Block::CaveAir     => DrawType::AirLike,
+        Block::VoidAir     => DrawType::AirLike,
+        
+        Block::Torch       => DrawType::TorchLike,
+        Block::SoulTorch   => DrawType::TorchLike,
+        
+        Block::Dandelion   => DrawType::PlantLike,
+        Block::Poppy       => DrawType::PlantLike,
+        Block::BlueOrchid  => DrawType::PlantLike,
+        Block::Allium      => DrawType::PlantLike,
+        Block::AzureBluet  => DrawType::PlantLike,
+        Block::RedTulip    => DrawType::PlantLike,
+        Block::OrangeTulip => DrawType::PlantLike,
+        Block::WhiteTulip  => DrawType::PlantLike,
+        Block::PinkTulip   => DrawType::PlantLike,
+        Block::OxeyeDaisy  => DrawType::PlantLike,
+        Block::Cornflower  => DrawType::PlantLike,
+        Block::LilyOfTheValley => DrawType::PlantLike,
+        Block::Torchflower => DrawType::PlantLike,
+        Block::BambooSapling => DrawType::PlantLike,
+        Block::Bamboo      => DrawType::PlantLike,
+        Block::DeadBush    => DrawType::PlantLike,
+        Block::ShortGrass  => DrawType::PlantLike,
+        Block::TallGrass   => DrawType::PlantLike,
+        Block::Fern        => DrawType::PlantLike,
+        Block::LargeFern   => DrawType::PlantLike,
+        Block::HangingRoots => DrawType::PlantLike,
+        Block::SweetBerryBush => DrawType::PlantLike,
+        Block::PointedDripstone => DrawType::PlantLike, // totally a plant, whatever
+        
+        Block::Rail        => DrawType::RailLike,
+        Block::PoweredRail => DrawType::RailLike,
+        Block::DetectorRail => DrawType::RailLike,
+        Block::ActivatorRail => DrawType::RailLike,
+        
+        Block::OakSign     => DrawType::SignLike,
+        Block::SpruceSign  => DrawType::SignLike,
+        Block::BirchSign   => DrawType::SignLike,
+        Block::JungleSign  => DrawType::SignLike,
+        Block::AcaciaSign  => DrawType::SignLike,
+        Block::DarkOakSign => DrawType::SignLike,
+        Block::MangroveSign => DrawType::SignLike,
+        Block::CherrySign  => DrawType::SignLike,
+        Block::BambooSign  => DrawType::SignLike,
+        Block::CrimsonSign => DrawType::SignLike,
+        Block::WarpedSign  => DrawType::SignLike,
+        
+        Block::OakFence    => DrawType::FenceLike,
+        Block::SpruceFence => DrawType::FenceLike,
+        Block::BirchFence  => DrawType::FenceLike,
+        Block::JungleFence => DrawType::FenceLike,
+        Block::AcaciaFence => DrawType::FenceLike,
+        Block::DarkOakFence => DrawType::FenceLike,
+        Block::MangroveFence => DrawType::FenceLike,
+        Block::CherryFence => DrawType::FenceLike,
+        Block::BambooFence => DrawType::FenceLike,
+        Block::CrimsonFence => DrawType::FenceLike,
+        Block::WarpedFence => DrawType::FenceLike,
+        
+        Block::Fire        => DrawType::FireLike,
+        Block::SoulFire    => DrawType::FireLike,
+        
+        _ => DrawType::Normal,
+    };
+    
     let simplesound_placeholder: SimpleSoundSpec = SimpleSoundSpec {
         name: String::from("[[ERROR]]"),
         gain: 1.0,
