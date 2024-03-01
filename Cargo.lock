@@ -778,6 +778,7 @@ name = "bridgetest"
 version = "0.1.0"
 dependencies = [
  "azalea",
+ "azalea-block",
  "azalea-chat",
  "azalea-client",
  "azalea-core",

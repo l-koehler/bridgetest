@@ -10,6 +10,7 @@ use crate::utils;
 use crate::mt_definitions;
 use crate::MTServerState;
 
+use azalea::app::DynEq;
 use azalea_registry::Registry;
 use minetest_protocol::wire::command::ToClientCommand;
 use minetest_protocol::MinetestConnection;
@@ -33,6 +34,7 @@ use std::sync::Arc;
 use std::io::Cursor;
 use azalea_core::position::ChunkBlockPos;
 use azalea_world::chunk_storage;
+use azalea_block::{Block, BlockState};
 
 /*
  * slot_id maps to slots in the players inventory.
@@ -139,6 +141,7 @@ pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &mut
             }
         }
     }
+    
     let addblockcommand = ToClientCommand::Blockdata(
         Box::new(wire::command::BlockdataSpec {
             pos: v3s16 { x: x_pos, y: y_pos, z: z_pos },
@@ -226,7 +229,9 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
     let chunk_storage::Chunk { sections, heightmaps: _ } = &mc_chunk; // heightmaps get ignored, these are just chunk_heightmaps
     
     let mut current_id: u16;
+    let mut current_state: BlockState;
     let mut current_p1: u8;
+    let mut test: Box<dyn Block>;
     /*
      * Default (engine-reserved) Nodes according to src/mapnode.h
      * 125: Unknown (A solid walkable node with the texture unknown_node.png.)
@@ -240,12 +245,16 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
         for z in 0..15 {
             for y in 0..15 {
                 for x in 0..15 {
-                    current_id = section.get(azalea_core::position::ChunkSectionBlockPos { x: x as u8, y: y as u8, z: z as u8}).id as u16 + 128;
+                    current_state = section.get(azalea_core::position::ChunkSectionBlockPos { x: x as u8, y: y as u8, z: z as u8});
+                    current_id = azalea_registry::Block::try_from(current_state).unwrap().to_u32() as u16 + 128;
+
+                    // handle air nodes
                     current_p1 = 0;
-                    if current_id == 128 { // MC: 0 + 128 to prevent collision - air node
+                    if current_state.is_air() {
                         current_id = 126; // MT engine reserved air node
                         current_p1 = 0xE0; // light passes through (u8 storing two 4-bit values? what the heck even is this protocol aaa)
                     }
+                    
                     // index ranges from 0 (0/0/0) to 4095 (15/15/15), as described in initialize_16node_chunk()
                     nodearr[x+(y*16)+(z*256)] = MapNode { param0: current_id, param1: current_p1, param2: 0x00 };
                 }

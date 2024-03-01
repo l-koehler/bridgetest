@@ -231,15 +231,18 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
     let mut content_features: Vec<(u16, ContentFeatures)> = Vec::new();
     for block in arcticdata_blocks {
         mc_name = block.0;
-        texture_name = format!("block-{}.png", mc_name.replace("minecraft:", ""));
-        id = block.1.get("id").expect("Found a block without ID!").as_u64().unwrap() as u16 + 128; // builtin nodes are below 128
-        utils::logger(&format!("[Nodedefs] Mapped {} to the texture {}", mc_name, texture_name), 0);
-        content_features.push(generate_contentfeature(id, &mc_name, &texture_name));
+        texture_name = utils::get_block_texture(&mc_name.replace("minecraft:", ""));
+        texture_name = format!("block-{}", texture_name.replace("_side", "").replace("_top", "").replace("_bottom", ""));
+        // texture_name = format!("block-{}.png", mc_name.replace("minecraft:", ""));
+        id = block.1.get("id").expect("Found a block without ID!").as_u64().unwrap() as u16;
+        id += 128; // builtin nodes are below 128
+        utils::logger(&format!("[Nodedefs] Mapped {} to the texture {}", mc_name, texture_name), 3);
+        content_features.push((id, generate_contentfeature(&mc_name, &texture_name)));
     }
     let nodedef_command = ToClientCommand::Nodedef(
         Box::new(NodedefSpec {
             node_def: NodeDefManager {
-                content_features: content_features,
+                content_features,
             }
         })
     );
@@ -247,7 +250,7 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
 }
 
 // TODO: This uses a bunch of only somewhat sane defaults. Add more options or just pass the JSON.
-pub fn generate_contentfeature(id: u16, name: &str, texture_name: &str) -> (u16, ContentFeatures) {
+pub fn generate_contentfeature(name: &str, texture_name: &str) -> ContentFeatures {
     let simplesound_placeholder: SimpleSoundSpec = SimpleSoundSpec {
         name: String::from("[[ERROR]]"),
         gain: 1.0,
@@ -328,7 +331,7 @@ pub fn generate_contentfeature(id: u16, name: &str, texture_name: &str) -> (u16,
         move_resistance: None,
         liquid_move_physics: None
     };
-    return (id, contentfeatures)
+    contentfeatures
 }
 
 /*

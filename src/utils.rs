@@ -12,6 +12,26 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::io::Read;
 
+pub fn get_block_texture(block: &str) -> String {
+    let texture_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/assets/minecraft/textures/block/");
+    
+    if !Path::new(texture_folder.join(format!("{}.png", block)).as_path()).exists() {
+        // sand.png
+        format!("{}.png", block)
+    } else if !Path::new(texture_folder.join(format!("{}_side.png", block)).as_path()).exists() {
+        // sand_side.png
+        format!("{}_side.png", block)
+    } else if !Path::new(texture_folder.join(format!("{}_top.png", block)).as_path()).exists() {
+        // sand_top.png
+        format!("{}_top.png", block)
+    } else if !Path::new(texture_folder.join(format!("{}_bottom.png", block)).as_path()).exists() {
+        // sand_bottom.png
+        format!("{}_bottom.png", block)
+    } else {
+        panic!("Failed to map {} to a texture!", block)
+    }
+}
+
 pub fn ask_confirm(question: &str) -> bool {
     println!("{}",question);
     let mut input = [0];
