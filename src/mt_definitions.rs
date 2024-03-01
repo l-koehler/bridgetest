@@ -222,19 +222,17 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
     .expect("Failed to parse arcticdata_blocks.json!");
     
     let mut mc_name: String;
-    let mut texture_name: String;
+    let mut texture_base_name: String;
     let mut id: u16;
     let mut content_features: Vec<(u16, ContentFeatures)> = Vec::new();
     for block in arcticdata_blocks {
         mc_name = block.0;
-        texture_name = utils::get_block_texture(&mc_name.replace("minecraft:", ""));
-        texture_name = format!("block-{}", texture_name.replace("_side", "").replace("_top", "").replace("_bottom", ""));
+        texture_base_name = mc_name.replace("minecraft:", "").replace(".png", "");
         id = block.1.get("id").expect("Found a block without ID!").as_u64().unwrap() as u16;
-        utils::logger(&format!("[Nodedefs] Mapped {} to the texture {}", mc_name, texture_name), 3);
         // +128 because the MT engine has some builtin nodes below that.
         // generate_contentfeature ignores that and recieves the regular id,
         // everything else must adjust for this offset.
-        content_features.push((id+128, generate_contentfeature(id, &mc_name, block.1, &texture_name)));
+        content_features.push((id+128, generate_contentfeature(id, &mc_name, block.1, &texture_base_name)));
     }
     let nodedef_command = ToClientCommand::Nodedef(
         Box::new(NodedefSpec {
@@ -246,7 +244,7 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
     return nodedef_command;
 }
 
-pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, texture_name: &str) -> ContentFeatures {
+pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, texture_base_name: &str) -> ContentFeatures {
     // If *every* possible state is solid, then walkable=true
     // for light stuff, use the "brightest" state
     let mut walkable = true;
@@ -349,18 +347,39 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, te
         pitch: 1.0,
         fade: 1.0,
     };
-    let tiledef_placeholder: TileDef = TileDef {
-        name: String::from(texture_name),
-        animation: TileAnimationParams::None,
-        backface_culling: false,
-        tileable_horizontal: false,
-        tileable_vertical: false,
-        color_rgb: None,
-        scale: 0,
-        align_style: AlignStyle::Node
-    };
-    // like [tiledef_placeholder; 6] if it were slow qwq
-    let tiledef_sides = [tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone(), tiledef_placeholder.clone()];
+    
+    // texture stuff
+    // texture_base_name is the basename.
+    // if {texture_base_name}_top.png exists then use it etc, default to fallbacks
+    fn get_tiledef(texture: &str) -> TileDef {
+        TileDef {
+            name: String::from(texture),
+            animation: TileAnimationParams::None,
+            backface_culling: true,
+            tileable_horizontal: false,
+            tileable_vertical: false,
+            color_rgb: None,
+            scale: 0,
+            align_style: AlignStyle::Node
+        }
+    }
+    let texture_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/assets/minecraft/textures/block/");
+    let texture_fallback_name = &format!("block-{}.png", texture_base_name);
+    let mut tiledef_sides: [TileDef; 6] = [get_tiledef(texture_fallback_name), get_tiledef(texture_fallback_name), get_tiledef(texture_fallback_name), get_tiledef(texture_fallback_name), get_tiledef(texture_fallback_name), get_tiledef(texture_fallback_name)];
+    
+    if Path::new(texture_folder.join(format!("{}_top.png", texture_base_name)).as_path()).exists() {
+        tiledef_sides[0] = get_tiledef(&format!("block-{}_top.png", texture_base_name));
+    }
+    if Path::new(texture_folder.join(format!("{}_bottom.png", texture_base_name)).as_path()).exists() {
+        tiledef_sides[1] = get_tiledef(&format!("block-{}_bottom.png", texture_base_name));
+    }
+    if Path::new(texture_folder.join(format!("{}_side.png", texture_base_name)).as_path()).exists() {
+        tiledef_sides[2] = get_tiledef(&format!("block-{}_side.png", texture_base_name));
+        tiledef_sides[3] = get_tiledef(&format!("block-{}_side.png", texture_base_name));
+        tiledef_sides[4] = get_tiledef(&format!("block-{}_side.png", texture_base_name));
+        tiledef_sides[5] = get_tiledef(&format!("block-{}_side.png", texture_base_name));
+    }
+    
     let contentfeatures: ContentFeatures = ContentFeatures {
         version: 13, // https://github.com/minetest/minetest/blob/master/src/nodedef.h#L313
         name: String::from(name),
@@ -514,7 +533,7 @@ pub fn get_mediafilevecs(filename: PathBuf, name: &str) -> (MediaFileData, Media
     texture_file.read(&mut buffer).expect("File Metadata lied about File Size. This should NOT happen, what the hell is wrong with your device?");
     // buffer: Vec<u8> with the png's content.
     let filedata = MediaFileData {
-        name: String::from(name.replace("_bottom.png", "").replace("_side", "").replace("_top", "")),
+        name: String::from(name),
         data: buffer.clone()
     };
     // buffer_hash_b64 is base64encode( sha1hash( buffer ) )
@@ -523,53 +542,22 @@ pub fn get_mediafilevecs(filename: PathBuf, name: &str) -> (MediaFileData, Media
     let mut buffer_hash_b64 = String::new();
     general_purpose::STANDARD.encode_string(hasher.finalize(), &mut buffer_hash_b64);
     let fileannounce = MediaAnnouncement {
-        name: String::from(name.replace("_bottom.png", "").replace("_side", "").replace("_top", "")),
+        name: String::from(name),
         sha1_base64: buffer_hash_b64,
     };
     return (filedata, fileannounce);
 }
 
-fn alternate_exists(media_folder: &PathBuf, name: &str, prefers: Vec<String>) -> bool {
-    let base_name = name.replace("_bottom", "").replace("_side", "").replace("_top", "");
-    let mut better_name: String;
-    for better_option in prefers {
-        better_name = format!("{}{}.png", base_name, better_option);
-        if Path::new(media_folder.join(better_name).as_path()).exists() {
-            // a better option exists
-            return true;
-        }
-    }
-    false
-}
-
 fn texture_vec_iterator(texture_vec: &mut Vec<(PathBuf, String)>, media_folder: PathBuf, prefix: &str) {
     let mut name: String;
     let mut path: PathBuf;
-    let mut preferred: Vec<String>;
     let iterator = fs::read_dir(&media_folder).expect("Failed to read media");
     for item in iterator {
-        preferred = Vec::new();
         name = item.as_ref().unwrap().file_name().into_string().unwrap();
-        // handle preferred variations
-        if name.ends_with("_bottom.png") {
-            preferred.push(String::from(""));
-            preferred.push(String::from("_side"));
-            preferred.push(String::from("_top"));
-        } 
-        if name.ends_with("_top.png") {
-            preferred.push(String::from(""));
-            preferred.push(String::from("_side"));
-        } 
-        if name.ends_with("_side.png") {
-            preferred.push(String::from(""));
-        }
-        
-        if preferred.is_empty() || !alternate_exists(&media_folder, &name, preferred) {
-            if name.ends_with(".png") {
-                path = item.as_ref().unwrap().path();
-                texture_vec.push((path, format!("{}-{}", prefix, name)));
-            };
-        }
+        if name.ends_with(".png") {
+            path = item.as_ref().unwrap().path();
+            texture_vec.push((path, format!("{}-{}", prefix, name)));
+        };
     }
 }
 
