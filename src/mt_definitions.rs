@@ -19,6 +19,8 @@ use sha1::{Sha1, Digest};
 use base64::{Engine as _, engine::general_purpose};
 use serde_json;
 
+use azalea_registry::{self, Registry};
+
 pub fn get_defaultpriv() -> ToClientCommand {
     let priv_command = ToClientCommand::Privileges(
         Box::new(PrivilegesSpec {
@@ -228,9 +230,11 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
         texture_name = utils::get_block_texture(&mc_name.replace("minecraft:", ""));
         texture_name = format!("block-{}", texture_name.replace("_side", "").replace("_top", "").replace("_bottom", ""));
         id = block.1.get("id").expect("Found a block without ID!").as_u64().unwrap() as u16;
-        id += 128; // builtin nodes are below 128
         utils::logger(&format!("[Nodedefs] Mapped {} to the texture {}", mc_name, texture_name), 3);
-        content_features.push((id, generate_contentfeature(&mc_name, block.1, &texture_name)));
+        // +128 because the MT engine has some builtin nodes below that.
+        // generate_contentfeature ignores that and recieves the regular id,
+        // everything else must adjust for this offset.
+        content_features.push((id+128, generate_contentfeature(id, &mc_name, block.1, &texture_name)));
     }
     let nodedef_command = ToClientCommand::Nodedef(
         Box::new(NodedefSpec {
@@ -242,7 +246,7 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
     return nodedef_command;
 }
 
-pub fn generate_contentfeature(name: &str, block: serde_json::Value, texture_name: &str) -> ContentFeatures {
+pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, texture_name: &str) -> ContentFeatures {
     // If *every* possible state is solid, then walkable=true
     // for light stuff, use the "brightest" state
     let mut walkable = true;
@@ -259,8 +263,17 @@ pub fn generate_contentfeature(name: &str, block: serde_json::Value, texture_nam
             sunlight_propagates = 15;
         }
     }
-    
-    
+    // drawtype is a little complicated, there isn't a field in the json for that.
+    /*
+     * PlantLike: Texture rendered along both diagonal horizontal lines.
+     * Normal: Texture rendered on each of the 6 faces.
+     * Liquid: Like Normal, but transparency added + shader stuff
+     * other stuff - idk too lazy to type, use common sense
+     */
+    let mut drawtype = DrawType::Normal;
+    let mut this_block: azalea_registry::Block = (id as u32).try_into().expect("Got invalid ID!");
+    // blockkind (homestuck brain damage)
+    let mut this_kind: azalea_registry::BlockKind; // TODO reminder to self: check if there is any way to actually get this
     let simplesound_placeholder: SimpleSoundSpec = SimpleSoundSpec {
         name: String::from("[[ERROR]]"),
         gain: 1.0,
@@ -285,7 +298,7 @@ pub fn generate_contentfeature(name: &str, block: serde_json::Value, texture_nam
         groups: vec![(String::from(""), 1)], // [(String, i16), (String, i16)], IDK what this does
         param_type: 0,
         param_type_2: 0,
-        drawtype: DrawType::Normal,
+        drawtype,
         mesh: String::from(""),
         visual_scale: 1.0,
         unused_six: 6, // unused? idk what does this even do
