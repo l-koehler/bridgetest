@@ -4,7 +4,7 @@
 
 use azalea::core::particle;
 use azalea::entity::metadata::Text;
-use minetest_protocol::wire::command::{AnnounceMediaSpec, InventoryFormspecSpec, ItemdefSpec, MediaSpec, NodedefSpec, SetSunSpec, SetLightingSpec, ToClientCommand, MovementSpec };
+use minetest_protocol::wire::command::{AnnounceMediaSpec, InventoryFormspecSpec, ItemdefSpec, MediaSpec, NodedefSpec, SetSunSpec, SetLightingSpec, ToClientCommand, MovementSpec, PrivilegesSpec };
 use minetest_protocol::wire::types::{ v3f, AlignStyle, ContentFeatures, DrawType, ItemAlias, ItemDef, ItemType, ItemdefList, MediaAnnouncement, MediaFileData, NodeBox, Option16, SColor, SimpleSoundSpec, TileAnimationParams, TileDef, BlockPos, NodeMetadata, StringVar, Inventory, NodeDefManager, SunParams, Lighting, AutoExposure
 }; // AAAAAA
 
@@ -22,21 +22,34 @@ use sha1::{Sha1, Digest};
 use base64::{Engine as _, engine::general_purpose};
 use serde_json;
 
+pub fn get_defaultpriv() -> ToClientCommand {
+    let priv_command = ToClientCommand::Privileges(
+        Box::new(PrivilegesSpec {
+            privileges: vec![
+                String::from("interact"),
+                String::from("shout"),
+                String::from("noclip") // HACK bypasses the broken lighting
+            ]
+        })
+    );
+    return priv_command;
+}
+
 pub fn get_movementspec() -> ToClientCommand {
     let movement_command = ToClientCommand::Movement(
         Box::new(MovementSpec {
-            acceleration_default: 1.0,
-            acceleration_air: 1.33,
-            acceleration_fast: 1.33,
-            speed_walk: 1.0,
-            speed_crouch: 0.8,
-            speed_fast: 1.33,
-            speed_climb: 0.6,
-            speed_jump: 1.2,
+            acceleration_default: 3.0,
+            acceleration_air: 2.0,
+            acceleration_fast: 10.0,
+            speed_walk: 4.0,
+            speed_crouch: 1.35,
+            speed_fast: 20.0,
+            speed_climb: 3.0,
+            speed_jump: 6.5,
             liquid_fluidity: 1.0,
-            liquid_fluidity_smooth: 0.8,
-            liquid_sink: 0.3,
-            gravity: 9.81 // (?)
+            liquid_fluidity_smooth: 0.5,
+            liquid_sink: 10.0,
+            gravity: 9.81,
         })
     );
     return movement_command;
@@ -132,7 +145,7 @@ pub async fn get_item_def_command(settings: &Config) -> ToClientCommand {
         mc_name = item.0;
         texture_name = format!("item-{}.png", mc_name.replace("minecraft:", ""));
         stacklimit = item.1.get("maxStackSize").expect("Found a item without Stack Size!").as_u64().unwrap().try_into().unwrap(); // serde only offers as_u64, cant read u16 from file directly (qwq)
-        utils::logger(&format!("[Itemdefs] Mapped {} to the texture {}", mc_name, texture_name), 1);
+        utils::logger(&format!("[Itemdefs] Mapped {} to the texture {}", mc_name, texture_name), 0);
         item_definitions.push(generate_itemdef(&mc_name, "TODO remove this :3", stacklimit, &texture_name));
     }
     
@@ -220,7 +233,7 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
         mc_name = block.0;
         texture_name = format!("block-{}.png", mc_name.replace("minecraft:", ""));
         id = block.1.get("id").expect("Found a block without ID!").as_u64().unwrap() as u16 + 128; // builtin nodes are below 128
-        utils::logger(&format!("[Nodedefs] Mapped {} to the texture {}", mc_name, texture_name), 1);
+        utils::logger(&format!("[Nodedefs] Mapped {} to the texture {}", mc_name, texture_name), 0);
         content_features.push(generate_contentfeature(id, &mc_name, &texture_name));
     }
     let nodedef_command = ToClientCommand::Nodedef(
