@@ -68,27 +68,23 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     let _ = mt_conn.send(media_packets.4).await;
     utils::logger("[Minetest] S->C Media (Misc)", 1);
     let _ = mt_conn.send(media_packets.5).await;
-    // utils::logger("[Minetest] S->C Inventory Formspec", 1);
-    // let _ = mt_conn.send(mt_definitions::get_inventory_formspec()).await;
 
     utils::logger("[Minetest] S->C Itemdef", 1);
     let _ = mt_conn.send(mt_definitions::get_item_def_command(&settings).await).await;
     utils::logger("[Minetest] S->C Nodedef", 1);
     let _ = mt_conn.send(mt_definitions::get_node_def_command(&settings).await).await;
 
-    // Unused in regular connection
-    // utils::logger("[Minetest] S->C SetSun", 1);
-    // let _ = mt_conn.send(mt_definitions::get_sun_def_command()).await;
-
-    // Unused in regular connection, IDK what this packet does
-    // utils::logger("[Minetest] S->C SetLighting", 1);
-    // let _ = mt_conn.send(mt_definitions::get_lighting_def_command()).await;
-
     utils::logger("[Minetest] S->C Movement", 1);
     let _ = mt_conn.send(mt_definitions::get_movementspec()).await;
 
     utils::logger("[Minetest] S->C SetPriv", 1);
     let _ = mt_conn.send(mt_definitions::get_defaultpriv()).await;
+    
+    utils::logger("[Minetest] S->C AddHud Healthbar", 1);
+    let _ = mt_conn.send(mt_definitions::add_healthbar()).await;
+    
+    utils::logger("[Minetest] S->C Inventory Formspec", 1);
+    let _ = mt_conn.send(mt_definitions::get_inventory_formspec()).await;
 
     /*
      * Main Loop.
@@ -123,7 +119,7 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
                 }
                 let mt_command = t.expect("[Minetest] Failed to unwrap Ok(_) packet from Client!");
                 utils::show_mt_command(&mt_command);
-                commands::mt_auto(mt_command, &mut mt_conn, &mc_client, &mt_server_state).await;
+                commands::mt_auto(mt_command, &mut mt_conn, &mc_client).await;
             },
             // or the minecraft connection
             t = mc_conn.recv() => {

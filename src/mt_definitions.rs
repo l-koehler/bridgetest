@@ -2,8 +2,8 @@
 // the functions are actually more like consts but
 // the "String" type cant be a constant so :shrug:
 
-use minetest_protocol::wire::command::{AnnounceMediaSpec, InventoryFormspecSpec, ItemdefSpec, MediaSpec, NodedefSpec, SetSunSpec, SetLightingSpec, ToClientCommand, MovementSpec, PrivilegesSpec };
-use minetest_protocol::wire::types::{ v3f, AlignStyle, ContentFeatures, DrawType, ItemAlias, ItemDef, ItemType, ItemdefList, MediaAnnouncement, MediaFileData, NodeBox, Option16, SColor, SimpleSoundSpec, TileAnimationParams, TileDef, BlockPos, NodeMetadata, StringVar, Inventory, NodeDefManager, SunParams, Lighting, AutoExposure
+use minetest_protocol::wire::command::{AnnounceMediaSpec, DetachedInventorySpec, InventoryFormspecSpec, ItemdefSpec, MediaSpec, MovementSpec, NodedefSpec, PrivilegesSpec, HudaddSpec, ToClientCommand };
+use minetest_protocol::wire::types::{ v2f, v3f, v2s32, AlignStyle, BlockPos, ContentFeatures, DrawType, Inventory, ItemAlias, ItemDef, ItemType, ItemdefList, MediaAnnouncement, MediaFileData, NodeBox, NodeDefManager, NodeMetadata, Option16, SColor, SimpleSoundSpec, SunParams, TileAnimationParams, TileDef
 }; // AAAAAA
 
 use alloc::boxed::Box;
@@ -20,6 +20,72 @@ use base64::{Engine as _, engine::general_purpose};
 use serde_json;
 
 use azalea_registry::{self, Block};
+
+pub enum HeartDisplay {
+    Absorb,
+    Frozen,
+    Normal,
+    Poison,
+    Wither,
+    
+    HardcoreAbsorb,
+    HardcoreFrozen,
+    HardcoreNormal,
+    HardcorePoison,
+    HardcoreWither,
+    
+    Vehicle,
+    NoChange // special value: do not change the heart texture
+}
+
+pub fn add_healthbar() -> ToClientCommand {
+    let hudadd_command = ToClientCommand::Hudadd(
+        Box::new(HudaddSpec {
+            server_id: 0,
+            typ: 2,
+            pos: v2f {
+                x: 0.5,
+                y: 1.0
+            },
+            name: String::from(""),
+            scale: v2f {
+                x: 0.0,
+                y: 0.0
+            },
+            text: String::from("heart-full.png"),
+            number: 20,
+            item: 20,
+            dir: 0,
+            align: v2f {
+                x: 0.0,
+                y: 0.0
+            },
+            offset: v2f {
+                x: -265.0,
+                y: -88.0
+            },
+            world_pos: Some(
+                v3f {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+            ),
+            size: Some(
+                v2s32 {
+                    x: 24,
+                    y: 24,
+                },
+            ),
+            z_index: Some(0),
+            text2: Some(
+                String::from("heart-container.png"),
+            ),
+            style: Some(0)
+        })
+    );
+    hudadd_command
+}
 
 pub fn get_defaultpriv() -> ToClientCommand {
     let priv_command = ToClientCommand::Privileges(
@@ -51,43 +117,6 @@ pub fn get_movementspec() -> ToClientCommand {
         })
     );
     movement_command
-}
-
-pub fn get_lighting_def_command() -> ToClientCommand {
-    let setlight_command = ToClientCommand::SetLighting(
-        Box::new(SetLightingSpec {
-            lighting: Lighting { 
-                shadow_intensity: 0.0,
-                saturation: 100.0,
-                 // IDFK what half this stuff means can someone translate this to "didnt study color theory"?
-                exposure: AutoExposure {
-                    luminance_min: 50.0,
-                    luminance_max: 100.0,
-                    exposure_correction: 1.0,
-                    speed_dark_bright: 1.0,
-                    speed_bright_dark: 1.0,
-                    center_weight_power: 1.0
-                }
-            }
-        })
-    );
-    setlight_command
-}
-
-pub fn get_sun_def_command() -> ToClientCommand {
-    let setsun_command = ToClientCommand::SetSun(
-        Box::new(SetSunSpec{
-            sun: SunParams {
-                visible: true,
-                 texture: String::from("misc-sun.png"),
-                 tonemap: String::from(""),
-                 sunrise: String::from(""),
-                 sunrise_visible: true,
-                 scale: 1.0
-            }
-        })
-    );
-    setsun_command
 }
 
 pub fn get_inventory_formspec() -> ToClientCommand {
@@ -157,7 +186,7 @@ pub async fn get_item_def_command(settings: &Config) -> ToClientCommand {
 
 pub fn generate_itemdef(name: &str, item: serde_json::Value, inventory_image: &str) -> ItemDef {
     let stack_max: i16 = item.get("maxStackSize").unwrap().as_i64().unwrap_or(0).try_into().unwrap();
-    let block_id: String = item.get("BlockId").unwrap().to_string();
+    let block_id: String = item.get("blockId").unwrap().to_string();
     let max_durability: i64 = item.get("maxDamage").unwrap().as_i64().unwrap_or(0);
     let is_edible: bool = item.get("edible").unwrap().as_bool().unwrap_or(false);
 
@@ -634,8 +663,10 @@ pub async fn get_texture_media_commands(settings: &Config) -> (ToClientCommand, 
     texture_vec_iterator(&mut particle_texture_vec, textures_folder.join("particle/"), "particle");
     texture_vec_iterator(&mut entity_texture_vec, textures_folder.join("entity/"), "entity");
     texture_vec_iterator(&mut item_texture_vec, textures_folder.join("item/"), "item");
-    texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("environment/"), "misc");
 
+    texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("environment/"), "misc");
+    texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("gui/sprites/hud/"), "hud");
+    texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("gui/sprites/hud/heart/"), "heart");
     // texture_vec = [("/path/to/allay.png", "entity-allay"), ("/path/to/cactus_bottom.png", "block-cactus_bottom"), ...]
     // call get_mediafilevecs on each entry tuple in *_texture_vec
     let mut announcement_vec: Vec<MediaAnnouncement> = Vec::new();

@@ -28,9 +28,10 @@ async fn main() {
 }
 
 pub struct MTServerState {
+    // things the server should keep track of
     players: Vec<String>, // names of all players
-    // add other stuff i might need to keep track of
-    mt_clientside_pos: (f32, f32, f32),
+    mt_clientside_pos: (f32, f32, f32), // used to tolerate slight position differences, resulting in far smoother movement
+    mt_last_known_health: u16, // used to determine if a HP change should trigger a damage effect flash
 }
 
 async fn start_client_handler(settings: Config) {
@@ -41,7 +42,8 @@ async fn start_client_handler(settings: Config) {
     // Define a server state with stuff to keep track of
     let mt_server_state = MTServerState {
         players: Vec::new(),
-        mt_clientside_pos: (0.0, 0.0, 0.0)
+        mt_clientside_pos: (0.0, 0.0, 0.0),
+        mt_last_known_health: 0,
     };
 
     // Wait for a client to join

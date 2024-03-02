@@ -26,12 +26,7 @@ arcticdata_blocks = \"https://raw.githubusercontent.com/Articdive/ArticData/1.20
 arcticdata_items = \"https://raw.githubusercontent.com/Articdive/ArticData/1.20.4/1_20_4_items.json\"
 ";
 
-pub const INV_FORMSPEC: &str = "\
-size[8,7.5]
-image[1,0.6;1,2;player.png]
-list[current_player;main;0,3.5;8,4;]
-list[current_player;craft;3,0;3,3;]
-list[current_player;craftpreview;7,1;1,1;]";
+pub const INV_FORMSPEC: &str = "size[8,7.5]list[current_player;main;0,3.5;8,4;]list[current_player;craft;3,0;3,3;]listring[]list[current_player;craftpreview;7,1;1,1;]";
 
 /*
  * 0: Display every recieved packet

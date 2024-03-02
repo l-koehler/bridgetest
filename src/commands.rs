@@ -11,6 +11,7 @@ use crate::clientbound_translator;
 use crate::MTServerState;
 extern crate alloc;
 
+use minetest_protocol::wire::command::CommandProperties;
 use minetest_protocol::wire::command::ToServerCommand;
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::wire::command::ToClientCommand;
@@ -30,7 +31,7 @@ use azalea_protocol::packets::game::ClientboundGamePacket;
 use config::Config;
 use std::net::SocketAddr;
 
-pub async fn mt_auto(command: ToServerCommand, conn: &mut MinetestConnection, mc_client: &azalea::Client, settings: &MTServerState) {
+pub async fn mt_auto(command: ToServerCommand, mt_conn: &mut MinetestConnection, mc_client: &azalea::Client) {
     match command {
         ToServerCommand::Null(_) => (), // Drop NULL
         ToServerCommand::Init(_) => utils::logger("[Minetest] Client sent Init, but handshake already done!", 2),
@@ -40,7 +41,7 @@ pub async fn mt_auto(command: ToServerCommand, conn: &mut MinetestConnection, mc
         ToServerCommand::TSModchannelMsg(_) => utils::logger("[Minetest] Client sent TSModchannelMsg, this does not exist in MC", 2),
         ToServerCommand::Playerpos(specbox) => serverbound_translator::playerpos(&mc_client, specbox).await,
         ToServerCommand::TSChatMessage(specbox) => serverbound_translator::send_message(&mc_client, specbox),
-        _ => utils::logger(&format!("[Minetest] Got unimplemented command, dropping packet!"), 2) // Drop packet if unable to match
+        _ => utils::logger(&format!("[Minetest] Got unimplemented command, dropping {}", command.command_name()), 2) // Drop packet if unable to match
     }
 }
 
@@ -50,21 +51,17 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
     match command {
         Event::AddPlayer(player_data) => clientbound_translator::add_player(player_data, mt_conn, mt_server_state).await,
         Event::Chat(message) => clientbound_translator::send_message(mt_conn, message).await,
-        Event::Tick => on_minecraft_tick(mt_conn, mc_client, mt_server_state).await,
+        //Event::Tick => on_minecraft_tick(mt_conn, mc_client, mt_server_state).await,
         Event::Packet(packet_value) => match (*packet_value).clone() {
             ClientboundGamePacket::ChunkBatchStart(_) => clientbound_translator::chunkbatch(mt_conn, mc_conn).await,
             ClientboundGamePacket::SystemChat(message) => clientbound_translator::send_sys_message(mt_conn, &message.clone()).await,
             ClientboundGamePacket::PlayerPosition(playerpos_packet) => clientbound_translator::set_player_pos(&playerpos_packet.clone(), mt_conn, mt_server_state).await,
             ClientboundGamePacket::SetTime(settime_packet) => clientbound_translator::set_time(&settime_packet.clone(), mt_conn).await,
+            ClientboundGamePacket::SetHealth(sethealth_packet) => clientbound_translator::set_health(&sethealth_packet.clone(), mt_conn, mt_server_state).await,
             _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),
         }
         _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),
     };
-}
-
-pub async fn on_minecraft_tick(mt_conn: &mut MinetestConnection, mc_client: &azalea::Client, mt_server_state: &mut MTServerState) {
-    // sync the inventory from mc_client over to the minetest client (if it changed)
-    //resync_inventory(mc_client, mt_conn).await; TODO
 }
 
 pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState, settings: &Config) -> (azalea::Client, UnboundedReceiver<azalea::Event>) {
@@ -77,7 +74,7 @@ pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection, 
         panic!("handshake() got called with non-init packet!")
     }
     let player_name = init_command.player_name.clone(); // Fix to not trip the borrow checker (Needed for Account::offline)
-    mt_server_state.players.push(player_name.clone()); // I FUCKING [mildy dislike (affectionate)] THE BORROW CHECKER AAAAA
+    mt_server_state.players.push(player_name.clone());
     // Send S->C Hello
     let hello_command = ToClientCommand::Hello(
         Box::new(HelloSpec {
@@ -124,28 +121,3 @@ pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection, 
     let (mut mc_client, mut rx) = Client::join(&mc_account, mc_server_addr).await.expect("[Minecraft] Failed to log in!");
     return (mc_client, rx)
 }
-
-pub async fn resync_inventory(mc_client: &Client, mt_conn: &mut MinetestConnection) {
-    // only sync when the player currently does NOT have another inventory open
-    match mc_client.menu() {
-        azalea::inventory::Menu::Player(player) => (),
-        _ => return,
-    }
-    // iterate over each item
-    let mc_inventory_range = mc_client.menu().player_slots_range();
-    let mut mc_item: ItemSlot;
-    for slot_id in mc_inventory_range {
-        mc_item = mc_client.menu().slot(slot_id).expect("Slot out-of-range!").clone();
-        match mc_item {
-            ItemSlot::Empty => (),
-            ItemSlot::Present(slotdata) => clientbound_translator::send_item_if_missing(slotdata, slot_id).await,
-        }
-    }
-}
-
-
-
-
-
-
-

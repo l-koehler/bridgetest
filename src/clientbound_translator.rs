@@ -9,22 +9,24 @@ use crate::settings;
 use crate::utils;
 use crate::mt_definitions;
 use crate::MTServerState;
+use mt_definitions::HeartDisplay;
 
 use azalea_registry::Registry;
 use minetest_protocol::wire::command::ToClientCommand;
+use minetest_protocol::wire::types::HudStat;
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::wire;
 use minetest_protocol::wire::types::{v3s16, v3f, MapNodesBulk, MapNode, MapBlock, NodeMetadataList};
 
 use azalea_client::PlayerInfo;
 use azalea_client::chat::ChatPacket;
-use azalea::inventory::ItemSlotData;
 
 use tokio::sync::mpsc::UnboundedReceiver;
 use azalea_client::Event;
 use azalea_protocol::packets::game::{ClientboundGamePacket,
     clientbound_player_position_packet::ClientboundPlayerPositionPacket,
-    clientbound_set_time_packet::ClientboundSetTimePacket
+    clientbound_set_time_packet::ClientboundSetTimePacket,
+    clientbound_set_health_packet::ClientboundSetHealthPacket,
 };
 use azalea_protocol::packets::game::clientbound_level_chunk_with_light_packet::{ClientboundLevelChunkWithLightPacket, ClientboundLevelChunkPacketData};
 use azalea_protocol::packets::game::clientbound_system_chat_packet::ClientboundSystemChatPacket;
@@ -33,15 +35,63 @@ use std::io::Cursor;
 use azalea_world::chunk_storage;
 use azalea_block::BlockState;
 
-/*
- * slot_id maps to slots in the players inventory.
- */
-pub async fn send_item_if_missing(slotdata: ItemSlotData, slot_id: usize) {
-    let item = slotdata.kind;
-    let count = slotdata.count;
-    utils::logger(&format!("[Minecraft] Unimplemented InvSync Slot:{} Item:{}*{} [ID:{}]", slot_id, count, item, item.to_u32()), 2);
+pub async fn edit_healthbar(mode: HeartDisplay, num: u32, conn: &MinetestConnection) {
+    // num is from 0 to 20
+    // above 20: no change will be made to the number of hearts
+    let hearth_texture: &str = match mode {
+        HeartDisplay::Absorb => "heart-absorbing_full.png",
+        HeartDisplay::Frozen => "heart-frozen_full.png",
+        HeartDisplay::Normal => "heart-full.png",
+        HeartDisplay::Poison => "heart-poisoned_full.png",
+        HeartDisplay::Wither => "heart-withered_full.png",
+        HeartDisplay::HardcoreAbsorb => "heart-absorbing_hardcore_full.png",
+        HeartDisplay::HardcoreFrozen => "heart-frozen_hardcore_full.png",
+        HeartDisplay::HardcoreNormal => "heart-hardcore_full.png",
+        HeartDisplay::HardcorePoison => "heart-poisoned_hardcore_full.png",
+        HeartDisplay::HardcoreWither => "heart-withered_hardcore_full.png",
+        HeartDisplay::Vehicle => "heart-vehicle_full.png",
+        HeartDisplay::NoChange => ""
+    };
+    if hearth_texture != "" {
+        let set_bar_texture = ToClientCommand::Hudchange(
+            Box::new(wire::command::HudchangeSpec {
+                server_id: 0,
+                stat: HudStat::Text(String::from(hearth_texture))
+            })
+        );
+        let _ = conn.send(set_bar_texture);
+    }
+    if num < 21 {
+        let set_bar_number = ToClientCommand::Hudchange(
+            Box::new(wire::command::HudchangeSpec {
+                server_id: 0,
+                stat: HudStat::Number(num)
+            })
+        );
+        let _ = conn.send(set_bar_number).await;
+    }
 }
 
+pub async fn set_health(source_packet: &ClientboundSetHealthPacket, conn: &MinetestConnection, mt_server_state: &mut MTServerState) {
+    let ClientboundSetHealthPacket { health, food:_, saturation:_ } = source_packet; // TODO support food/sat
+    // health: 0..20
+    let new_health: u16 = *health as u16;
+    let mut damage_effect: Option<bool> = None;
+    if mt_server_state.mt_last_known_health > new_health {
+        // health dropped since last time this was run
+        damage_effect = Some(true);
+    }
+    mt_server_state.mt_last_known_health = new_health;
+
+    let sethealth_packet = ToClientCommand::Hp(
+        Box::new(wire::command::HpSpec {
+            hp: new_health,
+            damage_effect,
+        })
+    );
+    let _ = conn.send(sethealth_packet).await;
+    edit_healthbar(HeartDisplay::NoChange, new_health.into(), conn).await;
+}
 
 pub async fn set_time(source_packet: &ClientboundSetTimePacket, conn: &MinetestConnection) {
     let ClientboundSetTimePacket { game_time: _, day_time } = source_packet;
