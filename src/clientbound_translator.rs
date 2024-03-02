@@ -60,23 +60,31 @@ pub async fn set_time(source_packet: &ClientboundSetTimePacket, conn: &MinetestC
     let _ = conn.send(settime_packet).await;
 }
 
-pub async fn set_player_pos(source_packet: &ClientboundPlayerPositionPacket, conn: &MinetestConnection) {
+pub async fn set_player_pos(source_packet: &ClientboundPlayerPositionPacket, conn: &MinetestConnection, mt_server_state: &mut MTServerState) {
     // y_rot: yaw
     // x_rot: pitch
     // source: https://en.wikipedia.org/wiki/Aircraft_principal_axes
     let ClientboundPlayerPositionPacket {x: source_x, y: source_y, z: source_z, y_rot: source_yaw, x_rot: source_pitch, relative_arguments: _, id: _} = source_packet;
     let dest_x = (*source_x as f32) * 10.0;
-    let dest_y = (*source_y as f32) * 10.0 + 0.33;
+    let dest_y = (*source_y as f32) * 10.0;
     let dest_z = (*source_z as f32) * 10.0;
 
-    let setpos_packet = ToClientCommand::MovePlayer(
-        Box::new(wire::command::MovePlayerSpec {
-            pos: v3f {x: dest_x, y: dest_y, z: dest_z},
-            pitch: *source_pitch,
-            yaw: *source_yaw
-        })
-    );
-    let _ = conn.send(setpos_packet).await;
+    let abs_diff = (dest_x - mt_server_state.mt_clientside_pos.0).abs() +
+                   (dest_y - mt_server_state.mt_clientside_pos.1).abs() +
+                   (dest_z - mt_server_state.mt_clientside_pos.2).abs();
+    
+    if abs_diff > 0.1 {
+        let setpos_packet = ToClientCommand::MovePlayer(
+            Box::new(wire::command::MovePlayerSpec {
+                pos: v3f {x: dest_x, y: dest_y, z: dest_z},
+                pitch: *source_pitch,
+                yaw: *source_yaw
+            })
+        );
+        let _ = conn.send(setpos_packet).await;
+        mt_server_state.mt_clientside_pos = (dest_x, dest_y, dest_z);
+    }
+
 }
 
 pub async fn send_message(conn: &mut MinetestConnection, message: ChatPacket) {
@@ -143,9 +151,11 @@ pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &mut
     let mut state: BlockState;
     let mut param0: u16;
     let mut param1: u8;
+    let mut param2: u8;
     for state_arr_i in 0..4095 {
         state = state_arr[state_arr_i];
         param0 = azalea_registry::Block::try_from(state).unwrap().to_u32() as u16 + 128;
+        param2 = 0;
         
         // param1: transparency i think
         if state.is_air() {
@@ -158,7 +168,7 @@ pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &mut
         nodes[state_arr_i] = MapNode {
             param0,
             param1,
-            param2: 0
+            param2,
         }
     }
     

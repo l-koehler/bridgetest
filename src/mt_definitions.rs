@@ -43,11 +43,11 @@ pub fn get_movementspec() -> ToClientCommand {
             speed_crouch: 1.35,
             speed_fast: 20.0,
             speed_climb: 3.0,
-            speed_jump: 6.5,
+            speed_jump: 8.125, // roughly 1.25
             liquid_fluidity: 1.0,
             liquid_fluidity_smooth: 0.5,
             liquid_sink: 10.0,
-            gravity: 9.81,
+            gravity: 10.25,
         })
     );
     movement_command
@@ -133,14 +133,12 @@ pub async fn get_item_def_command(settings: &Config) -> ToClientCommand {
     
     let mut mc_name: String;
     let mut texture_name: String;
-    let mut stacklimit: i16;
     let mut item_definitions: Vec<ItemDef> = Vec::new();
     for item in arcticdata_items {
         mc_name = item.0;
         texture_name = format!("item-{}.png", mc_name.replace("minecraft:", ""));
-        stacklimit = item.1.get("maxStackSize").expect("Found a item without Stack Size!").as_u64().unwrap().try_into().unwrap(); // serde only offers as_u64, cant read u16 from file directly (qwq)
         utils::logger(&format!("[Itemdefs] Mapped {} to the texture {}", mc_name, texture_name), 0);
-        item_definitions.push(generate_itemdef(&mc_name, "TODO remove this :3", stacklimit, &texture_name));
+        item_definitions.push(generate_itemdef(&mc_name, item.1, &texture_name));
     }
     
     let alias_definitions: Vec<ItemAlias> = vec![ItemAlias {name: String::from(""), convert_to: String::from("")}];
@@ -157,8 +155,19 @@ pub async fn get_item_def_command(settings: &Config) -> ToClientCommand {
     return itemdef_command;
 }
 
-// TODO: just like the nodedef thing, this uses bad defaults and needs to get the whole JSON to get rid of these
-pub fn generate_itemdef(name: &str, description: &str, stacklimit: i16, inventory_image: &str) -> ItemDef {
+pub fn generate_itemdef(name: &str, item: serde_json::Value, inventory_image: &str) -> ItemDef {
+    let stack_max: i16 = item.get("maxStackSize").unwrap().as_i64().unwrap_or(0).try_into().unwrap();
+    let block_id: String = item.get("BlockId").unwrap().to_string();
+    let max_durability: i64 = item.get("maxDamage").unwrap().as_i64().unwrap_or(0);
+    let is_edible: bool = item.get("edible").unwrap().as_bool().unwrap_or(false);
+
+    let mut item_type: ItemType = ItemType::Craft;
+    if block_id != "minecraft:air" {
+        item_type = ItemType::Node;
+    } else if max_durability != 0 {
+        item_type = ItemType::Tool;
+    }
+    
     let simplesound_placeholder: SimpleSoundSpec = SimpleSoundSpec {
         name: String::from("[[ERROR]]"),
         gain: 1.0,
@@ -167,9 +176,9 @@ pub fn generate_itemdef(name: &str, description: &str, stacklimit: i16, inventor
     };
     ItemDef {
         version: 6, // https://github.com/minetest/minetest/blob/master/src/itemdef.cpp#L192
-        item_type: ItemType::None,
+        item_type: item_type.clone(),
         name: String::from(name),
-        description: String::from(description),
+        description: String::from(""),
         inventory_image: String::from(inventory_image),
         wield_image: String::from(inventory_image), // TODO what is a wield image doing and can i just decide to ignore it?
         wield_scale: v3f {
@@ -177,12 +186,12 @@ pub fn generate_itemdef(name: &str, description: &str, stacklimit: i16, inventor
             y: 1.0,
             z: 1.0,
         },
-        stack_max: stacklimit,
-        usable: false,
+        stack_max,
+        usable: (item_type == ItemType::Node || item_type == ItemType::Tool || is_edible),
         liquids_pointable: false,
         tool_capabilities: Option16::None,
         groups: Vec::new(),
-        node_placement_prediction: String::from(""),
+        node_placement_prediction: block_id, // air if the item is not a node
         sound_place: simplesound_placeholder.clone(),
         sound_place_failed: simplesound_placeholder,
         range: 5.0,
@@ -228,11 +237,16 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
     for block in arcticdata_blocks {
         mc_name = block.0;
         texture_base_name = mc_name.replace("minecraft:", "").replace(".png", "");
+        // moss carpet uses moss block texture
+        if texture_base_name == "moss_carpet" { texture_base_name = String::from("moss_block") };
+        
         id = block.1.get("id").expect("Found a block without ID!").as_u64().unwrap() as u16;
         // +128 because the MT engine has some builtin nodes below that.
         // generate_contentfeature ignores that and recieves the regular id,
         // everything else must adjust for this offset.
-        content_features.push((id+128, generate_contentfeature(id, &mc_name, block.1, texture_base_name)));
+        let texture_pack_res: u16 = settings.get_int("texture_pack_res").expect("Failed to read config!")
+        .try_into().expect("Texture pack resolutions above u16 are not supported. What are you even doing?");
+        content_features.push((id+128, generate_contentfeature(id, &mc_name, block.1, texture_base_name, texture_pack_res)));
     }
     let nodedef_command = ToClientCommand::Nodedef(
         Box::new(NodedefSpec {
@@ -244,7 +258,7 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
     return nodedef_command;
 }
 
-pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mut texture_base_name: String) -> ContentFeatures {
+pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mut texture_base_name: String, texture_pack_res: u16) -> ContentFeatures {
     // If *every* possible state is solid, then walkable=true
     // for light stuff, use the "brightest" state
     // for everything else, do other stuff idk look at the code
@@ -255,6 +269,7 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
     let mut liquid_range = 0;
     let mut liquid_viscosity = 0;
     let mut liquid_renewable = true;
+    let mut animation = TileAnimationParams::None;
     for state in block.get("states").unwrap().as_array().unwrap() {
         if !state.get("solid").unwrap().as_bool().unwrap() {
             walkable = false;
@@ -272,6 +287,7 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
         liquid_viscosity = 4; // blocks per second spread
         liquid_range = 7;
         texture_base_name.push_str("_still"); // water.png does not exist, mc uses water_still.png and water_flow.png
+        animation = TileAnimationParams::VerticalFrames { aspect_w: texture_pack_res, aspect_h: texture_pack_res, length: 2.0 }
     } else if this_block == Block::Lava {
         liquid_renewable = false;
         liquid_viscosity = 2; // assume overworld speeds, nether has yet to be implemented anyways
@@ -373,6 +389,9 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
         Block::Fire        => DrawType::FireLike,
         Block::SoulFire    => DrawType::FireLike,
         
+        Block::MangroveRoots => DrawType::GlassLike,
+        Block::Vine        => DrawType::GlassLike,
+        
         _ => DrawType::Normal,
     };
     
@@ -386,10 +405,10 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
     // texture stuff
     // texture_base_name is the basename.
     // if {texture_base_name}_top.png exists then use it etc, default to fallbacks
-    fn get_tiledef(texture: &str) -> TileDef {
+    fn get_tiledef(texture: &str, animation: &TileAnimationParams) -> TileDef {
         TileDef {
             name: String::from(texture),
-            animation: TileAnimationParams::None,
+            animation: animation.clone(),
             backface_culling: true,
             tileable_horizontal: false,
             tileable_vertical: false,
@@ -400,19 +419,19 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
     }
     let texture_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/assets/minecraft/textures/block/");
     let texture_fallback_name = &format!("block-{}.png", texture_base_name);
-    let mut tiledef_sides: [TileDef; 6] = [get_tiledef(texture_fallback_name), get_tiledef(texture_fallback_name), get_tiledef(texture_fallback_name), get_tiledef(texture_fallback_name), get_tiledef(texture_fallback_name), get_tiledef(texture_fallback_name)];
+    let mut tiledef_sides: [TileDef; 6] = [get_tiledef(texture_fallback_name, &animation), get_tiledef(texture_fallback_name, &animation), get_tiledef(texture_fallback_name, &animation), get_tiledef(texture_fallback_name, &animation), get_tiledef(texture_fallback_name, &animation), get_tiledef(texture_fallback_name, &animation)];
     
     if Path::new(texture_folder.join(format!("{}_top.png", texture_base_name)).as_path()).exists() {
-        tiledef_sides[0] = get_tiledef(&format!("block-{}_top.png", texture_base_name));
+        tiledef_sides[0] = get_tiledef(&format!("block-{}_top.png", texture_base_name), &animation);
     }
     if Path::new(texture_folder.join(format!("{}_bottom.png", texture_base_name)).as_path()).exists() {
-        tiledef_sides[1] = get_tiledef(&format!("block-{}_bottom.png", texture_base_name));
+        tiledef_sides[1] = get_tiledef(&format!("block-{}_bottom.png", texture_base_name), &animation);
     }
     if Path::new(texture_folder.join(format!("{}_side.png", texture_base_name)).as_path()).exists() {
-        tiledef_sides[2] = get_tiledef(&format!("block-{}_side.png", texture_base_name));
-        tiledef_sides[3] = get_tiledef(&format!("block-{}_side.png", texture_base_name));
-        tiledef_sides[4] = get_tiledef(&format!("block-{}_side.png", texture_base_name));
-        tiledef_sides[5] = get_tiledef(&format!("block-{}_side.png", texture_base_name));
+        tiledef_sides[2] = get_tiledef(&format!("block-{}_side.png", texture_base_name), &animation);
+        tiledef_sides[3] = get_tiledef(&format!("block-{}_side.png", texture_base_name), &animation);
+        tiledef_sides[4] = get_tiledef(&format!("block-{}_side.png", texture_base_name), &animation);
+        tiledef_sides[5] = get_tiledef(&format!("block-{}_side.png", texture_base_name), &animation);
     }
     
     let contentfeatures: ContentFeatures = ContentFeatures {

@@ -12,6 +12,8 @@ pub const CONF_FALLBACK: &str ="\
 ## feel free to change these values, shouldn't break anything important.
 # download link to a complete minecraft texture pack
 texture_pack_url = \"https://database.faithfulpack.net/packs/32x-Java/December%202023/Faithful%2032x%20-%201.20.4.zip\"
+# resolution of the texture pack
+texture_pack_res = 32
 # IP address of the minecraft server. domains DO NOT work.
 mc_server_addr = \"127.0.0.1:25565\"
 # address you will need to point your minetest client to

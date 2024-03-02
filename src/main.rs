@@ -30,6 +30,7 @@ async fn main() {
 pub struct MTServerState {
     players: Vec<String>, // names of all players
     // add other stuff i might need to keep track of
+    mt_clientside_pos: (f32, f32, f32),
 }
 
 async fn start_client_handler(settings: Config) {
@@ -40,6 +41,7 @@ async fn start_client_handler(settings: Config) {
     // Define a server state with stuff to keep track of
     let mt_server_state = MTServerState {
         players: Vec::new(),
+        mt_clientside_pos: (0.0, 0.0, 0.0)
     };
 
     // Wait for a client to join
