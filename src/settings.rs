@@ -36,6 +36,39 @@ pub const HEALTHBAR_ID: u32 = 0;
 pub const FOODBAR_ID:   u32 = 1;
 pub const AIRBAR_ID:    u32 = 2;
 
+// names to use for random name generation
+pub const HS_NAMES: [&str; 30] = [
+"Aradia_Megido",
+"Tavros_Nitram",
+"Sollux_Captor",
+"Karkat_Vantas",
+"Nepeta_Leijon",
+"Kanaya_Maryam",
+"Terezi_Pyrope",
+"Vriska_Serket",
+"Equius_Zahhak",
+"Gamzee_Makara",
+"Eridan_Ampora",
+"Feferi_Peixes",
+"John_Egbert",
+"Rose_Lalonde",
+"Dave_Strider",
+"Jade_Harley",
+"Jane_Egbert",
+"Roxy_Lalonde",
+"Dirk_Strider",
+"Jake_Harley",
+"Dad_Egbert",
+"Jane_Crocker",
+"Roxy_Lalonde",
+"Dirk_Strider",
+"Jake_English",
+"Dad_Crocker",
+"John_Crocker",
+"Rose_Lalonde",
+"Dave_Strider",
+"Jade_English"];
+
 /*
  * 0: Display every recieved packet
  * 1: Display some extra status messages (and every SENT packet lol i suck at this)

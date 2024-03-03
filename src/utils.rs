@@ -11,6 +11,7 @@ use azalea_protocol::packets::game::ClientboundGamePacket;
 use std::path::Path;
 use std::path::PathBuf;
 use std::io::Read;
+use rand::Rng;
 
 pub fn get_colormap(texture: &str) -> Option<(u8, u8, u8)> {
     // use the "Plains" texture. per-biome textures dont really work in mt afaik
@@ -94,8 +95,13 @@ pub fn logger(text: &str, level: i8) {
 pub fn show_mc_command(command: &Event) {
     match command {
         Event::Tick => (), // Don't log ticks, these happen far too often for that
-        _ => logger(&format!("[Minecraft] S->C {}", mc_packet_name(command)), 1)
+        _ => logger(&format!("[Minecraft] S->C {}", mc_packet_name(command)), 0)
     }
+}
+
+pub fn get_random_username() -> String {
+    let hs_name = String::from(settings::HS_NAMES[rand::thread_rng().gen_range(0..31)]);
+    format!("{}{:3}", hs_name, rand::thread_rng().gen_range(0..1000)) // :3
 }
 
 pub fn mc_packet_name(command: &Event) -> &str {

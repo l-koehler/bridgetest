@@ -790,6 +790,7 @@ dependencies = [
  "config",
  "dirs",
  "minetest-protocol",
+ "rand",
  "reqwest",
  "serde_json",
  "sha1",

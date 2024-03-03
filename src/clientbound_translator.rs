@@ -10,6 +10,7 @@ use crate::utils;
 use crate::mt_definitions;
 use crate::MTServerState;
 use azalea::entity::metadata::BubbleTime;
+use azalea::BlockPos;
 use mt_definitions::{HeartDisplay, FoodDisplay};
 
 use azalea_registry::Registry;
@@ -28,6 +29,7 @@ use azalea_protocol::packets::game::{ClientboundGamePacket,
     clientbound_player_position_packet::ClientboundPlayerPositionPacket,
     clientbound_set_time_packet::ClientboundSetTimePacket,
     clientbound_set_health_packet::ClientboundSetHealthPacket,
+    clientbound_set_default_spawn_position_packet::ClientboundSetDefaultSpawnPositionPacket
 };
 use azalea_protocol::packets::game::clientbound_level_chunk_with_light_packet::{ClientboundLevelChunkWithLightPacket, ClientboundLevelChunkPacketData};
 use azalea_protocol::packets::game::clientbound_system_chat_packet::ClientboundSystemChatPacket;
@@ -35,6 +37,41 @@ use std::sync::Arc;
 use std::io::Cursor;
 use azalea_world::chunk_storage;
 use azalea_block::BlockState;
+
+pub async fn set_spawn(source_packet: &ClientboundSetDefaultSpawnPositionPacket, mt_server_state: &mut MTServerState) {
+    let ClientboundSetDefaultSpawnPositionPacket { pos, angle: _ } = source_packet;
+    let BlockPos {x, y, z} = pos;
+    mt_server_state.respawn_pos = (*x as f32, *y as f32, *z as f32);
+}
+
+pub async fn death(conn: &MinetestConnection, mt_server_state: &mut MTServerState) {
+    let respawn_pos = mt_server_state.respawn_pos;
+    let setpos_packet = ToClientCommand::MovePlayer(
+        Box::new(wire::command::MovePlayerSpec {
+            pos: v3f {x: respawn_pos.0, y: respawn_pos.1, z: respawn_pos.2},
+            pitch: 0.0,
+            yaw: 0.0
+        })
+    );
+    let _ = conn.send(setpos_packet).await;
+    mt_server_state.mt_clientside_pos = respawn_pos;
+
+    let deathscreen = ToClientCommand::Deathscreen(
+        Box::new(wire::command::DeathscreenSpec {
+            set_camera_point_target: false,
+            camera_point_target: v3f {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0
+            }
+        })
+    );
+
+    let _ = conn.send(deathscreen).await;
+    println!("[[EVENTLOG]] MOV {:?}", respawn_pos);
+    println!("[[EVENTLOG]] DIE NOW");
+    panic!("[[FINAL EVT]] DEAD");
+}
 
 pub async fn edit_healthbar(mode: HeartDisplay, num: u32, conn: &MinetestConnection) {
     // num is from 0 to 20
@@ -167,6 +204,7 @@ pub async fn set_player_pos(source_packet: &ClientboundPlayerPositionPacket, con
                    (dest_y - mt_server_state.mt_clientside_pos.1).abs() +
                    (dest_z - mt_server_state.mt_clientside_pos.2).abs();
     
+    println!("dest: {}, state: {}, diff: {}", dest_x, mt_server_state.mt_clientside_pos.0, (dest_x - mt_server_state.mt_clientside_pos.0).abs());
     if abs_diff > 0.1 {
         let setpos_packet = ToClientCommand::MovePlayer(
             Box::new(wire::command::MovePlayerSpec {
@@ -178,7 +216,6 @@ pub async fn set_player_pos(source_packet: &ClientboundPlayerPositionPacket, con
         let _ = conn.send(setpos_packet).await;
         mt_server_state.mt_clientside_pos = (dest_x, dest_y, dest_z);
     }
-
 }
 
 pub async fn send_message(conn: &mut MinetestConnection, message: ChatPacket) {
@@ -229,7 +266,7 @@ pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &mut
      * z=1: 0,0,0, 0,0,0, 0,0,0, \___ gets repeated for each Z, to be a 3^3 cube
      * z=0: 0,0,0, 0,0,0, 0,0,0, /
      */
-    utils::logger(&format!("[Minetest] S->C Initializing 16^3 nodes at {}/{}/{}", x_pos, y_pos, z_pos), 1);
+    utils::logger(&format!("[Minetest] S->C Initializing 16^3 nodes at {}/{}/{}", x_pos, y_pos, z_pos), 0);
     // TODO this does not support actual metadata
     let mut metadata_vec = Vec::new();
     // subcoordinates within the chunk

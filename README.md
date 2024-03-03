@@ -59,6 +59,11 @@ Technical Limitations:
   needs to be the bleeding-edge git version, but you can simply ignore  
   this warning here if you only want to *use* this program.  
 
+* You will need a decent computer to run this program. Also, unoptimized  
+  builds will **not** work. This program  
+  needs to process every packet fast enough to not let the unprocessed  
+  packets pile up (slowing it down further).  
+
 #### Isn't this violating Microsofts Intellectual Property?
 
 The minecraft protocol is implemented by another library, not by me.  

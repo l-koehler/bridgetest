@@ -416,15 +416,18 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
     // liquid stuff
     if this_block == Block::Water {
         liquid_renewable = true;
-        liquid_viscosity = 4; // blocks per second spread
+        liquid_viscosity = 0; // determines how much the liquid slows the player down
         liquid_range = 7;
         texture_base_name.push_str("_still"); // water.png does not exist, mc uses water_still.png and water_flow.png
-        animation = TileAnimationParams::VerticalFrames { aspect_w: texture_pack_res, aspect_h: texture_pack_res, length: 2.0 }
     } else if this_block == Block::Lava {
         liquid_renewable = false;
-        liquid_viscosity = 2; // assume overworld speeds, nether has yet to be implemented anyways
+        liquid_viscosity = 1;
         liquid_range = 4;
         texture_base_name.push_str("_still");
+    }
+    // animated textures
+    if [Block::Water, Block::Lava, Block::Seagrass, Block::TallSeagrass, Block::NetherPortal, Block::EndPortal, Block::MagmaBlock].contains(&this_block) {
+        animation = TileAnimationParams::VerticalFrames { aspect_w: texture_pack_res, aspect_h: texture_pack_res, length: 2.0 }
     }
     
     // drawtype is a little complicated, there isn't a field in the json for that.
@@ -469,6 +472,8 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
         Block::LargeFern   => DrawType::PlantLike,
         Block::HangingRoots => DrawType::PlantLike,
         Block::SweetBerryBush => DrawType::PlantLike,
+        Block::Seagrass    => DrawType::PlantLike,
+        Block::TallSeagrass => DrawType::PlantLike,
         Block::PointedDripstone => DrawType::PlantLike, // totally a plant, whatever
         
         Block::LilyPad     => DrawType::SignLike, // is flat without param2
@@ -553,6 +558,7 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
     let texture_fallback_name = &format!("block-{}.png", texture_base_name);
     let mut tiledef_sides: [TileDef; 6] = [get_tiledef(texture_fallback_name, &animation), get_tiledef(texture_fallback_name, &animation), get_tiledef(texture_fallback_name, &animation), get_tiledef(texture_fallback_name, &animation), get_tiledef(texture_fallback_name, &animation), get_tiledef(texture_fallback_name, &animation)];
     
+    // TODO: This breaks tall blocks (doors etc) which use _top and _bottom
     if Path::new(texture_folder.join(format!("{}_top.png", texture_base_name)).as_path()).exists() {
         tiledef_sides[0] = get_tiledef(&format!("block-{}_top.png", texture_base_name), &animation);
     }

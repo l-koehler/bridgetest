@@ -52,12 +52,15 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
         Event::AddPlayer(player_data) => clientbound_translator::add_player(player_data, mt_conn, mt_server_state).await,
         Event::Chat(message) => clientbound_translator::send_message(mt_conn, message).await,
         Event::Tick => on_minecraft_tick(mt_conn, mc_client, mt_server_state).await,
+        Event::Death(_) => clientbound_translator::death(mt_conn, mt_server_state).await,
         Event::Packet(packet_value) => match (*packet_value).clone() {
             ClientboundGamePacket::ChunkBatchStart(_) => clientbound_translator::chunkbatch(mt_conn, mc_conn).await,
             ClientboundGamePacket::SystemChat(message) => clientbound_translator::send_sys_message(mt_conn, &message.clone()).await,
             ClientboundGamePacket::PlayerPosition(playerpos_packet) => clientbound_translator::set_player_pos(&playerpos_packet.clone(), mt_conn, mt_server_state).await,
             ClientboundGamePacket::SetTime(settime_packet) => clientbound_translator::set_time(&settime_packet.clone(), mt_conn).await,
             ClientboundGamePacket::SetHealth(sethealth_packet) => clientbound_translator::set_health(&sethealth_packet.clone(), mt_conn, mt_server_state).await,
+            ClientboundGamePacket::SetDefaultSpawnPosition(setspawn_packet) => clientbound_translator::set_spawn(&setspawn_packet.clone(), mt_server_state).await,
+            ClientboundGamePacket::KeepAlive(_) => utils::logger("[Minecraft] Got KeepAlive packet, ignoring it.", 0),
             _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),
         }
         _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),
@@ -77,7 +80,10 @@ pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection, 
         utils::logger("commands::handshake() got called with a ToServerCommand that was not a C->S Init", 3);
         panic!("handshake() got called with non-init packet!")
     }
-    let player_name = init_command.player_name.clone(); // Fix to not trip the borrow checker (Needed for Account::offline)
+    let mut player_name = init_command.player_name;
+    if player_name == "random" {
+        player_name = utils::get_random_username();
+    }
     mt_server_state.players.push(player_name.clone());
     // Send S->C Hello
     let hello_command = ToClientCommand::Hello(
@@ -90,7 +96,7 @@ pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection, 
                 srp: false,
                 first_srp: true,
             },
-            username_legacy: init_command.player_name,
+            username_legacy: player_name.clone(),
         })
     );
     let _ = conn.send(hello_command).await;
