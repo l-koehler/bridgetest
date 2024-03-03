@@ -9,9 +9,8 @@ use crate::settings;
 use crate::utils;
 use crate::mt_definitions;
 use crate::MTServerState;
-use azalea::entity::metadata::BubbleTime;
 use azalea::BlockPos;
-use mt_definitions::{HeartDisplay, FoodDisplay};
+use mt_definitions::{HeartDisplay, FoodDisplay, Dimensions};
 
 use azalea_registry::Registry;
 use minetest_protocol::wire::command::ToClientCommand;
@@ -29,8 +28,11 @@ use azalea_protocol::packets::game::{ClientboundGamePacket,
     clientbound_player_position_packet::ClientboundPlayerPositionPacket,
     clientbound_set_time_packet::ClientboundSetTimePacket,
     clientbound_set_health_packet::ClientboundSetHealthPacket,
-    clientbound_set_default_spawn_position_packet::ClientboundSetDefaultSpawnPositionPacket
+    clientbound_set_default_spawn_position_packet::ClientboundSetDefaultSpawnPositionPacket,
+    clientbound_respawn_packet::ClientboundRespawnPacket,
 };
+use azalea_protocol::packets::common::CommonPlayerSpawnInfo;
+use azalea_core::resource_location::ResourceLocation;
 use azalea_protocol::packets::game::clientbound_level_chunk_with_light_packet::{ClientboundLevelChunkWithLightPacket, ClientboundLevelChunkPacketData};
 use azalea_protocol::packets::game::clientbound_system_chat_packet::ClientboundSystemChatPacket;
 use std::sync::Arc;
@@ -38,12 +40,39 @@ use std::io::Cursor;
 use azalea_world::chunk_storage;
 use azalea_block::BlockState;
 
+pub async fn update_dimension(source_packet: &ClientboundRespawnPacket, mt_server_state: &mut MTServerState) {
+    let ClientboundRespawnPacket { common: player_spawn_info, data_to_keep: _ } = source_packet;
+    let CommonPlayerSpawnInfo {
+        dimension_type: _,
+        dimension,
+        seed: _,
+        game_type: _,
+        previous_game_type: _,
+        is_debug: _,
+        is_flat: _,
+        last_death_location: _,
+        portal_cooldown: _
+    } = player_spawn_info;
+    let ResourceLocation { namespace, path } = dimension;
+    if namespace != "minecraft" {
+        mt_server_state.current_dimension = Dimensions::Custom;
+    } else {
+        mt_server_state.current_dimension = match path.as_str() {
+            "overworld" => Dimensions::Overworld,
+            "the_nether" => Dimensions::Nether,
+            "the_end" => Dimensions::End,
+            _ => Dimensions::Custom
+        };
+    }
+    utils::logger(&format!("[Minetest] New Dimension: {}:{}", namespace, path), 1)
+}
+
 pub async fn set_spawn(source_packet: &ClientboundSetDefaultSpawnPositionPacket, mt_server_state: &mut MTServerState) {
     let ClientboundSetDefaultSpawnPositionPacket { pos, angle: _ } = source_packet;
     let BlockPos {x, y, z} = pos;
-    let dest_x = (*x as f32);
-    let dest_y = (*y as f32);
-    let dest_z = (*z as f32);
+    let dest_x = *x as f32;
+    let dest_y = *y as f32;
+    let dest_z = *z as f32;
     mt_server_state.respawn_pos = (dest_x, dest_y, dest_z);
 }
 
@@ -340,11 +369,12 @@ pub async fn add_player(player_data: PlayerInfo, conn: &mut MinetestConnection, 
     utils::logger("[Minetest] S->C UpdatePlayerList", 1);
 }
 
-pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut UnboundedReceiver<Event>) {
+pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut UnboundedReceiver<Event>, mt_server_state: &MTServerState) {
     utils::logger("[Minetest] Forwarding ChunkBatch...", 1);
     // called by a ChunkBatchStart
     // first let azalea do everything until ChunkBatchFinished,
     // then move the azalea world over to the client
+    let y_bounds = mt_definitions::get_y_bounds(&mt_server_state.current_dimension);
     loop {
         tokio::select! {
             t = mc_conn.recv() => {
@@ -356,7 +386,7 @@ pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut Unbounde
                             Event::Packet(packet_value) => match Arc::unwrap_or_clone(packet_value) {
                                 ClientboundGamePacket::LevelChunkWithLight(packet_data) => {
                                     utils::logger("[Minecraft] S->C LevelchunkWithLight", 1);
-                                    send_level_chunk(&packet_data, mt_conn).await;
+                                    send_level_chunk(&packet_data, mt_conn, &y_bounds).await;
                                 },
                                 ClientboundGamePacket::ChunkBatchFinished(_) => {
                                     utils::logger("[Minecraft] S->C ChunkBatchFinished", 1);
@@ -374,7 +404,7 @@ pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut Unbounde
     }
 }
 
-pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket, mt_conn: &mut MinetestConnection) {
+pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket, mt_conn: &mut MinetestConnection, y_bounds: &(i16, i16)) {
     // Parse packet
     let ClientboundLevelChunkWithLightPacket {x: chunk_x_pos, z: chunk_z_pos, chunk_data: chunk_packet_data, light_data: _} = packet_data;
     let ClientboundLevelChunkPacketData { heightmaps: chunk_heightmaps, data: chunk_data, block_entities: _ } = chunk_packet_data;
@@ -384,8 +414,8 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
     let mut nodearr: [BlockState; 4096] = [BlockState{id:125};4096];
     // for each y level (mc chunks go from top to bottom, while mt chunks are 16 nodes high)
     let mut chunk_data_cursor = Cursor::new(chunk_data.as_slice());
-    let dimension_height = i16::abs_diff(settings::Y_LOWER, settings::Y_UPPER).into();
-    let mc_chunk: chunk_storage::Chunk = chunk_storage::Chunk::read_with_dimension_height(&mut chunk_data_cursor, dimension_height, settings::Y_LOWER.into(), chunk_heightmaps)
+    let dimension_height = i16::abs_diff(y_bounds.0, y_bounds.1).into();
+    let mc_chunk: chunk_storage::Chunk = chunk_storage::Chunk::read_with_dimension_height(&mut chunk_data_cursor, dimension_height, y_bounds.0.into(), chunk_heightmaps)
     .expect("Failed to parse chunk!");
     let chunk_storage::Chunk { sections, heightmaps: _ } = &mc_chunk; // heightmaps get ignored, these are just chunk_heightmaps
     
@@ -397,7 +427,7 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
      * 127: Ignored (The stuff unloaded chunks are considered to consist of)
      */
 
-    let mut chunk_y_pos = settings::Y_LOWER/16;
+    let mut chunk_y_pos = y_bounds.0/16;
     for section in sections { // foreach possible section height (-4 .. 20)
         // for each block in the 16^3 chunk
         for z in 0..16 {

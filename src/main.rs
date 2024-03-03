@@ -11,6 +11,7 @@ mod serverbound_translator;
 mod mt_definitions;
 
 use minetest_protocol::MinetestServer;
+use mt_definitions::Dimensions;
 
 use alloc::vec::Vec;
 use config::Config;
@@ -33,6 +34,7 @@ pub struct MTServerState {
     mt_clientside_pos: (f32, f32, f32), // used to tolerate slight position differences, resulting in far smoother movement
     mt_last_known_health: u16, // used to determine if a HP change should trigger a damage effect flash
     respawn_pos: (f32, f32, f32),
+    current_dimension: Dimensions
 }
 
 async fn start_client_handler(settings: Config) {
@@ -41,11 +43,13 @@ async fn start_client_handler(settings: Config) {
     utils::logger(&format!("[Minetest] Creating Server ({})...", mt_server_addr), 1);
     let mut mt_server = MinetestServer::new(mt_server_addr.parse().unwrap());
     // Define a server state with stuff to keep track of
+    // Sane defaults aren't possible, all this will be overwritten before getting read anyways
     let mt_server_state = MTServerState {
         players: Vec::new(),
         mt_clientside_pos: (0.0, 0.0, 0.0),
         mt_last_known_health: 0,
         respawn_pos: (0.0, 0.0, 0.0),
+        current_dimension: Dimensions::Overworld
     };
 
     // Wait for a client to join

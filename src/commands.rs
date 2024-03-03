@@ -54,12 +54,16 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
         Event::Tick => on_minecraft_tick(mt_conn, mc_client, mt_server_state).await,
         Event::Death(_) => clientbound_translator::death(mt_conn, mt_server_state).await,
         Event::Packet(packet_value) => match (*packet_value).clone() {
-            ClientboundGamePacket::ChunkBatchStart(_) => clientbound_translator::chunkbatch(mt_conn, mc_conn).await,
+            ClientboundGamePacket::ChunkBatchStart(_) => clientbound_translator::chunkbatch(mt_conn, mc_conn, mt_server_state).await,
             ClientboundGamePacket::SystemChat(message) => clientbound_translator::send_sys_message(mt_conn, &message.clone()).await,
             ClientboundGamePacket::PlayerPosition(playerpos_packet) => clientbound_translator::set_player_pos(&playerpos_packet.clone(), mt_conn, mt_server_state).await,
             ClientboundGamePacket::SetTime(settime_packet) => clientbound_translator::set_time(&settime_packet.clone(), mt_conn).await,
             ClientboundGamePacket::SetHealth(sethealth_packet) => clientbound_translator::set_health(&sethealth_packet.clone(), mt_conn, mt_server_state).await,
+            // these two are misleading. SetDefaultSpawnPosition sets the on-death respawn position,
+            // Respawn (re)*SPAWNS* the player in a different dimension and is entirely unrelated to death!
             ClientboundGamePacket::SetDefaultSpawnPosition(setspawn_packet) => clientbound_translator::set_spawn(&setspawn_packet.clone(), mt_server_state).await,
+            ClientboundGamePacket::Respawn(respawn_packet) => clientbound_translator::update_dimension(&respawn_packet.clone(), mt_server_state).await,
+
             ClientboundGamePacket::KeepAlive(_) => utils::logger("[Minecraft] Got KeepAlive packet, ignoring it.", 0),
             ClientboundGamePacket::RemoveEntities(_) => (), // aaa stop spamming my console what the fuck is a entity
             ClientboundGamePacket::MoveEntityPos(_) => (),

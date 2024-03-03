@@ -45,6 +45,22 @@ pub enum FoodDisplay {
     NoChange
 }
 
+pub enum Dimensions {
+    Overworld,
+    Nether,
+    End,
+    Custom // assumes overworld height
+}
+
+pub const fn get_y_bounds(dimension: &Dimensions) -> (i16, i16) {
+    match dimension {
+        Dimensions::Nether => (0, 255), // worldgen limit is 128, but players can go above that
+        Dimensions::End => (0, 255),
+        Dimensions::Overworld => (-64, 320),
+        Dimensions::Custom => (-64, 320)
+    }
+}
+
 pub fn add_healthbar() -> ToClientCommand {
     let hudadd_command = ToClientCommand::Hudadd(
         Box::new(HudaddSpec {

@@ -5,10 +5,6 @@
  * Also some other constants and hacks
  */
 
-// world height limit
-pub const Y_LOWER: i16 = -64;
-pub const Y_UPPER: i16 = 320;
-
 // default text for config file
 pub const CONF_FALLBACK: &str ="\
 ## feel free to change these values, shouldn't break anything important.
