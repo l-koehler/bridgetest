@@ -385,9 +385,6 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
     for block in arcticdata_blocks {
         mc_name = block.0;
         texture_base_name = mc_name.replace("minecraft:", "").replace(".png", "");
-        // moss carpet uses moss block texture
-        if texture_base_name == "moss_carpet" { texture_base_name = String::from("moss_block") };
-        
         id = block.1.get("id").expect("Found a block without ID!").as_u64().unwrap() as u16;
         // +128 because the MT engine has some builtin nodes below that.
         // generate_contentfeature ignores that and recieves the regular id,
@@ -527,6 +524,13 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
     if [Block::Water, Block::Lava, Block::Seagrass, Block::TallSeagrass, Block::NetherPortal, Block::EndPortal, Block::MagmaBlock].contains(&this_block) {
         animation = TileAnimationParams::VerticalFrames { aspect_w: texture_pack_res, aspect_h: texture_pack_res, length: 2.0 }
     }
+    // some blocks just use the texture of other blocks
+    if ![Block::BambooFence, Block::BambooFenceGate].contains(&this_block) {
+        texture_base_name = texture_base_name.replace("_fence", "_planks");
+    } else {
+        texture_base_name = texture_base_name.replace("_carpet", "_block");
+    }
+
     
     // drawtype is a little complicated, there isn't a field in the json for that.
     /*
