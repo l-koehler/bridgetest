@@ -31,7 +31,7 @@ use azalea_protocol::packets::game::ClientboundGamePacket;
 use config::Config;
 use std::net::SocketAddr;
 
-pub async fn mt_auto(command: ToServerCommand, mt_conn: &mut MinetestConnection, mc_client: &azalea::Client) {
+pub async fn mt_auto(command: ToServerCommand, mt_conn: &mut MinetestConnection, mc_client: &azalea::Client, mt_server_state: &mut MTServerState) {
     match command {
         ToServerCommand::Null(_) => (), // Drop NULL
         ToServerCommand::Init(_) => utils::logger("[Minetest] Client sent Init, but handshake already done!", 2),
@@ -39,7 +39,7 @@ pub async fn mt_auto(command: ToServerCommand, mt_conn: &mut MinetestConnection,
         ToServerCommand::ModchannelJoin(_) => utils::logger("[Minetest] Client sent ModchannelJoin, this does not exist in MC", 2),
         ToServerCommand::ModchannelLeave(_) => utils::logger("[Minetest] Client sent ModchannelLeave, this does not exist in MC", 2),
         ToServerCommand::TSModchannelMsg(_) => utils::logger("[Minetest] Client sent TSModchannelMsg, this does not exist in MC", 2),
-        ToServerCommand::Playerpos(specbox) => serverbound_translator::playerpos(&mc_client, specbox).await,
+        ToServerCommand::Playerpos(specbox) => serverbound_translator::playerpos(&mc_client, specbox, mt_server_state).await,
         ToServerCommand::TSChatMessage(specbox) => serverbound_translator::send_message(&mc_client, specbox),
         _ => utils::logger(&format!("[Minetest] Got unimplemented command, dropping {}", command.command_name()), 2) // Drop packet if unable to match
     }
@@ -61,13 +61,21 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
             ClientboundGamePacket::SetHealth(sethealth_packet) => clientbound_translator::set_health(&sethealth_packet.clone(), mt_conn, mt_server_state).await,
             ClientboundGamePacket::SetDefaultSpawnPosition(setspawn_packet) => clientbound_translator::set_spawn(&setspawn_packet.clone(), mt_server_state).await,
             ClientboundGamePacket::KeepAlive(_) => utils::logger("[Minecraft] Got KeepAlive packet, ignoring it.", 0),
+            ClientboundGamePacket::RemoveEntities(_) => (), // aaa stop spamming my console what the fuck is a entity
+            ClientboundGamePacket::MoveEntityPos(_) => (),
+            ClientboundGamePacket::MoveEntityPosRot(_) => (),
+            ClientboundGamePacket::MoveEntityRot(_) => (),
+            ClientboundGamePacket::SetEntityMotion(_) => (),
+            ClientboundGamePacket::RotateHead(_) => (),
+            ClientboundGamePacket::TeleportEntity(_) => (),
+            ClientboundGamePacket::EntityEvent(_) => (),
             _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),
         }
         _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),
     };
 }
 
-pub async fn on_minecraft_tick(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_server_state: &MTServerState) {
+pub async fn on_minecraft_tick(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_server_state: &mut MTServerState) {
     
 }
 
@@ -83,6 +91,7 @@ pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection, 
     let mut player_name = init_command.player_name;
     if player_name == "random" {
         player_name = utils::get_random_username();
+        utils::logger(&format!("Using random username: {}", player_name), 1);
     }
     mt_server_state.players.push(player_name.clone());
     // Send S->C Hello

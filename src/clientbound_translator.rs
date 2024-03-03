@@ -41,7 +41,10 @@ use azalea_block::BlockState;
 pub async fn set_spawn(source_packet: &ClientboundSetDefaultSpawnPositionPacket, mt_server_state: &mut MTServerState) {
     let ClientboundSetDefaultSpawnPositionPacket { pos, angle: _ } = source_packet;
     let BlockPos {x, y, z} = pos;
-    mt_server_state.respawn_pos = (*x as f32, *y as f32, *z as f32);
+    let dest_x = (*x as f32);
+    let dest_y = (*y as f32);
+    let dest_z = (*z as f32);
+    mt_server_state.respawn_pos = (dest_x, dest_y, dest_z);
 }
 
 pub async fn death(conn: &MinetestConnection, mt_server_state: &mut MTServerState) {
@@ -54,23 +57,21 @@ pub async fn death(conn: &MinetestConnection, mt_server_state: &mut MTServerStat
         })
     );
     let _ = conn.send(setpos_packet).await;
-    mt_server_state.mt_clientside_pos = respawn_pos;
-
+/*
     let deathscreen = ToClientCommand::Deathscreen(
         Box::new(wire::command::DeathscreenSpec {
-            set_camera_point_target: false,
+            set_camera_point_target: true,
             camera_point_target: v3f {
-                x: 0.0,
-                y: 0.0,
-                z: 0.0
+                x: respawn_pos.0,
+                y: respawn_pos.1,
+                z: respawn_pos.2
             }
         })
     );
 
-    let _ = conn.send(deathscreen).await;
-    println!("[[EVENTLOG]] MOV {:?}", respawn_pos);
-    println!("[[EVENTLOG]] DIE NOW");
-    panic!("[[FINAL EVT]] DEAD");
+    let _ = conn.send(deathscreen).await;*/
+
+    set_health(&ClientboundSetHealthPacket { health: 20.0, food: 20, saturation: 0.0 }, conn, mt_server_state).await;
 }
 
 pub async fn edit_healthbar(mode: HeartDisplay, num: u32, conn: &MinetestConnection) {
@@ -344,7 +345,6 @@ pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut Unbounde
     // called by a ChunkBatchStart
     // first let azalea do everything until ChunkBatchFinished,
     // then move the azalea world over to the client
-    utils::logger("chunkbatch", 3);
     loop {
         tokio::select! {
             t = mc_conn.recv() => {

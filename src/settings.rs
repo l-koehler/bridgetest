@@ -37,7 +37,7 @@ pub const FOODBAR_ID:   u32 = 1;
 pub const AIRBAR_ID:    u32 = 2;
 
 // names to use for random name generation
-pub const HS_NAMES: [&str; 30] = [
+pub const HS_NAMES: [&str; 26] = [
 "Aradia_Megido",
 "Tavros_Nitram",
 "Sollux_Captor",
@@ -56,17 +56,13 @@ pub const HS_NAMES: [&str; 30] = [
 "Jade_Harley",
 "Jane_Egbert",
 "Roxy_Lalonde",
-"Dirk_Strider",
 "Jake_Harley",
 "Dad_Egbert",
 "Jane_Crocker",
-"Roxy_Lalonde",
 "Dirk_Strider",
 "Jake_English",
 "Dad_Crocker",
 "John_Crocker",
-"Rose_Lalonde",
-"Dave_Strider",
 "Jade_English"];
 
 /*

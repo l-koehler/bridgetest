@@ -8,6 +8,7 @@ use azalea_protocol::packets::game::serverbound_move_player_pos_rot_packet::Serv
 use alloc::boxed::Box;
 use minetest_protocol::wire::command::{TSChatMessageSpec, PlayerposSpec};
 use minetest_protocol::wire::types::{PlayerPos, v3f};
+use crate::MTServerState;
 
 pub fn send_message(mc_client: &Client, specbox: Box<TSChatMessageSpec>) {
     utils::logger("[Minetest] C->S Forwarding Message sent by client", 1);
@@ -15,7 +16,7 @@ pub fn send_message(mc_client: &Client, specbox: Box<TSChatMessageSpec>) {
     mc_client.chat(&message);
 }
 
-pub async fn playerpos(mc_client: &Client, specbox: Box<PlayerposSpec>) {
+pub async fn playerpos(mc_client: &Client, specbox: Box<PlayerposSpec>, mt_server_state: &mut MTServerState) {
     let PlayerposSpec { player_pos } = *specbox; // vvv what does this do please let me ignore it
     let PlayerPos { position, speed: _, pitch, yaw, keys_pressed: _, fov: _, wanted_range: _ } = player_pos;
     let v3f {x, y, z } = position;
@@ -38,6 +39,6 @@ pub async fn playerpos(mc_client: &Client, specbox: Box<PlayerposSpec>) {
             on_ground: true // i don't know, thats why the server needs to not have an anticheat
         }
     };
-    // TODO send that thing over the raw connection
     let _ = mc_client.write_packet(movement_packet);
+    mt_server_state.mt_clientside_pos = (x, y, z);
 }
