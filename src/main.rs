@@ -34,7 +34,8 @@ pub struct MTServerState {
     mt_clientside_pos: (f32, f32, f32), // used to tolerate slight position differences, resulting in far smoother movement
     mt_last_known_health: u16, // used to determine if a HP change should trigger a damage effect flash
     respawn_pos: (f32, f32, f32),
-    current_dimension: Dimensions
+    current_dimension: Dimensions,
+    is_sneaking: bool
 }
 
 async fn start_client_handler(settings: Config) {
@@ -49,7 +50,8 @@ async fn start_client_handler(settings: Config) {
         mt_clientside_pos: (0.0, 0.0, 0.0),
         mt_last_known_health: 0,
         respawn_pos: (0.0, 0.0, 0.0),
-        current_dimension: Dimensions::Overworld
+        current_dimension: Dimensions::Overworld,
+        is_sneaking: false
     };
 
     // Wait for a client to join

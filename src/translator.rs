@@ -39,7 +39,7 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
         };
 
     }
-    let (mc_client, mut mc_conn) = commands::handshake(command, &mut mt_conn, &mut mt_server_state, &settings).await;
+    let (mut mc_client, mut mc_conn) = commands::handshake(command, &mut mt_conn, &mut mt_server_state, &settings).await;
     // Await a LOGIN packet
     // It verifies that the client is now in the server world
     utils::logger("[Minecraft] Awaiting S->C Login confirmation...", 1);
@@ -123,7 +123,7 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
                 }
                 let mt_command = t.expect("[Minetest] Failed to unwrap Ok(_) packet from Client!");
                 utils::show_mt_command(&mt_command);
-                commands::mt_auto(mt_command, &mut mt_conn, &mc_client, &mut mt_server_state).await;
+                commands::mt_auto(mt_command, &mut mt_conn, &mut mc_client, &mut mt_server_state).await;
             },
             // or the minecraft connection
             t = mc_conn.recv() => {

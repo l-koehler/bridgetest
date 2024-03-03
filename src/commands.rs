@@ -31,7 +31,7 @@ use azalea_protocol::packets::game::ClientboundGamePacket;
 use config::Config;
 use std::net::SocketAddr;
 
-pub async fn mt_auto(command: ToServerCommand, mt_conn: &mut MinetestConnection, mc_client: &azalea::Client, mt_server_state: &mut MTServerState) {
+pub async fn mt_auto(command: ToServerCommand, mt_conn: &mut MinetestConnection, mc_client: &mut azalea::Client, mt_server_state: &mut MTServerState) {
     match command {
         ToServerCommand::Null(_) => (), // Drop NULL
         ToServerCommand::Init(_) => utils::logger("[Minetest] Client sent Init, but handshake already done!", 2),
@@ -39,7 +39,7 @@ pub async fn mt_auto(command: ToServerCommand, mt_conn: &mut MinetestConnection,
         ToServerCommand::ModchannelJoin(_) => utils::logger("[Minetest] Client sent ModchannelJoin, this does not exist in MC", 2),
         ToServerCommand::ModchannelLeave(_) => utils::logger("[Minetest] Client sent ModchannelLeave, this does not exist in MC", 2),
         ToServerCommand::TSModchannelMsg(_) => utils::logger("[Minetest] Client sent TSModchannelMsg, this does not exist in MC", 2),
-        ToServerCommand::Playerpos(specbox) => serverbound_translator::playerpos(&mc_client, specbox, mt_server_state).await,
+        ToServerCommand::Playerpos(specbox) => serverbound_translator::playerpos(mc_client, specbox, mt_server_state).await,
         ToServerCommand::TSChatMessage(specbox) => serverbound_translator::send_message(&mc_client, specbox),
         _ => utils::logger(&format!("[Minetest] Got unimplemented command, dropping {}", command.command_name()), 2) // Drop packet if unable to match
     }
