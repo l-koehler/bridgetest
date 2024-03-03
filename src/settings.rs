@@ -33,9 +33,7 @@ pub const FOODBAR_ID:   u32 = 1;
 pub const AIRBAR_ID:    u32 = 2;
 
 // max "disagreement" between server and client about position
-pub const POS_DIFF_TOLERANCE: f32 = 0.2;
-// the y position will be multiplied by this before being considered in the difference calculation
-pub const Y_DIFF_FACTOR: f32 = 0.5;
+pub const POS_DIFF_TOLERANCE: f32 = 0.5;
 
 // names to use for random name generation
 pub const HS_NAMES: [&str; 26] = [

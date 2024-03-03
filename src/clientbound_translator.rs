@@ -224,17 +224,16 @@ pub async fn set_time(source_packet: &ClientboundSetTimePacket, conn: &MinetestC
 pub async fn set_player_pos(source_packet: &ClientboundPlayerPositionPacket, conn: &MinetestConnection, mt_server_state: &mut MTServerState) {
     // y_rot: yaw
     // x_rot: pitch
-    // source: https://en.wikipedia.org/wiki/Aircraft_principal_axes
+    // for some weird reason minetest uses 10*coordinates in packets
     let ClientboundPlayerPositionPacket {x: source_x, y: source_y, z: source_z, y_rot: source_yaw, x_rot: source_pitch, relative_arguments: _, id: _} = source_packet;
     let dest_x = (*source_x as f32) * 10.0;
     let dest_y = (*source_y as f32) * 10.0;
     let dest_z = (*source_z as f32) * 10.0;
 
-    let abs_diff = (dest_x - mt_server_state.mt_clientside_pos.0).abs() +
-                   (dest_y - mt_server_state.mt_clientside_pos.1).abs()*settings::Y_DIFF_FACTOR +
-                   (dest_z - mt_server_state.mt_clientside_pos.2).abs();
+    let abs_diff = (dest_x - mt_server_state.mt_clientside_pos.0).abs()/10.0 +
+                   (dest_y - mt_server_state.mt_clientside_pos.1).abs()/10.0 +
+                   (dest_z - mt_server_state.mt_clientside_pos.2).abs()/10.0;
     
-    println!("dest: {}, state: {}, diff: {}", dest_x, mt_server_state.mt_clientside_pos.0, (dest_x - mt_server_state.mt_clientside_pos.0).abs());
     if abs_diff > settings::POS_DIFF_TOLERANCE {
         let setpos_packet = ToClientCommand::MovePlayer(
             Box::new(wire::command::MovePlayerSpec {
