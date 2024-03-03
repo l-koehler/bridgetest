@@ -247,7 +247,7 @@ pub fn get_inventory_formspec() -> ToClientCommand {
     formspec_command
 }
 
-pub fn get_metadata_placeholder(x_pos: u16, y_pos: u16, z_pos: u16) -> (BlockPos, NodeMetadata) {
+pub const fn get_metadata_placeholder(x_pos: u16, y_pos: u16, z_pos: u16) -> (BlockPos, NodeMetadata) {
     let blockpos = BlockPos {
         raw: (16*z_pos + y_pos)*16 + x_pos,
     };
@@ -396,6 +396,88 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
         .try_into().expect("Texture pack resolutions above u16 are not supported. What are you even doing?");
         content_features.push((id+128, generate_contentfeature(id, &mc_name, block.1, texture_base_name, texture_pack_res)));
     }
+    
+    // add a special block without MC equivalent: glowing_air. this block will replace cave_air in the nether.
+    // because the minetest engine has no concept of dimensions, it is impossible to tell it to make air glow in the nether.
+    let tiledef = TileDef {
+        name: String::from("block-air.png"),
+        animation: TileAnimationParams::None,
+        backface_culling: true,
+        tileable_horizontal: false,
+        tileable_vertical: false,
+        color_rgb: None,
+        scale: 0,
+        align_style: AlignStyle::Node
+    };
+    let simplesound_placeholder: SimpleSoundSpec = SimpleSoundSpec {
+        name: String::from("[[ERROR]]"),
+        gain: 1.0,
+        pitch: 1.0,
+        fade: 1.0,
+    };
+    let tiledef_sides = [tiledef.clone(), tiledef.clone(), tiledef.clone(), tiledef.clone(), tiledef.clone(), tiledef.clone()];
+    content_features.push((120, ContentFeatures {
+        version: 13,
+        name: String::from("glowing_air"),
+        groups: vec![(String::from(""), 1)],
+        param_type: 0,
+        param_type_2: 0,
+        drawtype: DrawType::AirLike,
+        mesh: String::from(""),
+        visual_scale: 1.0,
+        unused_six: 6,
+        tiledef: tiledef_sides.clone(),
+        tiledef_overlay: tiledef_sides.clone(),
+        tiledef_special: tiledef_sides.to_vec(),
+        alpha_for_legacy: 20,
+        red: 100,
+        green: 70,
+        blue: 85,
+        palette_name: String::from(""),
+        waving: 0,
+        connect_sides: 0,
+        connects_to_ids: Vec::new(),
+        post_effect_color: SColor {
+            r: 100,
+            g: 70,
+            b: 85,
+            a: 20,
+        },
+        leveled: 0,
+        light_propagates: 15,
+        sunlight_propagates: 15,
+        light_source: 15,
+        is_ground_content: false,
+        walkable: false,
+        pointable: true,
+        diggable: true,
+        climbable: false,
+        buildable_to: true,
+        rightclickable: false,
+        damage_per_second: 0,
+        liquid_type_bc: 0,
+        liquid_alternative_flowing: String::from(""),
+        liquid_alternative_source: String::from(""),
+        liquid_viscosity: 0,
+        liquid_renewable: false,
+        liquid_range: 0,
+        drowning: 0,
+        floodable: false,
+        node_box: NodeBox::Regular,
+        selection_box: NodeBox::Regular,
+        collision_box: NodeBox::Regular,
+        sound_footstep: simplesound_placeholder.clone(),
+        sound_dig: simplesound_placeholder.clone(),
+        sound_dug: simplesound_placeholder.clone(),
+        legacy_facedir_simple: false,
+        legacy_wallmounted: false,
+        node_dig_prediction: None,
+        leveled_max: None,
+        alpha: None,
+        move_resistance: None,
+        liquid_move_physics: None
+    }));
+    
     let nodedef_command = ToClientCommand::Nodedef(
         Box::new(NodedefSpec {
             node_def: NodeDefManager {

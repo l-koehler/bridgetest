@@ -231,11 +231,11 @@ pub async fn set_player_pos(source_packet: &ClientboundPlayerPositionPacket, con
     let dest_z = (*source_z as f32) * 10.0;
 
     let abs_diff = (dest_x - mt_server_state.mt_clientside_pos.0).abs() +
-                   (dest_y - mt_server_state.mt_clientside_pos.1).abs() +
+                   (dest_y - mt_server_state.mt_clientside_pos.1).abs()*settings::Y_DIFF_FACTOR +
                    (dest_z - mt_server_state.mt_clientside_pos.2).abs();
     
     println!("dest: {}, state: {}, diff: {}", dest_x, mt_server_state.mt_clientside_pos.0, (dest_x - mt_server_state.mt_clientside_pos.0).abs());
-    if abs_diff > 0.1 {
+    if abs_diff > settings::POS_DIFF_TOLERANCE {
         let setpos_packet = ToClientCommand::MovePlayer(
             Box::new(wire::command::MovePlayerSpec {
                 pos: v3f {x: dest_x, y: dest_y, z: dest_z},
@@ -280,7 +280,7 @@ pub async fn send_sys_message(conn: &mut MinetestConnection, message: &Clientbou
 
 }
 
-pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &mut MinetestConnection, state_arr: [BlockState; 4096]) {
+pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &mut MinetestConnection, state_arr: [BlockState; 4096], cave_air_glow: bool) {
     // Fills a 16^3 area with a vector of map nodes, where param0 is a MC-compatible ID.
     // remember that this is limited to 16 blocks of heigth, while a MC chunk goes from -64 to 320
     // y_pos of 0 -> actual y filled from 0 to 16
@@ -321,6 +321,9 @@ pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &mut
         // param1: transparency i think
         if state.is_air() {
             param0 = 126;
+            param1 = 0xEE;
+        } else if (azalea_registry::Block::try_from(state).unwrap() == azalea_registry::Block::CaveAir) && cave_air_glow {
+            param0 = 120; // custom node: glowing_air
             param1 = 0xEE;
         } else {
             param1 = 0x00;
@@ -375,6 +378,10 @@ pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut Unbounde
     // first let azalea do everything until ChunkBatchFinished,
     // then move the azalea world over to the client
     let y_bounds = mt_definitions::get_y_bounds(&mt_server_state.current_dimension);
+    let is_nether = match mt_server_state.current_dimension {
+        Dimensions::Nether => true,
+        _ => false
+    };
     loop {
         tokio::select! {
             t = mc_conn.recv() => {
@@ -386,7 +393,7 @@ pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut Unbounde
                             Event::Packet(packet_value) => match Arc::unwrap_or_clone(packet_value) {
                                 ClientboundGamePacket::LevelChunkWithLight(packet_data) => {
                                     utils::logger("[Minecraft] S->C LevelchunkWithLight", 1);
-                                    send_level_chunk(&packet_data, mt_conn, &y_bounds).await;
+                                    send_level_chunk(&packet_data, mt_conn, &y_bounds, is_nether).await;
                                 },
                                 ClientboundGamePacket::ChunkBatchFinished(_) => {
                                     utils::logger("[Minecraft] S->C ChunkBatchFinished", 1);
@@ -404,7 +411,7 @@ pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut Unbounde
     }
 }
 
-pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket, mt_conn: &mut MinetestConnection, y_bounds: &(i16, i16)) {
+pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket, mt_conn: &mut MinetestConnection, y_bounds: &(i16, i16), is_nether: bool) {
     // Parse packet
     let ClientboundLevelChunkWithLightPacket {x: chunk_x_pos, z: chunk_z_pos, chunk_data: chunk_packet_data, light_data: _} = packet_data;
     let ClientboundLevelChunkPacketData { heightmaps: chunk_heightmaps, data: chunk_data, block_entities: _ } = chunk_packet_data;
@@ -439,7 +446,7 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
                 }
             }
         }
-        initialize_16node_chunk(*chunk_x_pos as i16, chunk_y_pos, *chunk_z_pos as i16, mt_conn, nodearr).await;
+        initialize_16node_chunk(*chunk_x_pos as i16, chunk_y_pos, *chunk_z_pos as i16, mt_conn, nodearr, is_nether).await;
         chunk_y_pos += 1;
     }
 }
