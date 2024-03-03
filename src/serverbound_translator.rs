@@ -37,7 +37,6 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
     let down_pressed  = ((direction_keys >> 1) & 1) != 0;
     let left_pressed  = ((direction_keys >> 2) & 1) != 0;
     let right_pressed = ((direction_keys >> 3) & 1) != 0;
-    let movement_pressed = up_pressed || down_pressed || left_pressed || right_pressed;
 
     //let jump_pressed  = (keys_pressed & (1 << 4)) != 0;
     let sneak_pressed = (keys_pressed & (1 << 6)) != 0;
@@ -51,7 +50,7 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
         //mt_server_state.is_sneaking = sneak_pressed;
     }
     
-    if movement_pressed { // walking
+    if keys_pressed != mt_server_state.keys_pressed { // walking
         if up_pressed && left_pressed {
             mc_client.walk(azalea::WalkDirection::ForwardLeft)
         } else if up_pressed && right_pressed {
@@ -68,9 +67,12 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
             mc_client.walk(azalea::WalkDirection::Left)
         } else if right_pressed {
             mc_client.walk(azalea::WalkDirection::Right)
+        } else {
+            mc_client.walk(azalea::WalkDirection::None);
         }
-    } else {
-        mc_client.walk(azalea::WalkDirection::None);
+        mt_server_state.keys_pressed = keys_pressed;
+    }
+    if (yaw, pitch) != mt_server_state.last_yaw_pitch {
         let movement_packet = ServerboundGamePacket::MovePlayerPosRot {
             0: ServerboundMovePlayerPosRotPacket {
                 x: (x as f64) / 10.0,
@@ -81,8 +83,8 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
                 on_ground: true // i don't know, thats why the server needs to not have an anticheat
             }
         };
-
         let _ = mc_client.write_packet(movement_packet);
         mt_server_state.mt_clientside_pos = (x, y, z);
+        mt_server_state.last_yaw_pitch = (yaw, pitch);
     }
 }

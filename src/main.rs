@@ -30,12 +30,15 @@ async fn main() {
 
 pub struct MTServerState {
     // things the server should keep track of
+    // mostly used to prevent sending useless/redundant packets
     players: Vec<String>, // names of all players
     mt_clientside_pos: (f32, f32, f32), // used to tolerate slight position differences, resulting in far smoother movement
     mt_last_known_health: u16, // used to determine if a HP change should trigger a damage effect flash
     respawn_pos: (f32, f32, f32),
     current_dimension: Dimensions,
-    is_sneaking: bool
+    is_sneaking: bool,
+    keys_pressed: u32,
+    last_yaw_pitch: (f32, f32)
 }
 
 async fn start_client_handler(settings: Config) {
@@ -51,7 +54,9 @@ async fn start_client_handler(settings: Config) {
         mt_last_known_health: 0,
         respawn_pos: (0.0, 0.0, 0.0),
         current_dimension: Dimensions::Overworld,
-        is_sneaking: false
+        is_sneaking: false,
+        keys_pressed: 0,
+        last_yaw_pitch: (0.0, 0.0)
     };
 
     // Wait for a client to join
