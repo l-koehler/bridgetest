@@ -231,7 +231,7 @@ pub async fn set_player_pos(source_packet: &ClientboundPlayerPositionPacket, con
     let dest_z = (*source_z as f32) * 10.0;
 
     let abs_diff = (dest_x - mt_server_state.mt_clientside_pos.0).abs()/10.0 +
-                   (dest_y - mt_server_state.mt_clientside_pos.1).abs()/10.0 +
+                   (dest_y - mt_server_state.mt_clientside_pos.1).abs()/20.0 + // high tolerance to height problems, these are causing movement issues otherwise
                    (dest_z - mt_server_state.mt_clientside_pos.2).abs()/10.0;
     
     if abs_diff > settings::POS_DIFF_TOLERANCE {
