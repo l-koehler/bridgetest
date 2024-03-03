@@ -38,10 +38,17 @@ pub enum HeartDisplay {
     NoChange // special value: do not change the heart texture
 }
 
+pub enum FoodDisplay {
+    Normal,
+    Hunger,
+    
+    NoChange
+}
+
 pub fn add_healthbar() -> ToClientCommand {
     let hudadd_command = ToClientCommand::Hudadd(
         Box::new(HudaddSpec {
-            server_id: 0,
+            server_id: settings::HEALTHBAR_ID,
             typ: 2,
             pos: v2f {
                 x: 0.5,
@@ -81,6 +88,102 @@ pub fn add_healthbar() -> ToClientCommand {
             text2: Some(
                 String::from("heart-container.png"),
             ),
+            style: Some(0)
+        })
+    );
+    hudadd_command
+}
+
+pub fn add_foodbar() -> ToClientCommand {
+    let hudadd_command = ToClientCommand::Hudadd(
+        Box::new(HudaddSpec {
+            server_id: settings::FOODBAR_ID,
+            typ: 2,
+            pos: v2f {
+                x: 0.5,
+                y: 1.0
+            },
+            name: String::from(""),
+            scale: v2f {
+                x: 0.0,
+                y: 0.0
+            },
+            text: String::from("hud-food_full.png"),
+            number: 20,
+            item: 20,
+            dir: 0,
+            align: v2f {
+                x: 0.0,
+                y: 0.0
+            },
+            offset: v2f {
+                x: 45.0,
+                y: -88.0
+            },
+            world_pos: Some(
+                v3f {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+            ),
+            size: Some(
+                v2s32 {
+                    x: 24,
+                    y: 24,
+                },
+            ),
+            z_index: Some(0),
+            text2: Some(
+                String::from("hud-food_empty.png"),
+            ),
+            style: Some(0)
+        })
+    );
+    hudadd_command
+}
+
+pub fn add_airbar() -> ToClientCommand {
+    let hudadd_command = ToClientCommand::Hudadd(
+        Box::new(HudaddSpec {
+            server_id: settings::AIRBAR_ID,
+            typ: 2,
+            pos: v2f {
+                x: 0.5,
+                y: 1.0
+            },
+            name: String::from(""),
+            scale: v2f {
+                x: 0.0,
+                y: 0.0
+            },
+            text: String::from("hud-air.png"),
+            number: 0, // default to not show this element
+            item: 20,
+            dir: 0,
+            align: v2f {
+                x: 0.0,
+                y: 0.0
+            },
+            offset: v2f {
+                x: -265.0,
+                y: -116.0
+            },
+            world_pos: Some(
+                v3f {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+            ),
+            size: Some(
+                v2s32 {
+                    x: 24,
+                    y: 24,
+                },
+            ),
+            z_index: Some(0),
+            text2: None,
             style: Some(0)
         })
     );
@@ -663,7 +766,7 @@ pub async fn get_texture_media_commands(settings: &Config) -> (ToClientCommand, 
     texture_vec_iterator(&mut particle_texture_vec, textures_folder.join("particle/"), "particle");
     texture_vec_iterator(&mut entity_texture_vec, textures_folder.join("entity/"), "entity");
     texture_vec_iterator(&mut item_texture_vec, textures_folder.join("item/"), "item");
-
+    
     texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("environment/"), "misc");
     texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("gui/sprites/hud/"), "hud");
     texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("gui/sprites/hud/heart/"), "heart");

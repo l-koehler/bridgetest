@@ -82,6 +82,10 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     
     utils::logger("[Minetest] S->C AddHud Healthbar", 1);
     let _ = mt_conn.send(mt_definitions::add_healthbar()).await;
+    utils::logger("[Minetest] S->C AddHud Foodbar", 1);
+    let _ = mt_conn.send(mt_definitions::add_foodbar()).await;
+    utils::logger("[Minetest] S->C AddHud Airbar", 1);
+    let _ = mt_conn.send(mt_definitions::add_airbar()).await;
     
     utils::logger("[Minetest] S->C Inventory Formspec", 1);
     let _ = mt_conn.send(mt_definitions::get_inventory_formspec()).await;

@@ -51,7 +51,7 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
     match command {
         Event::AddPlayer(player_data) => clientbound_translator::add_player(player_data, mt_conn, mt_server_state).await,
         Event::Chat(message) => clientbound_translator::send_message(mt_conn, message).await,
-        //Event::Tick => on_minecraft_tick(mt_conn, mc_client, mt_server_state).await,
+        Event::Tick => on_minecraft_tick(mt_conn, mc_client, mt_server_state).await,
         Event::Packet(packet_value) => match (*packet_value).clone() {
             ClientboundGamePacket::ChunkBatchStart(_) => clientbound_translator::chunkbatch(mt_conn, mc_conn).await,
             ClientboundGamePacket::SystemChat(message) => clientbound_translator::send_sys_message(mt_conn, &message.clone()).await,
@@ -62,6 +62,10 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
         }
         _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),
     };
+}
+
+pub async fn on_minecraft_tick(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_server_state: &MTServerState) {
+    
 }
 
 pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState, settings: &Config) -> (azalea::Client, UnboundedReceiver<azalea::Event>) {

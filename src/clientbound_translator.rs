@@ -9,7 +9,8 @@ use crate::settings;
 use crate::utils;
 use crate::mt_definitions;
 use crate::MTServerState;
-use mt_definitions::HeartDisplay;
+use azalea::entity::metadata::BubbleTime;
+use mt_definitions::{HeartDisplay, FoodDisplay};
 
 use azalea_registry::Registry;
 use minetest_protocol::wire::command::ToClientCommand;
@@ -55,7 +56,7 @@ pub async fn edit_healthbar(mode: HeartDisplay, num: u32, conn: &MinetestConnect
     if hearth_texture != "" {
         let set_bar_texture = ToClientCommand::Hudchange(
             Box::new(wire::command::HudchangeSpec {
-                server_id: 0,
+                server_id: settings::HEALTHBAR_ID,
                 stat: HudStat::Text(String::from(hearth_texture))
             })
         );
@@ -64,7 +65,7 @@ pub async fn edit_healthbar(mode: HeartDisplay, num: u32, conn: &MinetestConnect
     if num < 21 {
         let set_bar_number = ToClientCommand::Hudchange(
             Box::new(wire::command::HudchangeSpec {
-                server_id: 0,
+                server_id: settings::HEALTHBAR_ID,
                 stat: HudStat::Number(num)
             })
         );
@@ -72,8 +73,50 @@ pub async fn edit_healthbar(mode: HeartDisplay, num: u32, conn: &MinetestConnect
     }
 }
 
+pub async fn edit_foodbar(mode: FoodDisplay, num: u32, conn: &MinetestConnection) {
+    let food_texture: &str = match mode {
+        FoodDisplay::Normal => "hud-food_full.png",
+        FoodDisplay::Hunger => "hud-food_full_hunger.png",
+        FoodDisplay::NoChange => ""
+    };
+    if food_texture != "" {
+        let set_bar_texture = ToClientCommand::Hudchange(
+            Box::new(wire::command::HudchangeSpec {
+                server_id: settings::FOODBAR_ID,
+                stat: HudStat::Text(String::from(food_texture))
+            })
+        );
+        let _ = conn.send(set_bar_texture);
+    }
+    if num < 21 {
+        let set_bar_number = ToClientCommand::Hudchange(
+            Box::new(wire::command::HudchangeSpec {
+                server_id: settings::FOODBAR_ID,
+                stat: HudStat::Number(num)
+            })
+        );
+        let _ = conn.send(set_bar_number).await;
+    }
+}
+
+pub async fn edit_airbar(num: u32, conn: &MinetestConnection) {
+    // num 0..20, bar invisible if air is full.
+    let mut bubble_count: u32 = num;
+    if num > 19 {
+        bubble_count = 0;
+    }
+
+    let set_bar_number = ToClientCommand::Hudchange(
+        Box::new(wire::command::HudchangeSpec {
+            server_id: settings::AIRBAR_ID,
+            stat: HudStat::Number(bubble_count)
+        })
+    );
+    let _ = conn.send(set_bar_number).await;
+}
+
 pub async fn set_health(source_packet: &ClientboundSetHealthPacket, conn: &MinetestConnection, mt_server_state: &mut MTServerState) {
-    let ClientboundSetHealthPacket { health, food:_, saturation:_ } = source_packet; // TODO support food/sat
+    let ClientboundSetHealthPacket { health, food, saturation:_ } = source_packet;
     // health: 0..20
     let new_health: u16 = *health as u16;
     let mut damage_effect: Option<bool> = None;
@@ -91,6 +134,7 @@ pub async fn set_health(source_packet: &ClientboundSetHealthPacket, conn: &Minet
     );
     let _ = conn.send(sethealth_packet).await;
     edit_healthbar(HeartDisplay::NoChange, new_health.into(), conn).await;
+    edit_foodbar(FoodDisplay::NoChange, *food, conn).await;
 }
 
 pub async fn set_time(source_packet: &ClientboundSetTimePacket, conn: &MinetestConnection) {

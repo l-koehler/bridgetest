@@ -5,9 +5,11 @@
  * Also some other constants and hacks
  */
 
+// world height limit
 pub const Y_LOWER: i16 = -64;
 pub const Y_UPPER: i16 = 320;
 
+// default text for config file
 pub const CONF_FALLBACK: &str ="\
 ## feel free to change these values, shouldn't break anything important.
 # download link to a complete minecraft texture pack
@@ -26,7 +28,13 @@ arcticdata_blocks = \"https://raw.githubusercontent.com/Articdive/ArticData/1.20
 arcticdata_items = \"https://raw.githubusercontent.com/Articdive/ArticData/1.20.4/1_20_4_items.json\"
 ";
 
+// formspec string for inventory
 pub const INV_FORMSPEC: &str = "size[8,7.5]list[current_player;main;0,3.5;8,4;]list[current_player;craft;3,0;3,3;]listring[]list[current_player;craftpreview;7,1;1,1;]";
+
+// IDs for various HUD things
+pub const HEALTHBAR_ID: u32 = 0;
+pub const FOODBAR_ID:   u32 = 1;
+pub const AIRBAR_ID:    u32 = 2;
 
 /*
  * 0: Display every recieved packet
