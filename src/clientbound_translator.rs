@@ -520,7 +520,7 @@ pub async fn add_entity(packet_data: &ClientboundAddEntityPacket, conn: &mut Min
                                 is_visible: true,
                                 makes_footstep_sound: false,
                                 automatic_rotate: 0.0,
-                                mesh: String::from(""), // please have sane defaults?
+                                mesh: String::from("entitymodel-creeper.b3d"), // it didnt have sane defaults qwq
                                 colors: vec![
                                     SColor {
                                         r: 255,

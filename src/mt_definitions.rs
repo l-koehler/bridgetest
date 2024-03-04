@@ -848,7 +848,7 @@ fn texture_vec_iterator(texture_vec: &mut Vec<(PathBuf, String)>, media_folder: 
     let iterator = fs::read_dir(&media_folder).expect("Failed to read media");
     for item in iterator {
         name = item.as_ref().unwrap().file_name().into_string().unwrap();
-        if name.ends_with(".png") {
+        if name.ends_with(".png") || name.ends_with(".b3d") {
             path = item.as_ref().unwrap().path();
             texture_vec.push((path, format!("{}-{}", prefix, name)));
         };
@@ -863,6 +863,7 @@ pub async fn get_texture_media_commands(settings: &Config) -> (ToClientCommand, 
     // foreach texture, generate announce and send specs
     // TODO: This currently will have every texture loaded into RAM at the same time
     let textures_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/assets/minecraft/textures/");
+    let models_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/models/"); // HACK! does not auto-download nor explain what is meant to be there
 
     // iterate over each
     let mut block_texture_vec: Vec<(PathBuf, String)> = Vec::new();
@@ -878,6 +879,7 @@ pub async fn get_texture_media_commands(settings: &Config) -> (ToClientCommand, 
     texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("environment/"), "misc");
     texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("gui/sprites/hud/"), "hud");
     texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("gui/sprites/hud/heart/"), "heart");
+    texture_vec_iterator(&mut misc_texture_vec, models_folder, "entitymodel");
     // texture_vec = [("/path/to/allay.png", "entity-allay"), ("/path/to/cactus_bottom.png", "block-cactus_bottom"), ...]
     // call get_mediafilevecs on each entry tuple in *_texture_vec
     let mut announcement_vec: Vec<MediaAnnouncement> = Vec::new();
