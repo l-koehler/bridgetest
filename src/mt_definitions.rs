@@ -2,8 +2,8 @@
 // the functions are actually more like consts but
 // the "String" type cant be a constant so :shrug:
 
-use minetest_protocol::wire::command::{AnnounceMediaSpec, DetachedInventorySpec, InventoryFormspecSpec, ItemdefSpec, MediaSpec, MovementSpec, NodedefSpec, PrivilegesSpec, HudaddSpec, ToClientCommand };
-use minetest_protocol::wire::types::{ v2f, v3f, v2s32, AlignStyle, BlockPos, ContentFeatures, DrawType, Inventory, ItemAlias, ItemDef, ItemType, ItemdefList, MediaAnnouncement, MediaFileData, NodeBox, NodeDefManager, NodeMetadata, Option16, SColor, SimpleSoundSpec, SunParams, TileAnimationParams, TileDef
+use minetest_protocol::wire::command::{AnnounceMediaSpec, DetachedInventorySpec, InventoryFormspecSpec, ItemdefSpec, MediaSpec, MovementSpec, NodedefSpec, PrivilegesSpec, HudaddSpec, ToClientCommand , CsmRestrictionFlagsSpec, InventorySpec};
+use minetest_protocol::wire::types::{ v2f, v3f, v2s32, AlignStyle, BlockPos, ContentFeatures, DrawType, Inventory, ItemAlias, ItemDef, ItemType, ItemdefList, MediaAnnouncement, MediaFileData, NodeBox, NodeDefManager, NodeMetadata, Option16, SColor, SimpleSoundSpec, SunParams, TileAnimationParams, TileDef, InventoryEntry, InventoryList, ItemStackUpdate
 }; // AAAAAA
 
 use alloc::boxed::Box;
@@ -59,6 +59,46 @@ pub const fn get_y_bounds(dimension: &Dimensions) -> (i16, i16) {
         Dimensions::Overworld => (-64, 320),
         Dimensions::Custom => (-64, 320)
     }
+}
+
+pub fn empty_inventory() -> ToClientCommand {
+    let inventory_command = ToClientCommand::Inventory(
+        Box::new(InventorySpec {
+            inventory: Inventory {
+                entries: vec![
+                    InventoryEntry::Update {
+                        0: InventoryList {
+                            name: String::from("main"),
+                            width: 0,
+                            items: vec![ItemStackUpdate::Empty; 32]
+                        }
+                    },
+                    InventoryEntry::Update {
+                        0: InventoryList {
+                            name: String::from("craft"),
+                            width: 3,
+                            items: vec![ItemStackUpdate::Empty; 32]
+                        }
+                    },
+                    InventoryEntry::Update {
+                        0: InventoryList {
+                            name: String::from("craftpreview"),
+                            width: 0,
+                            items: vec![ItemStackUpdate::Empty]
+                        }
+                    },
+                    InventoryEntry::Update {
+                        0: InventoryList {
+                            name: String::from("craftresult"),
+                            width: 0,
+                            items: vec![ItemStackUpdate::Empty]
+                        }
+                    },
+                ]
+            }
+        })
+    );
+    inventory_command
 }
 
 pub fn add_healthbar() -> ToClientCommand {
@@ -245,6 +285,16 @@ pub fn get_inventory_formspec() -> ToClientCommand {
         })
     );
     formspec_command
+}
+
+pub fn get_csmrestrictions() -> ToClientCommand {
+    let csm_command = ToClientCommand::CsmRestrictionFlags(
+        Box::new(CsmRestrictionFlagsSpec {
+            csm_restriction_flags: 0,
+            csm_restriction_noderange: 0
+        })
+    );
+    csm_command
 }
 
 pub const fn get_metadata_placeholder(x_pos: u16, y_pos: u16, z_pos: u16) -> (BlockPos, NodeMetadata) {

@@ -52,8 +52,6 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
             _ => utils::logger(&format!("[Minetest] Dropping unexpected packet! Got serverbound \"{}\", expected \"Init\"", utils::mc_packet_name(&command)), 1),
         }
     }
-
-    utils::logger("Authenticated with both client and server.", 1);
     
     let media_packets = mt_definitions::get_texture_media_commands(&settings).await;
     utils::logger("[Minetest] S->C MediaAnnouncement", 1); // This will cause cached media to load, breaking stuff (idc, delete your cache before each start? low priority)
@@ -87,9 +85,24 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     utils::logger("[Minetest] S->C AddHud Airbar", 1);
     let _ = mt_conn.send(mt_definitions::add_airbar()).await;
     
+    utils::logger("[Minetest] S->C CsmRestrictions", 1);
+    let _ = mt_conn.send(mt_definitions::get_csmrestrictions()).await;
+
+    utils::logger("Awaiting ClientReady", 1);
+    loop {
+        let t = mt_conn.recv().await;
+        let command = t.unwrap();
+        match command {
+            ToServerCommand::ClientReady(_) => break,
+            _ => utils::logger(&format!("[Minetest] Got unexpected {} while awaiting ClientReady!", command.command_name()), 2)
+        }
+    }
+    
     utils::logger("[Minetest] S->C Inventory Formspec", 1);
     let _ = mt_conn.send(mt_definitions::get_inventory_formspec()).await;
-
+    
+    utils::logger("[Minetest] S->C Inventory", 1);
+    let _ = mt_conn.send(mt_definitions::empty_inventory()).await;
     /*
      * Main Loop.
      * At this point, both the minetest client and the minecraft server

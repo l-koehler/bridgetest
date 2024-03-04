@@ -455,12 +455,12 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
 
 pub async fn add_entity(packet_data: &ClientboundAddEntityPacket, conn: &mut MinetestConnection) {
     let ClientboundAddEntityPacket { id: serverside_id, uuid, entity_type, position: vec_pos, x_rot, y_rot, y_head_rot, data, x_vel, y_vel, z_vel } = packet_data;
-    let id: u16 = *serverside_id as u16; // FIXME might break in interesting ways
+    let id: u16 = *serverside_id as u16 + 545; // FIXME might break in interesting ways, but shouldn't override anything important
     
     let added_objects: Vec<AddedObject> = vec![
         AddedObject{
             id,
-            typ: 101, // idk
+            typ: 103, // idk
             init_data: GenericInitData {
                 version: 1, // used a packet sniffer, idk if there are other versions
                 name: format!("UUID-{}", uuid),
@@ -472,9 +472,9 @@ pub async fn add_entity(packet_data: &ClientboundAddEntityPacket, conn: &mut Min
                 messages: vec![
                     ActiveObjectCommand::SetProperties(
                         wire::types::AOCSetProperties {
-                        newprops: ObjectProperties {
+                            newprops: ObjectProperties {
                                 version: 4,
-                                hp_max: 10,
+                                hp_max: 100,
                                 physical: false,
                                 _unused: 0,
                                 collision_box: aabb3f {
@@ -508,7 +508,7 @@ pub async fn add_entity(packet_data: &ClientboundAddEntityPacket, conn: &mut Min
                                     y: 1.0,
                                     z: 1.0,
                                 },
-                                textures: vec![String::from("entity-chicken.png")],
+                                textures: vec![String::from("entity-creeper.png")],
                                 spritediv: v2s16 {
                                     x: 1,
                                     y: 1,
@@ -542,35 +542,20 @@ pub async fn add_entity(packet_data: &ClientboundAddEntityPacket, conn: &mut Min
                                     a: 255,
                                 },
                                 automatic_face_movement_max_rotation_per_sec: -1.0,
-                                infotext: String::from(""),
-                                wield_item: String::from(""),
+                                infotext: String::from("infotext?"),
+                                wield_item: String::from("item-pufferfish.png"),
                                 glow: 0,
                                 breath_max: 0,
                                 eye_height: 1.625,
                                 zoom_fov: 0.0,
                                 use_texture_alpha: false,
-                                damage_texture_modifier: Some(
-                                    String::from("^[brighten"),
-                                ),
-                                shaded: Some(
-                                    true,
-                                ),
-                                show_on_minimap: Some(
-                                    false,
-                                ),
-                                nametag_bgcolor: Some(
-                                    SColor {
-                                        r: 0,
-                                        g: 1,
-                                        b: 1,
-                                        a: 1,
-                                    },
-                                ),
-                                rotate_selectionbox: Some(
-                                    false,
-                                )
+                                damage_texture_modifier: None,
+                                shaded: None,
+                                show_on_minimap: None,
+                                nametag_bgcolor: None,
+                                rotate_selectionbox: None
                             }
-                        }
+                        },
                     )
                 ]
             }
