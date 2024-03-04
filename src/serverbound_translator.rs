@@ -33,13 +33,13 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
     // https://github.com/minetest/minetest/blob/e734b3f0d8055ff3ae710f3632726a711603bf84/src/player.cpp#L217
     
     let direction_keys = keys_pressed & 0xf;
-    let up_pressed    = ((direction_keys >> 0) & 1) != 0;
-    let down_pressed  = ((direction_keys >> 1) & 1) != 0;
-    let left_pressed  = ((direction_keys >> 2) & 1) != 0;
-    let right_pressed = ((direction_keys >> 3) & 1) != 0;
+    let up_pressed    = (direction_keys >> 0) & 1;
+    let down_pressed  = (direction_keys >> 1) & 1;
+    let left_pressed  = (direction_keys >> 2) & 1;
+    let right_pressed = (direction_keys >> 3) & 1;
 
     //let jump_pressed  = (keys_pressed & (1 << 4)) != 0;
-    let aux1_pressed  = (keys_pressed & (1 << 5)) != 0;
+    let aux1_pressed  = keys_pressed & (1 << 5);
     let sneak_pressed = (keys_pressed & (1 << 6)) != 0;
     //let dig_pressed   = (keys_pressed & (1 << 7)) != 0;
     //let place_pressed = (keys_pressed & (1 << 8)) != 0;
@@ -55,17 +55,17 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
     
     if keys_pressed != mt_server_state.keys_pressed {
         match (aux1_pressed, up_pressed, down_pressed, left_pressed, right_pressed) {
-            (false, true, _, true, _) => mc_client.walk(azalea::WalkDirection::ForwardLeft),
-            (false, true, _, _, true) => mc_client.walk(azalea::WalkDirection::ForwardRight),
-            (false, true, _, _, _)    => mc_client.walk(azalea::WalkDirection::Forward),
-            (false, _, true, true, _) => mc_client.walk(azalea::WalkDirection::BackwardLeft),
-            (false, _, true, _, true) => mc_client.walk(azalea::WalkDirection::BackwardRight),
-            (false, _, true, _, _)    => mc_client.walk(azalea::WalkDirection::Backward),
-            (false, _, _, true, _)    => mc_client.walk(azalea::WalkDirection::Left),
-            (false, _, _, _, false)   => mc_client.walk(azalea::WalkDirection::Right),
-            (true, true, _, true, _)  => mc_client.sprint(azalea::SprintDirection::ForwardLeft),
-            (true, true, _, _, true)  => mc_client.sprint(azalea::SprintDirection::ForwardRight),
-            (true, true, _, _, _)     => mc_client.sprint(azalea::SprintDirection::Forward),
+            (0, 1, _, 1, _) => mc_client.walk(azalea::WalkDirection::ForwardLeft),
+            (0, 1, _, _, 1) => mc_client.walk(azalea::WalkDirection::ForwardRight),
+            (0, 1, _, _, _) => mc_client.walk(azalea::WalkDirection::Forward),
+            (0, _, 1, 1, _) => mc_client.walk(azalea::WalkDirection::BackwardLeft),
+            (0, _, 1, _, 1) => mc_client.walk(azalea::WalkDirection::BackwardRight),
+            (0, _, 1, _, _) => mc_client.walk(azalea::WalkDirection::Backward),
+            (0, _, _, 1, _) => mc_client.walk(azalea::WalkDirection::Left),
+            (0, _, _, _, 0) => mc_client.walk(azalea::WalkDirection::Right),
+            (1, 1, _, 1, _) => mc_client.sprint(azalea::SprintDirection::ForwardLeft),
+            (1, 1, _, _, 1) => mc_client.sprint(azalea::SprintDirection::ForwardRight),
+            (1, 1, _, _, _) => mc_client.sprint(azalea::SprintDirection::Forward),
             _ => mc_client.walk(azalea::WalkDirection::None),
         }
         mt_server_state.keys_pressed = keys_pressed;
