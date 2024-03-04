@@ -6,12 +6,20 @@ use crate::settings;
 
 use minetest_protocol::CommandRef;
 use minetest_protocol::CommandDirection;
+use minetest_protocol::wire::types::v3f;
 use azalea_client::Event;
+use azalea_core::position::Vec3;
 use azalea_protocol::packets::game::ClientboundGamePacket;
 use std::path::Path;
 use std::path::PathBuf;
 use std::io::Read;
 use rand::Rng;
+
+pub const fn vec3_to_v3f(input_vector: &Vec3) -> v3f {
+    // loss of precision, f64 -> f32
+    let Vec3 { x: xf64, y: yf64, z: zf64 } = input_vector;
+    v3f { x: *xf64 as f32, y: *yf64 as f32, z: *zf64 as f32 }
+}
 
 pub fn get_colormap(texture: &str) -> Option<(u8, u8, u8)> {
     // use the "Plains" texture. per-biome textures dont really work in mt afaik

@@ -74,4 +74,4 @@ pub const HS_NAMES: [&str; 26] = [
  * This is not in the config file yet, mostly due to concerns on
  * how to implement that without performance drop.
  */
-pub const DROP_LOG_BELOW: i8 = 1;
+pub const DROP_LOG_BELOW: i8 = 3;

@@ -25,6 +25,12 @@ possibly by using [Minecrafts inbuilt Data Generators](https://wiki.vg/Data_Gene
 
 * Block Entitys (chests and stuff)
 
+(just going to put some notes here nobody reads this anyways)  
+entities are nodes with mesh render mode (or the ~~documentation~~  
+uhh packet dump from connecting to a regular server sucks)
+it sends .obj files as mesh
+use ActiveObjectRemoveAddSpec for that
+
 #### Limitations:
 
 Note:

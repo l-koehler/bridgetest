@@ -10,6 +10,7 @@ use crate::utils;
 use crate::mt_definitions;
 use crate::MTServerState;
 use azalea::BlockPos;
+use minetest_protocol::wire::types::ObjectProperties;
 use mt_definitions::{HeartDisplay, FoodDisplay, Dimensions};
 
 use azalea_registry::Registry;
@@ -17,7 +18,7 @@ use minetest_protocol::wire::command::ToClientCommand;
 use minetest_protocol::wire::types::HudStat;
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::wire;
-use minetest_protocol::wire::types::{v3s16, v3f, MapNodesBulk, MapNode, MapBlock, NodeMetadataList};
+use minetest_protocol::wire::types::{v3s16, v3f, MapNodesBulk, MapNode, MapBlock, NodeMetadataList, AddedObject, GenericInitData, ActiveObjectCommand, SColor, aabb3f, v2s16};
 
 use azalea_client::PlayerInfo;
 use azalea_client::chat::ChatPacket;
@@ -30,6 +31,7 @@ use azalea_protocol::packets::game::{ClientboundGamePacket,
     clientbound_set_health_packet::ClientboundSetHealthPacket,
     clientbound_set_default_spawn_position_packet::ClientboundSetDefaultSpawnPositionPacket,
     clientbound_respawn_packet::ClientboundRespawnPacket,
+    clientbound_add_entity_packet::ClientboundAddEntityPacket,
 };
 use azalea_protocol::packets::common::CommonPlayerSpawnInfo;
 use azalea_core::resource_location::ResourceLocation;
@@ -77,6 +79,7 @@ pub async fn set_spawn(source_packet: &ClientboundSetDefaultSpawnPositionPacket,
 }
 
 pub async fn death(conn: &MinetestConnection, mt_server_state: &mut MTServerState) {
+    // FIXME: entirely broken, no clue why.
     let respawn_pos = mt_server_state.respawn_pos;
     let setpos_packet = ToClientCommand::MovePlayer(
         Box::new(wire::command::MovePlayerSpec {
@@ -448,4 +451,137 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
         initialize_16node_chunk(*chunk_x_pos as i16, chunk_y_pos, *chunk_z_pos as i16, mt_conn, nodearr, is_nether).await;
         chunk_y_pos += 1;
     }
+}
+
+pub async fn add_entity(packet_data: &ClientboundAddEntityPacket, conn: &mut MinetestConnection) {
+    let ClientboundAddEntityPacket { id: serverside_id, uuid, entity_type, position: vec_pos, x_rot, y_rot, y_head_rot, data, x_vel, y_vel, z_vel } = packet_data;
+    let id: u16 = *serverside_id as u16; // FIXME might break in interesting ways
+    
+    let added_objects: Vec<AddedObject> = vec![
+        AddedObject{
+            id,
+            typ: 101, // idk
+            init_data: GenericInitData {
+                version: 1, // used a packet sniffer, idk if there are other versions
+                name: format!("UUID-{}", uuid),
+                is_player: false, // possibly a lie, but thats not the clients problem anyways
+                id,
+                position: utils::vec3_to_v3f(vec_pos),
+                rotation: v3f{x: 0.0, y: 0.0, z: 0.0},
+                hp: 100, // entity deaths handled by server
+                messages: vec![
+                    ActiveObjectCommand::SetProperties(
+                        wire::types::AOCSetProperties {
+                        newprops: ObjectProperties {
+                                version: 4,
+                                hp_max: 10,
+                                physical: false,
+                                _unused: 0,
+                                collision_box: aabb3f {
+                                    min_edge: v3f {
+                                        x: -0.5,
+                                        y: -0.5,
+                                        z: -0.5,
+                                    },
+                                    max_edge: v3f {
+                                        x: 0.5,
+                                        y: 0.5,
+                                        z: 0.5,
+                                    },
+                                },
+                                selection_box: aabb3f {
+                                    min_edge: v3f {
+                                        x: -0.5,
+                                        y: -0.5,
+                                        z: -0.5,
+                                    },
+                                    max_edge: v3f {
+                                        x: 0.5,
+                                        y: 0.5,
+                                        z: 0.5,
+                                    },
+                                },
+                                pointable: false,
+                                visual: String::from("mesh"),
+                                visual_size: v3f {
+                                    x: 1.0,
+                                    y: 1.0,
+                                    z: 1.0,
+                                },
+                                textures: vec![String::from("entity-chicken.png")],
+                                spritediv: v2s16 {
+                                    x: 1,
+                                    y: 1,
+                                },
+                                initial_sprite_basepos: v2s16 {
+                                    x: 0,
+                                    y: 0,
+                                },
+                                is_visible: true,
+                                makes_footstep_sound: false,
+                                automatic_rotate: 0.0,
+                                mesh: String::from(""), // please have sane defaults?
+                                colors: vec![
+                                    SColor {
+                                        r: 255,
+                                        g: 255,
+                                        b: 255,
+                                        a: 255,
+                                    },
+                                ],
+                                collide_with_objects: true,
+                                stepheight: 0.0,
+                                automatic_face_movement_dir: false,
+                                automatic_face_movement_dir_offset: 0.0,
+                                backface_culling: true,
+                                nametag: String::from("AAAAA"),
+                                nametag_color: SColor {
+                                    r: 255,
+                                    g: 255,
+                                    b: 255,
+                                    a: 255,
+                                },
+                                automatic_face_movement_max_rotation_per_sec: -1.0,
+                                infotext: String::from(""),
+                                wield_item: String::from(""),
+                                glow: 0,
+                                breath_max: 0,
+                                eye_height: 1.625,
+                                zoom_fov: 0.0,
+                                use_texture_alpha: false,
+                                damage_texture_modifier: Some(
+                                    String::from("^[brighten"),
+                                ),
+                                shaded: Some(
+                                    true,
+                                ),
+                                show_on_minimap: Some(
+                                    false,
+                                ),
+                                nametag_bgcolor: Some(
+                                    SColor {
+                                        r: 0,
+                                        g: 1,
+                                        b: 1,
+                                        a: 1,
+                                    },
+                                ),
+                                rotate_selectionbox: Some(
+                                    false,
+                                )
+                            }
+                        }
+                    )
+                ]
+            }
+        }
+    ];
+    
+    let clientbound_addentity = ToClientCommand::ActiveObjectRemoveAdd(
+        Box::new(wire::command::ActiveObjectRemoveAddSpec {
+            removed_object_ids: vec![],
+            added_objects,
+        })
+    );
+    let _ = conn.send(clientbound_addentity).await;
 }
