@@ -55,17 +55,17 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
     
     if keys_pressed != mt_server_state.keys_pressed {
         match (aux1_pressed, up_pressed, down_pressed, left_pressed, right_pressed) {
-            (0, 1, _, 1, _) => mc_client.walk(azalea::WalkDirection::ForwardLeft),
-            (0, 1, _, _, 1) => mc_client.walk(azalea::WalkDirection::ForwardRight),
-            (0, 1, _, _, _) => mc_client.walk(azalea::WalkDirection::Forward),
-            (0, _, 1, 1, _) => mc_client.walk(azalea::WalkDirection::BackwardLeft),
-            (0, _, 1, _, 1) => mc_client.walk(azalea::WalkDirection::BackwardRight),
-            (0, _, 1, _, _) => mc_client.walk(azalea::WalkDirection::Backward),
-            (0, _, _, 1, _) => mc_client.walk(azalea::WalkDirection::Left),
-            (0, _, _, _, 0) => mc_client.walk(azalea::WalkDirection::Right),
-            (1, 1, _, 1, _) => mc_client.sprint(azalea::SprintDirection::ForwardLeft),
-            (1, 1, _, _, 1) => mc_client.sprint(azalea::SprintDirection::ForwardRight),
-            (1, 1, _, _, _) => mc_client.sprint(azalea::SprintDirection::Forward),
+            (0, 1, 0, 1, 0) => mc_client.walk(azalea::WalkDirection::ForwardLeft),
+            (0, 1, 0, 0, 1) => mc_client.walk(azalea::WalkDirection::ForwardRight),
+            (0, 1, 0, _, _) => mc_client.walk(azalea::WalkDirection::Forward),
+            (0, 0, 1, 1, 0) => mc_client.walk(azalea::WalkDirection::BackwardLeft),
+            (0, 0, 1, 0, 1) => mc_client.walk(azalea::WalkDirection::BackwardRight),
+            (0, 0, 1, _, _) => mc_client.walk(azalea::WalkDirection::Backward),
+            (0, _, _, 1, 0) => mc_client.walk(azalea::WalkDirection::Left),
+            (0, _, _, 0, 1) => mc_client.walk(azalea::WalkDirection::Right),
+            (1, 1, 0, 1, 0) => mc_client.sprint(azalea::SprintDirection::ForwardLeft),
+            (1, 1, 0, 0, 1) => mc_client.sprint(azalea::SprintDirection::ForwardRight),
+            (1, 1, 0, _, _) => mc_client.sprint(azalea::SprintDirection::Forward),
             _ => mc_client.walk(azalea::WalkDirection::None),
         }
         mt_server_state.keys_pressed = keys_pressed;
