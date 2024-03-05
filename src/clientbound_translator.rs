@@ -8,10 +8,12 @@ extern crate alloc;
 use crate::settings;
 use crate::utils;
 use crate::mt_definitions;
+use crate::commands;
 use crate::MTServerState;
 use azalea::BlockPos;
 use minetest_protocol::wire::types::ObjectProperties;
 use mt_definitions::{HeartDisplay, FoodDisplay, Dimensions};
+use minetest_protocol::peer::peer::PeerError;
 
 use azalea_registry::Registry;
 use minetest_protocol::wire::command::ToClientCommand;
@@ -20,7 +22,7 @@ use minetest_protocol::MinetestConnection;
 use minetest_protocol::wire;
 use minetest_protocol::wire::types::{v3s16, v3f, MapNodesBulk, MapNode, MapBlock, NodeMetadataList, AddedObject, GenericInitData, ActiveObjectCommand, SColor, aabb3f, v2s16};
 
-use azalea_client::PlayerInfo;
+use azalea_client::{PlayerInfo, Client};
 use azalea_client::chat::ChatPacket;
 
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -374,7 +376,7 @@ pub async fn add_player(player_data: PlayerInfo, conn: &mut MinetestConnection, 
     utils::logger("[Minetest] S->C UpdatePlayerList", 1);
 }
 
-pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut UnboundedReceiver<Event>, mt_server_state: &MTServerState) {
+pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut UnboundedReceiver<Event>, mt_server_state: &mut MTServerState, mc_client: &mut Client) {
     utils::logger("[Minetest] Forwarding ChunkBatch...", 1);
     // called by a ChunkBatchStart
     // first let azalea do everything until ChunkBatchFinished,
@@ -408,6 +410,32 @@ pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut Unbounde
                     },
                     None => utils::logger(&format!("[Minecraft] Recieved empty/none, skipping: {:#?}", t), 2),
                 }
+            },
+            t = mt_conn.recv() => {
+                utils::logger("[Minetest] Got Packet while handling ChunkBatch, processing it. Possibly dropping Chunks.", 2);
+                // Check if the client disconnected
+                match t {
+                    Ok(_) => (),
+                    Err(err) => {
+                        let show_err = if let Some(err) = err.downcast_ref::<PeerError>() {
+                            match err {
+                                PeerError::PeerSentDisconnect => false,
+                                _ => true,
+                            }
+                        } else {
+                            true
+                        };
+                        if show_err {
+                            utils::logger(&format!("[Minetest] Client Disconnected: {:?}", err), 1)
+                        } else {
+                            utils::logger("[Minetest] Client Disconnected", 1)
+                        }
+                        break; // Exit the client handler on client disconnect
+                    }
+                }
+                let mt_command = t.expect("[Minetest] Failed to unwrap Ok(_) packet from Client!");
+                utils::show_mt_command(&mt_command);
+                commands::mt_auto(mt_command, mt_conn, mc_client, mt_server_state).await;
             }
         }
     }
@@ -453,119 +481,117 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
     }
 }
 
-pub async fn add_entity(packet_data: &ClientboundAddEntityPacket, conn: &mut MinetestConnection) {
-    let ClientboundAddEntityPacket { id: serverside_id, uuid, entity_type, position: vec_pos, x_rot, y_rot, y_head_rot, data, x_vel, y_vel, z_vel } = packet_data;
-    let id: u16 = *serverside_id as u16 + 545; // FIXME might break in interesting ways, but shouldn't override anything important
-    
-    let added_objects: Vec<AddedObject> = vec![
-        AddedObject{
-            id,
-            typ: 103, // idk
-            init_data: GenericInitData {
-                version: 1, // used a packet sniffer, idk if there are other versions
-                name: format!("UUID-{}", uuid),
-                is_player: false, // possibly a lie, but thats not the clients problem anyways
-                id,
-                position: utils::vec3_to_v3f(vec_pos),
-                rotation: v3f{x: 0.0, y: 0.0, z: 0.0},
-                hp: 100, // entity deaths handled by server
-                messages: vec![
-                    ActiveObjectCommand::SetProperties(
-                        wire::types::AOCSetProperties {
-                            newprops: ObjectProperties {
-                                version: 4,
-                                hp_max: 100,
-                                physical: false,
-                                _unused: 0,
-                                collision_box: aabb3f {
-                                    min_edge: v3f {
-                                        x: -0.5,
-                                        y: -0.5,
-                                        z: -0.5,
-                                    },
-                                    max_edge: v3f {
-                                        x: 0.5,
-                                        y: 0.5,
-                                        z: 0.5,
-                                    },
-                                },
-                                selection_box: aabb3f {
-                                    min_edge: v3f {
-                                        x: -0.5,
-                                        y: -0.5,
-                                        z: -0.5,
-                                    },
-                                    max_edge: v3f {
-                                        x: 0.5,
-                                        y: 0.5,
-                                        z: 0.5,
-                                    },
-                                },
-                                pointable: false,
-                                visual: String::from("mesh"),
-                                visual_size: v3f {
-                                    x: 1.0,
-                                    y: 1.0,
-                                    z: 1.0,
-                                },
-                                textures: vec![String::from("entity-creeper.png")],
-                                spritediv: v2s16 {
-                                    x: 1,
-                                    y: 1,
-                                },
-                                initial_sprite_basepos: v2s16 {
-                                    x: 0,
-                                    y: 0,
-                                },
-                                is_visible: true,
-                                makes_footstep_sound: false,
-                                automatic_rotate: 0.0,
-                                mesh: String::from("entitymodel-creeper.b3d"), // it didnt have sane defaults qwq
-                                colors: vec![
-                                    SColor {
-                                        r: 255,
-                                        g: 255,
-                                        b: 255,
-                                        a: 255,
-                                    },
-                                ],
-                                collide_with_objects: true,
-                                stepheight: 0.0,
-                                automatic_face_movement_dir: false,
-                                automatic_face_movement_dir_offset: 0.0,
-                                backface_culling: true,
-                                nametag: String::from("AAAAA"),
-                                nametag_color: SColor {
-                                    r: 255,
-                                    g: 255,
-                                    b: 255,
-                                    a: 255,
-                                },
-                                automatic_face_movement_max_rotation_per_sec: -1.0,
-                                infotext: String::from("infotext?"),
-                                wield_item: String::from("item-pufferfish.png"),
-                                glow: 0,
-                                breath_max: 0,
-                                eye_height: 1.625,
-                                zoom_fov: 0.0,
-                                use_texture_alpha: false,
-                                damage_texture_modifier: None,
-                                shaded: None,
-                                show_on_minimap: None,
-                                nametag_bgcolor: None,
-                                rotate_selectionbox: None
-                            }
-                        },
-                    )
-                ]
-            }
-        }
-    ];
+pub async fn add_entity(conn: &mut MinetestConnection) { //packet_data: &ClientboundAddEntityPacket, 
+//     let ClientboundAddEntityPacket { id: serverside_id, uuid, entity_type, position: vec_pos, x_rot, y_rot, y_head_rot, data, x_vel, y_vel, z_vel } = packet_data;
+//     let id: u16 = *serverside_id as u16 + 545; // FIXME might break in interesting ways, but shouldn't override anything important
+//     
+//     let added_object: AddedObject = AddedObject {
+//         id,
+//         typ: 103, // idk
+//         init_data: GenericInitData {
+//             version: 1, // used a packet sniffer, idk if there are other versions
+//             name: format!("UUID-{}", uuid),
+//             is_player: false, // possibly a lie, but thats not the clients problem anyways
+//             id,
+//             position: utils::vec3_to_v3f(vec_pos),
+//             rotation: v3f{x: 0.0, y: 0.0, z: 0.0},
+//             hp: 100, // entity deaths handled by server
+//             messages: vec![
+//                 ActiveObjectCommand::SetProperties(
+//                     wire::types::AOCSetProperties {
+//                         newprops: ObjectProperties {
+//                             version: 4,
+//                             hp_max: 100,
+//                             physical: false,
+//                             _unused: 0,
+//                             collision_box: aabb3f {
+//                                 min_edge: v3f {
+//                                     x: -0.5,
+//                                     y: -0.5,
+//                                     z: -0.5,
+//                                 },
+//                                 max_edge: v3f {
+//                                     x: 0.5,
+//                                     y: 0.5,
+//                                     z: 0.5,
+//                                 },
+//                             },
+//                             selection_box: aabb3f {
+//                                 min_edge: v3f {
+//                                     x: -0.5,
+//                                     y: -0.5,
+//                                     z: -0.5,
+//                                 },
+//                                 max_edge: v3f {
+//                                     x: 0.5,
+//                                     y: 0.5,
+//                                     z: 0.5,
+//                                 },
+//                             },
+//                             pointable: false,
+//                             visual: String::from("mesh"),
+//                             visual_size: v3f {
+//                                 x: 1.0,
+//                                 y: 1.0,
+//                                 z: 1.0,
+//                             },
+//                             textures: vec![String::from("entity-creeper.png")],
+//                             spritediv: v2s16 {
+//                                 x: 1,
+//                                 y: 1,
+//                             },
+//                             initial_sprite_basepos: v2s16 {
+//                                 x: 0,
+//                                 y: 0,
+//                             },
+//                             is_visible: true,
+//                             makes_footstep_sound: false,
+//                             automatic_rotate: 0.0,
+//                             mesh: String::from("entitymodel-creeper.b3d"), // it didnt have sane defaults qwq
+//                             colors: vec![
+//                                 SColor {
+//                                     r: 255,
+//                                     g: 255,
+//                                     b: 255,
+//                                     a: 255,
+//                                 },
+//                             ],
+//                             collide_with_objects: true,
+//                             stepheight: 0.0,
+//                             automatic_face_movement_dir: false,
+//                             automatic_face_movement_dir_offset: 0.0,
+//                             backface_culling: true,
+//                             nametag: String::from("AAAAA"),
+//                             nametag_color: SColor {
+//                                 r: 255,
+//                                 g: 255,
+//                                 b: 255,
+//                                 a: 255,
+//                             },
+//                             automatic_face_movement_max_rotation_per_sec: -1.0,
+//                             infotext: String::from("infotext?"),
+//                             wield_item: String::from("item-pufferfish.png"),
+//                             glow: 0,
+//                             breath_max: 0,
+//                             eye_height: 1.625,
+//                             zoom_fov: 0.0,
+//                             use_texture_alpha: false,
+//                             damage_texture_modifier: None,
+//                             shaded: None,
+//                             show_on_minimap: None,
+//                             nametag_bgcolor: None,
+//                             rotate_selectionbox: None
+//                         }
+//                     },
+//                 )
+//             ]
+//         }
+//     };
     
     let clientbound_addentity = ToClientCommand::ActiveObjectRemoveAdd(
         Box::new(wire::command::ActiveObjectRemoveAddSpec {
             removed_object_ids: vec![],
-            added_objects,
+            added_objects: vec![],
         })
     );
     let _ = conn.send(clientbound_addentity).await;

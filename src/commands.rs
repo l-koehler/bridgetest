@@ -45,7 +45,7 @@ pub async fn mt_auto(command: ToServerCommand, mt_conn: &mut MinetestConnection,
     }
 }
 
-pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnection, mc_client: &azalea::Client, mt_server_state: &mut MTServerState, mc_conn: &mut UnboundedReceiver<Event>) {
+pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnection, mc_client: &mut azalea::Client, mt_server_state: &mut MTServerState, mc_conn: &mut UnboundedReceiver<Event>) {
     let cloned_command = command.clone();
     let command_name = utils::mc_packet_name(&cloned_command);
     match command {
@@ -54,7 +54,7 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
         Event::Tick => on_minecraft_tick(mt_conn, mc_client, mt_server_state).await,
         Event::Death(_) => clientbound_translator::death(mt_conn, mt_server_state).await,
         Event::Packet(packet_value) => match (*packet_value).clone() {
-            ClientboundGamePacket::ChunkBatchStart(_) => clientbound_translator::chunkbatch(mt_conn, mc_conn, mt_server_state).await,
+            ClientboundGamePacket::ChunkBatchStart(_) => clientbound_translator::chunkbatch(mt_conn, mc_conn, mt_server_state, mc_client).await,
             ClientboundGamePacket::SystemChat(message) => clientbound_translator::send_sys_message(mt_conn, &message.clone()).await,
             ClientboundGamePacket::PlayerPosition(playerpos_packet) => clientbound_translator::set_player_pos(&playerpos_packet.clone(), mt_conn, mt_server_state).await,
             ClientboundGamePacket::SetTime(settime_packet) => clientbound_translator::set_time(&settime_packet.clone(), mt_conn).await,
@@ -65,7 +65,7 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
             ClientboundGamePacket::Respawn(respawn_packet) => clientbound_translator::update_dimension(&respawn_packet.clone(), mt_server_state).await,
 
             ClientboundGamePacket::KeepAlive(_) => utils::logger("[Minecraft] Got KeepAlive packet, ignoring it.", 0),
-            ClientboundGamePacket::AddEntity(addentity_packet) => clientbound_translator::add_entity(&addentity_packet.clone(), mt_conn).await,
+            //ClientboundGamePacket::AddEntity(addentity_packet) => clientbound_translator::add_entity(&addentity_packet.clone(), mt_conn).await,
             _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),
         }
         _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),

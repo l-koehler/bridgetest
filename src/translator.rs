@@ -4,7 +4,9 @@
  * Also, this file is badly named (as you might have noticed).
  */
 
+use crate::clientbound_translator;
 use crate::mt_definitions;
+use crate::settings;
 use crate::utils;
 use crate::commands;
 use crate::MTServerState; // ok this is stupid to do whatever it works (i need global variables) (for normal reasons)
@@ -94,15 +96,26 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
         let command = t.unwrap();
         match command {
             ToServerCommand::ClientReady(_) => break,
-            _ => utils::logger(&format!("[Minetest] Got unexpected {} while awaiting ClientReady!", command.command_name()), 2)
+            _ => utils::logger(&format!("[Minetest] Dropping unexpected packet! Got serverbound \"{}\", expected \"ClientReady\"!", command.command_name()), 2)
         }
     }
     
-    utils::logger("[Minetest] S->C Inventory Formspec", 1);
-    let _ = mt_conn.send(mt_definitions::get_inventory_formspec()).await;
-    
     utils::logger("[Minetest] S->C Inventory", 1);
     let _ = mt_conn.send(mt_definitions::empty_inventory()).await;
+    
+    utils::logger("[Minetest] S->C idfk all that sky stuff ig", 1);
+    for thing in mt_definitions::get_sky_stuff() {
+        let _ = mt_conn.send(thing).await;
+    }
+    
+    utils::logger("what the fuuuuck i hate formspecs", 1);
+    for terrible_amalgamation in settings::FORMSPEC_BLOBS {
+        let _ = mt_conn.send(mt_definitions::get_inventory_formspec(terrible_amalgamation)).await;
+    }
+    
+    utils::logger("[Minetest] S->C Add Entity (and crash).", 3);
+    clientbound_translator::add_entity(&mut mt_conn).await;
+    panic!("client probably crashed.");
     /*
      * Main Loop.
      * At this point, both the minetest client and the minecraft server
@@ -144,7 +157,7 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
                     Some(_) => {
                         let mc_command = t.expect("[Minecraft] Failed to unwrap non-empty packet from Server!");
                         utils::show_mc_command(&mc_command);
-                        commands::mc_auto(mc_command, &mut mt_conn, &mc_client, &mut mt_server_state, &mut mc_conn).await;
+                        commands::mc_auto(mc_command, &mut mt_conn, &mut mc_client, &mut mt_server_state, &mut mc_conn).await;
                     },
                     None => utils::logger(&format!("[Minecraft] Recieved empty/none, skipping: {:#?}", t), 2),
                 }

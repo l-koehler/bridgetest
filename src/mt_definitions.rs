@@ -2,9 +2,10 @@
 // the functions are actually more like consts but
 // the "String" type cant be a constant so :shrug:
 
-use minetest_protocol::wire::command::{AnnounceMediaSpec, DetachedInventorySpec, InventoryFormspecSpec, ItemdefSpec, MediaSpec, MovementSpec, NodedefSpec, PrivilegesSpec, HudaddSpec, ToClientCommand , CsmRestrictionFlagsSpec, InventorySpec};
-use minetest_protocol::wire::types::{ v2f, v3f, v2s32, AlignStyle, BlockPos, ContentFeatures, DrawType, Inventory, ItemAlias, ItemDef, ItemType, ItemdefList, MediaAnnouncement, MediaFileData, NodeBox, NodeDefManager, NodeMetadata, Option16, SColor, SimpleSoundSpec, SunParams, TileAnimationParams, TileDef, InventoryEntry, InventoryList, ItemStackUpdate
-}; // AAAAAA
+use minetest_protocol::wire::command::{MediaSpec, ToClientCommand};
+use minetest_protocol::wire::command;
+use minetest_protocol::wire::types::{ v2f, v3f, v2s32, AlignStyle, BlockPos, ContentFeatures, DrawType, Inventory, ItemAlias, ItemDef, ItemType, ItemdefList, MediaAnnouncement, MediaFileData, NodeBox, NodeDefManager, NodeMetadata, Option16, SColor, SimpleSoundSpec, TileAnimationParams, TileDef, InventoryEntry, InventoryList, ItemStackUpdate}; // AAAAAA
+use minetest_protocol::wire::types;
 
 use alloc::boxed::Box;
 use config::Config;
@@ -61,9 +62,132 @@ pub const fn get_y_bounds(dimension: &Dimensions) -> (i16, i16) {
     }
 }
 
+
+pub fn get_sky_stuff() -> [ToClientCommand; 5] {
+    [
+        ToClientCommand::SetSky(
+            Box::new(command::SetSkySpec {
+                params: types::SkyboxParams {
+                    bgcolor: SColor {
+                        r: 255,
+                        g: 255,
+                        b: 255,
+                        a: 255,
+                    },
+                    clouds: true,
+                    fog_sun_tint: SColor {
+                        r: 255,
+                        g: 255,
+                        b: 95,
+                        a: 51,
+                    },
+                    fog_moon_tint: SColor {
+                        r: 255,
+                        g: 255,
+                        b: 255,
+                        a: 255,
+                    },
+                    fog_tint_type: String::from("custom"),
+                    data: types::SkyboxData::Color (
+                        types::SkyColor {
+                            day_sky: SColor {
+                                r: 255,
+                                g: 124,
+                                b: 163,
+                                a: 255,
+                            },
+                            day_horizon: SColor {
+                                r: 255,
+                                g: 192,
+                                b: 216,
+                                a: 255,
+                            },
+                            dawn_sky: SColor {
+                                r: 255,
+                                g: 124,
+                                b: 163,
+                                a: 255,
+                            },
+                            dawn_horizon: SColor {
+                                r: 255,
+                                g: 192,
+                                b: 216,
+                                a: 255,
+                            },
+                            night_sky: SColor {
+                                r: 255,
+                                g: 0,
+                                b: 0,
+                                a: 0,
+                            },
+                            night_horizon: SColor {
+                                r: 255,
+                                g: 74,
+                                b: 103,
+                                a: 144,
+                            },
+                            indoors: SColor {
+                                r: 255,
+                                g: 192,
+                                b: 216,
+                                a: 255,
+                            },
+                        },
+                    ),
+                    body_orbit_tilt: Some(-1024.0),
+                }
+            })
+        ),
+        ToClientCommand::SetSun(
+            Box::new(command::SetSunSpec {
+                sun: types::SunParams {
+                    visible: true,
+                    texture: String::from("misc-sun.png"),
+                    tonemap: String::from("qwq-what"),
+                    sunrise: String::from("dont-have-that"),
+                    sunrise_visible: true,
+                    scale: 1.0
+                }
+            })
+        ),
+        ToClientCommand::SetMoon(
+            Box::new(command::SetMoonSpec {
+                moon: types::MoonParams {
+                    visible: true,
+                    texture: String::from("misc-moon_phases.png"),
+                    tonemap: String::from("qwq-what"),
+                    scale: 3.75
+                }
+            })
+        ),
+        ToClientCommand::SetStars(
+            Box::new(command::SetStarsSpec {
+                stars: types::StarParams {
+                    visible: true,
+                    count: 1000,
+                    starcolor: SColor {
+                        r: 105,
+                        g: 235,
+                        b: 235,
+                        a: 255,
+                    },
+                    scale: 1.0,
+                    day_opacity: Some(0.0)
+                }
+            })
+        ),
+        ToClientCommand::OverrideDayNightRatio(
+            Box::new(command::OverrideDayNightRatioSpec {
+                do_override: true,
+                day_night_ratio: 0
+            })
+        )
+    ]
+}
+
 pub fn empty_inventory() -> ToClientCommand {
     let inventory_command = ToClientCommand::Inventory(
-        Box::new(InventorySpec {
+        Box::new(command::InventorySpec {
             inventory: Inventory {
                 entries: vec![
                     InventoryEntry::Update {
@@ -103,7 +227,7 @@ pub fn empty_inventory() -> ToClientCommand {
 
 pub fn add_healthbar() -> ToClientCommand {
     let hudadd_command = ToClientCommand::Hudadd(
-        Box::new(HudaddSpec {
+        Box::new(command::HudaddSpec {
             server_id: settings::HEALTHBAR_ID,
             typ: 2,
             pos: v2f {
@@ -152,7 +276,7 @@ pub fn add_healthbar() -> ToClientCommand {
 
 pub fn add_foodbar() -> ToClientCommand {
     let hudadd_command = ToClientCommand::Hudadd(
-        Box::new(HudaddSpec {
+        Box::new(command::HudaddSpec {
             server_id: settings::FOODBAR_ID,
             typ: 2,
             pos: v2f {
@@ -201,7 +325,7 @@ pub fn add_foodbar() -> ToClientCommand {
 
 pub fn add_airbar() -> ToClientCommand {
     let hudadd_command = ToClientCommand::Hudadd(
-        Box::new(HudaddSpec {
+        Box::new(command::HudaddSpec {
             server_id: settings::AIRBAR_ID,
             typ: 2,
             pos: v2f {
@@ -248,7 +372,7 @@ pub fn add_airbar() -> ToClientCommand {
 
 pub fn get_defaultpriv() -> ToClientCommand {
     let priv_command = ToClientCommand::Privileges(
-        Box::new(PrivilegesSpec {
+        Box::new(command::PrivilegesSpec {
             privileges: vec![
                 String::from("interact"),
                 String::from("shout"),
@@ -260,7 +384,7 @@ pub fn get_defaultpriv() -> ToClientCommand {
 
 pub fn get_movementspec() -> ToClientCommand {
     let movement_command = ToClientCommand::Movement(
-        Box::new(MovementSpec {
+        Box::new(command::MovementSpec {
             acceleration_default: 3.0,
             acceleration_air: 2.0,
             acceleration_fast: 10.0,
@@ -278,10 +402,10 @@ pub fn get_movementspec() -> ToClientCommand {
     movement_command
 }
 
-pub fn get_inventory_formspec() -> ToClientCommand {
+pub fn get_inventory_formspec(formspec: &str) -> ToClientCommand {
     let formspec_command = ToClientCommand::InventoryFormspec(
-        Box::new(InventoryFormspecSpec{
-            formspec: String::from(settings::INV_FORMSPEC),
+        Box::new(command::InventoryFormspecSpec{
+            formspec: String::from(formspec),
         })
     );
     formspec_command
@@ -289,7 +413,7 @@ pub fn get_inventory_formspec() -> ToClientCommand {
 
 pub fn get_csmrestrictions() -> ToClientCommand {
     let csm_command = ToClientCommand::CsmRestrictionFlags(
-        Box::new(CsmRestrictionFlagsSpec {
+        Box::new(command::CsmRestrictionFlagsSpec {
             csm_restriction_flags: 0,
             csm_restriction_noderange: 0
         })
@@ -342,7 +466,7 @@ pub async fn get_item_def_command(settings: &Config) -> ToClientCommand {
     let alias_definitions: Vec<ItemAlias> = vec![ItemAlias {name: String::from(""), convert_to: String::from("")}];
 
     let itemdef_command = ToClientCommand::Itemdef(
-        Box::new(ItemdefSpec {
+        Box::new(command::ItemdefSpec {
             item_def: ItemdefList {
                 itemdef_manager_version: 0, // https://github.com/minetest/minetest/blob/master/src/itemdef.cpp#L616
                  defs: item_definitions,
@@ -526,7 +650,7 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
     }));
     
     let nodedef_command = ToClientCommand::Nodedef(
-        Box::new(NodedefSpec {
+        Box::new(command::NodedefSpec {
             node_def: NodeDefManager {
                 content_features,
             }
@@ -965,7 +1089,7 @@ pub async fn get_texture_media_commands(settings: &Config) -> (ToClientCommand, 
         misc_file_vec.push(mediafilevecs.0);
     }
     let announcemedia = ToClientCommand::AnnounceMedia(
-        Box::new(AnnounceMediaSpec {
+        Box::new(command::AnnounceMediaSpec {
             files: announcement_vec,
             remote_servers: String::from("") // IDK what this means or does, but it works if left alone. (meee :3)
         })
