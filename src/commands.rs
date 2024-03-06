@@ -65,7 +65,7 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
             ClientboundGamePacket::Respawn(respawn_packet) => clientbound_translator::update_dimension(&respawn_packet.clone(), mt_server_state).await,
 
             ClientboundGamePacket::KeepAlive(_) => utils::logger("[Minecraft] Got KeepAlive packet, ignoring it.", 0),
-            //ClientboundGamePacket::AddEntity(addentity_packet) => clientbound_translator::add_entity(&addentity_packet.clone(), mt_conn).await,
+            ClientboundGamePacket::AddEntity(addentity_packet) => clientbound_translator::add_entity(Some(&addentity_packet.clone()), None, mt_conn).await,
             _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),
         }
         _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),
@@ -85,12 +85,17 @@ pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection, 
         utils::logger("commands::handshake() got called with a ToServerCommand that was not a C->S Init", 3);
         panic!("handshake() got called with non-init packet!")
     }
+
     let mut player_name = init_command.player_name;
+    // if the name is "random", the random result only affects the MC server. the MT client will think the name is literal "random".
+    mt_server_state.this_player.0 = player_name.clone();
     if player_name == "random" {
         player_name = utils::get_random_username();
         utils::logger(&format!("Using random username: {}", player_name), 1);
     }
+    mt_server_state.this_player.1 = player_name.clone();
     mt_server_state.players.push(player_name.clone());
+
     // Send S->C Hello
     let hello_command = ToClientCommand::Hello(
         Box::new(HelloSpec {

@@ -103,19 +103,13 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     utils::logger("[Minetest] S->C Inventory", 1);
     let _ = mt_conn.send(mt_definitions::empty_inventory()).await;
     
-    utils::logger("[Minetest] S->C idfk all that sky stuff ig", 1);
+    utils::logger("[Minetest] S->C SetSky, SetSun, SetMoon, SetStars, OverrideDayNightRatio ", 1);
     for thing in mt_definitions::get_sky_stuff() {
         let _ = mt_conn.send(thing).await;
     }
-    
-    utils::logger("what the fuuuuck i hate formspecs", 1);
-    for terrible_amalgamation in settings::FORMSPEC_BLOBS {
-        let _ = mt_conn.send(mt_definitions::get_inventory_formspec(terrible_amalgamation)).await;
-    }
-    
-    utils::logger("[Minetest] S->C Add Entity (and crash).", 3);
-    clientbound_translator::add_entity(&mut mt_conn).await;
-    panic!("client probably crashed.");
+
+    utils::logger("[Minetest] S->C ActiveObjectRemoveAdd LocalPlayer", 1);
+    clientbound_translator::add_entity(None, Some(&mt_server_state), &mut mt_conn).await;
     /*
      * Main Loop.
      * At this point, both the minetest client and the minecraft server

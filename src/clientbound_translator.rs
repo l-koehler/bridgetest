@@ -9,6 +9,7 @@ use crate::settings;
 use crate::utils;
 use crate::mt_definitions;
 use crate::commands;
+use crate::utils::vec3_to_v3f;
 use crate::MTServerState;
 use azalea::BlockPos;
 use minetest_protocol::wire::types::ObjectProperties;
@@ -481,117 +482,148 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
     }
 }
 
-pub async fn add_entity(conn: &mut MinetestConnection) { //packet_data: &ClientboundAddEntityPacket, 
-//     let ClientboundAddEntityPacket { id: serverside_id, uuid, entity_type, position: vec_pos, x_rot, y_rot, y_head_rot, data, x_vel, y_vel, z_vel } = packet_data;
-//     let id: u16 = *serverside_id as u16 + 545; // FIXME might break in interesting ways, but shouldn't override anything important
-//     
-//     let added_object: AddedObject = AddedObject {
-//         id,
-//         typ: 103, // idk
-//         init_data: GenericInitData {
-//             version: 1, // used a packet sniffer, idk if there are other versions
-//             name: format!("UUID-{}", uuid),
-//             is_player: false, // possibly a lie, but thats not the clients problem anyways
-//             id,
-//             position: utils::vec3_to_v3f(vec_pos),
-//             rotation: v3f{x: 0.0, y: 0.0, z: 0.0},
-//             hp: 100, // entity deaths handled by server
-//             messages: vec![
-//                 ActiveObjectCommand::SetProperties(
-//                     wire::types::AOCSetProperties {
-//                         newprops: ObjectProperties {
-//                             version: 4,
-//                             hp_max: 100,
-//                             physical: false,
-//                             _unused: 0,
-//                             collision_box: aabb3f {
-//                                 min_edge: v3f {
-//                                     x: -0.5,
-//                                     y: -0.5,
-//                                     z: -0.5,
-//                                 },
-//                                 max_edge: v3f {
-//                                     x: 0.5,
-//                                     y: 0.5,
-//                                     z: 0.5,
-//                                 },
-//                             },
-//                             selection_box: aabb3f {
-//                                 min_edge: v3f {
-//                                     x: -0.5,
-//                                     y: -0.5,
-//                                     z: -0.5,
-//                                 },
-//                                 max_edge: v3f {
-//                                     x: 0.5,
-//                                     y: 0.5,
-//                                     z: 0.5,
-//                                 },
-//                             },
-//                             pointable: false,
-//                             visual: String::from("mesh"),
-//                             visual_size: v3f {
-//                                 x: 1.0,
-//                                 y: 1.0,
-//                                 z: 1.0,
-//                             },
-//                             textures: vec![String::from("entity-creeper.png")],
-//                             spritediv: v2s16 {
-//                                 x: 1,
-//                                 y: 1,
-//                             },
-//                             initial_sprite_basepos: v2s16 {
-//                                 x: 0,
-//                                 y: 0,
-//                             },
-//                             is_visible: true,
-//                             makes_footstep_sound: false,
-//                             automatic_rotate: 0.0,
-//                             mesh: String::from("entitymodel-creeper.b3d"), // it didnt have sane defaults qwq
-//                             colors: vec![
-//                                 SColor {
-//                                     r: 255,
-//                                     g: 255,
-//                                     b: 255,
-//                                     a: 255,
-//                                 },
-//                             ],
-//                             collide_with_objects: true,
-//                             stepheight: 0.0,
-//                             automatic_face_movement_dir: false,
-//                             automatic_face_movement_dir_offset: 0.0,
-//                             backface_culling: true,
-//                             nametag: String::from("AAAAA"),
-//                             nametag_color: SColor {
-//                                 r: 255,
-//                                 g: 255,
-//                                 b: 255,
-//                                 a: 255,
-//                             },
-//                             automatic_face_movement_max_rotation_per_sec: -1.0,
-//                             infotext: String::from("infotext?"),
-//                             wield_item: String::from("item-pufferfish.png"),
-//                             glow: 0,
-//                             breath_max: 0,
-//                             eye_height: 1.625,
-//                             zoom_fov: 0.0,
-//                             use_texture_alpha: false,
-//                             damage_texture_modifier: None,
-//                             shaded: None,
-//                             show_on_minimap: None,
-//                             nametag_bgcolor: None,
-//                             rotate_selectionbox: None
-//                         }
-//                     },
-//                 )
-//             ]
-//         }
-//     };
+// either takes the server state or a packet.
+// if it gets a packet, it will translate it,
+// if it gets the server state, it will add the proxied player
+// (if it gets both or none, it will panic, but there is no reason for that to ever happen)
+pub async fn add_entity(packet_data: Option<&ClientboundAddEntityPacket>, opt_server_state: Option<&MTServerState>,
+                        conn: &mut MinetestConnection) { //packet_data: &ClientboundAddEntityPacket, 
+    let is_player: bool;
+    let name: String;
+    let id: u16;
+    let position: v3f;
+    match opt_server_state {
+        None => {
+            // use a network packet
+            let ClientboundAddEntityPacket {
+                id: serverside_id,
+                uuid,
+                entity_type: _, // TODO: textures and models depend on this thing
+                position: vec_pos,
+                x_rot: _, y_rot: _, y_head_rot: _, data: _, x_vel: _, y_vel: _, z_vel: _ } = packet_data
+            .expect("add_entity got neither packet nor server state!");
+            is_player = false;
+            name = format!("UUID-{}", uuid);
+            id = *serverside_id as u16 + 1; // ensure 0 is always "free" for the local player, because the actual ID can't be known
+            position = vec3_to_v3f(vec_pos);
+        },
+        Some(server_state) => {
+            // use the mt_server_state and lucky guesses
+            is_player = true;
+            name = server_state.this_player.0.clone();
+            id = 0; // ensured to be "free"
+            position = v3f{x: 0.0, y: 0.0, z: 0.0}; // player will be moved somewhere else later
+        }
+    };
+    
+    
+    let added_object: AddedObject = AddedObject {
+        id,
+        typ: 101, // idk
+        init_data: GenericInitData {
+            version: 1, // used a packet sniffer, idk if there are other versions
+            name,
+            is_player, // possibly a lie, but thats not the clients problem anyways
+            id,
+            position,
+            rotation: v3f{x: 0.0, y: 0.0, z: 0.0},
+            hp: 100, // entity deaths handled by server
+            messages: vec![
+                // ActiveObjectCommand::SetProperties(
+                //     wire::types::AOCSetProperties {
+                //         newprops: ObjectProperties {
+                //             version: 4,
+                //             hp_max: 100,
+                //             physical: true,
+                //             _unused: 0,
+                //             collision_box: aabb3f {
+                //                 min_edge: v3f {
+                //                     x: -0.5,
+                //                     y: -0.5,
+                //                     z: -0.5,
+                //                 },
+                //                 max_edge: v3f {
+                //                     x: 0.5,
+                //                     y: 0.5,
+                //                     z: 0.5,
+                //                 },
+                //             },
+                //             selection_box: aabb3f {
+                //                 min_edge: v3f {
+                //                     x: -0.5,
+                //                     y: -0.5,
+                //                     z: -0.5,
+                //                 },
+                //                 max_edge: v3f {
+                //                     x: 0.5,
+                //                     y: 0.5,
+                //                     z: 0.5,
+                //                 },
+                //             },
+                //             pointable: false,
+                //             visual: String::from("mesh"),
+                //             visual_size: v3f {
+                //                 x: 1.0,
+                //                 y: 1.0,
+                //                 z: 1.0,
+                //             },
+                //             textures: vec![String::from("entity-creeper.png")],
+                //             spritediv: v2s16 {
+                //                 x: 1,
+                //                 y: 1,
+                //             },
+                //             initial_sprite_basepos: v2s16 {
+                //                 x: 0,
+                //                 y: 0,
+                //             },
+                //             is_visible: true,
+                //             makes_footstep_sound: false,
+                //             automatic_rotate: 0.0,
+                //             mesh: String::from("entitymodel-creeper.b3d"), // it didnt have sane defaults qwq
+                //             colors: vec![
+                //                 SColor {
+                //                     r: 255,
+                //                     g: 255,
+                //                     b: 255,
+                //                     a: 255,
+                //                 },
+                //             ],
+                //             collide_with_objects: true,
+                //             stepheight: 0.0,
+                //             automatic_face_movement_dir: false,
+                //             automatic_face_movement_dir_offset: 0.0,
+                //             backface_culling: true,
+                //             nametag: String::from("AAAAA"),
+                //             nametag_color: SColor {
+                //                 r: 255,
+                //                 g: 255,
+                //                 b: 255,
+                //                 a: 255,
+                //             },
+                //             automatic_face_movement_max_rotation_per_sec: -1.0,
+                //             infotext: String::from("infotext?"),
+                //             wield_item: String::from("item-pufferfish.png"),
+                //             glow: 0,
+                //             breath_max: 0,
+                //             eye_height: 1.625,
+                //             zoom_fov: 0.0,
+                //             use_texture_alpha: false,
+                //             damage_texture_modifier: None,
+                //             shaded: None,
+                //             show_on_minimap: None,
+                //             nametag_bgcolor: None,
+                //             rotate_selectionbox: None
+                //         }
+                //     },
+                // )
+            ]
+        }
+    };
     
     let clientbound_addentity = ToClientCommand::ActiveObjectRemoveAdd(
         Box::new(wire::command::ActiveObjectRemoveAddSpec {
             removed_object_ids: vec![],
-            added_objects: vec![],
+            added_objects: vec![added_object],
         })
     );
     let _ = conn.send(clientbound_addentity).await;

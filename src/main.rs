@@ -32,6 +32,7 @@ pub struct MTServerState {
     // things the server should keep track of
     // mostly used to prevent sending useless/redundant packets
     players: Vec<String>, // names of all players
+    this_player: (String, String), // the proxied player (0: clientside name, 1: name passed to the mc server)
     mt_clientside_pos: (f32, f32, f32), // used to tolerate slight position differences, resulting in far smoother movement
     mt_last_known_health: u16, // used to determine if a HP change should trigger a damage effect flash
     respawn_pos: (f32, f32, f32),
@@ -50,6 +51,7 @@ async fn start_client_handler(settings: Config) {
     // Sane defaults aren't possible, all this will be overwritten before getting read anyways
     let mt_server_state = MTServerState {
         players: Vec::new(),
+        this_player: (String::from(""), String::from("")),
         mt_clientside_pos: (0.0, 0.0, 0.0),
         mt_last_known_health: 0,
         respawn_pos: (0.0, 0.0, 0.0),
