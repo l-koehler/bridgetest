@@ -1016,15 +1016,27 @@ pub fn get_mediafilevecs(filename: PathBuf, name: &str) -> (MediaFileData, Media
     return (filedata, fileannounce);
 }
 
-fn texture_vec_iterator(texture_vec: &mut Vec<(PathBuf, String)>, media_folder: PathBuf, prefix: &str) {
+fn texture_vec_iterator(texture_vec: &mut Vec<(PathBuf, String)>, media_folder: PathBuf, prefix: &str, recurse: bool) {
     let mut name: String;
     let mut path: PathBuf;
     let iterator = fs::read_dir(&media_folder).expect("Failed to read media");
     for item in iterator {
         name = item.as_ref().unwrap().file_name().into_string().unwrap();
-        if name.ends_with(".png") || name.ends_with(".b3d") {
-            path = item.as_ref().unwrap().path();
+        if item.as_ref().unwrap().file_type().unwrap().is_dir() && recurse {
+            // recurse one layer deep
+            // also add the dir name to the prefix of these textures
+            // to avoid "boat/birch.png" -> "entity-birch.png", when it should be "entity-boat-birch.png"
+            texture_vec_iterator(texture_vec, item.as_ref().unwrap().path(), &format!("{}-{}", prefix, name), false);
+        }
+        if name.ends_with(".png") {
+            path = item.unwrap().path();
             texture_vec.push((path, format!("{}-{}", prefix, name)));
+        } else if name.ends_with(".b3d") {
+            path = item.unwrap().path();
+            texture_vec.push((
+                path,
+                utils::b3d_sanitize(format!("{}-{}", prefix, name))
+            ));
         };
     }
 }
@@ -1045,15 +1057,15 @@ pub async fn get_texture_media_commands(settings: &Config) -> (ToClientCommand, 
     let mut entity_texture_vec: Vec<(PathBuf, String)> = Vec::new();
     let mut item_texture_vec: Vec<(PathBuf, String)> = Vec::new();
     let mut misc_texture_vec: Vec<(PathBuf, String)> = Vec::new();
-    texture_vec_iterator(&mut block_texture_vec, textures_folder.join("block/"), "block");
-    texture_vec_iterator(&mut particle_texture_vec, textures_folder.join("particle/"), "particle");
-    texture_vec_iterator(&mut entity_texture_vec, textures_folder.join("entity/"), "entity");
-    texture_vec_iterator(&mut item_texture_vec, textures_folder.join("item/"), "item");
+    texture_vec_iterator(&mut block_texture_vec, textures_folder.join("block/"), "block", false);
+    texture_vec_iterator(&mut particle_texture_vec, textures_folder.join("particle/"), "particle", false);
+    texture_vec_iterator(&mut entity_texture_vec, textures_folder.join("entity/"), "entity", true);
+    texture_vec_iterator(&mut item_texture_vec, textures_folder.join("item/"), "item", false);
     
-    texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("environment/"), "misc");
-    texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("gui/sprites/hud/"), "hud");
-    texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("gui/sprites/hud/heart/"), "heart");
-    texture_vec_iterator(&mut misc_texture_vec, models_folder, "entitymodel");
+    texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("environment/"), "misc", false);
+    texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("gui/sprites/hud/"), "hud", false);
+    texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("gui/sprites/hud/heart/"), "heart", false);
+    texture_vec_iterator(&mut misc_texture_vec, models_folder, "entitymodel", false);
     // texture_vec = [("/path/to/allay.png", "entity-allay"), ("/path/to/cactus_bottom.png", "block-cactus_bottom"), ...]
     // call get_mediafilevecs on each entry tuple in *_texture_vec
     let mut announcement_vec: Vec<MediaAnnouncement> = Vec::new();

@@ -17,6 +17,10 @@ pack and block/item/entity definitions, which are obtained from [ArcticData](htt
 You can generate these definitions yourself if you don't want to use ArcticData,  
 possibly by using [Minecrafts inbuilt Data Generators](https://wiki.vg/Data_Generators) instead of it.
 
+This also needs the entity models as .b3d files. You can get these by  
+downloading Mineclonia, taking all .b3d files that are in that folder  
+and pasting them into `~/.local/share/bridgetest/models/` (on linux).  
+
 #### Things that are still missing:
 
 * Items (and inventory support)

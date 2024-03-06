@@ -10,6 +10,7 @@ use minetest_protocol::wire::types::v3f;
 use azalea_client::Event;
 use azalea_core::position::Vec3;
 use azalea_protocol::packets::game::ClientboundGamePacket;
+use azalea_registry::EntityKind;
 use std::path::Path;
 use std::path::PathBuf;
 use std::io::Read;
@@ -19,6 +20,18 @@ pub const fn vec3_to_v3f(input_vector: &Vec3) -> v3f {
     // loss of precision, f64 -> f32
     let Vec3 { x: xf64, y: yf64, z: zf64 } = input_vector;
     v3f { x: *xf64 as f32, y: *yf64 as f32, z: *zf64 as f32 }
+}
+
+pub fn b3d_sanitize(input_path: String) -> String {
+    input_path
+    .replace("amc_", "")
+    .replace("extra_mobs_", "")
+    .replace("mcl_boats_", "")
+    .replace("mcl_bows_", "")
+    .replace("mcl_chests_", "")
+    .replace("mcl_minecarts_", "")
+    .replace("mcl_", "")
+    .replace("mobs_mc_", "")
 }
 
 pub fn get_colormap(texture: &str) -> Option<(u8, u8, u8)> {
@@ -110,6 +123,43 @@ pub fn show_mc_command(command: &Event) {
 pub fn get_random_username() -> String {
     let hs_name = String::from(settings::HS_NAMES[rand::thread_rng().gen_range(0..27)]);
     format!("{}{:0>3}", hs_name, rand::thread_rng().gen_range(0..1000))
+}
+
+pub fn get_entity_model(entity: &EntityKind) -> (&str, &str) {
+    match entity {
+        // TODO for entitys without models choose the least stupid-looking fallback
+        EntityKind::Axolotl    => ("entitymodel-axolotl.b3d", "entity-axolotl-cyan.png"),
+        EntityKind::Bat        => ("entitymodel-bat.b3d"    , "entity-bat.png"),
+        EntityKind::Blaze      => ("entitymodel-blaze.b3d"  , "entity-blaze.png"),
+        EntityKind::Boat       => ("entitymodel-boat.b3d"   , "entity-boat-oak.png"), // TODO use the actual textures for variants
+        EntityKind::Cat        => ("entitymodel-cat.b3d"    , "entity-cat-red.png"),
+        EntityKind::CaveSpider => ("entitymodel-spider.b3d" , "entity-spider-cave_spider.png"),
+        EntityKind::ChestMinecart => ("entitymodel-minecart_chest.b3d", "entity-minecart.png"), // minecraft adds the chest texture, there is no separate minecart texture
+        EntityKind::Chicken    => ("entitymodel-chicken.b3d", "entity-chicken.png"),
+        EntityKind::Cod        => ("entitymodel-cod.b3d"    , "entity-fish-cod.png"),
+        EntityKind::CommandBlockMinecart => ("entitymodel-minecart_block.b3d", "entity-minecart.png"),
+        EntityKind::Cow        => ("entitymodel-cow.b3d"    , "entity-cow-cow.png"),
+        EntityKind::Creeper    => ("entitymodel-creeper.b3d", "entity-creeper-creeper.png"),
+        EntityKind::Dolphin    => ("entitymodel-dolphin.b3d", "entity-dolphin.png"),
+        EntityKind::Donkey     => ("entitymodel-horse.b3d"  , "entity-horse-donkey.png"),
+        EntityKind::Drowned    => ("entitymodel-zombie.b3d" , "entity-zombie-zombie.png"), // drowned is a layered texture
+        EntityKind::ElderGuardian => ("entitymodel-guardian.b3d", "entity-guardian_elder.png"),
+        EntityKind::EndCrystal => ("entitymodel-end_crystal.b3d", "entity-end_crystal-end_crystal.png"),
+        EntityKind::EnderDragon => ("entitymodel-dragon.b3d", "entity-enderdragon-dragon.png"),
+        EntityKind::Enderman   => ("entitymodel-enderman.b3d", "entity-enderman-enderman.png"),
+        EntityKind::Endermite  => ("entitymodel-endermite.b3d", "entity-endermite.png"),
+        EntityKind::Evoker     => ("entitymodel-evoker.b3d" , "entity-illager-evoker.png"),
+        EntityKind::Fox        => ("entitymodel-cat.b3d"    , "entity-fox-fox.png"),
+        EntityKind::FurnaceMinecart => ("entitymodel-minecart_block.b3d", "entity-minecart.png"),
+        EntityKind::Ghast      => ("entitymodel-ghast.b3d"  , "entity-ghast-ghast.png"),
+        EntityKind::GlowSquid  => ("entitymodel-glow_squid.b3d", "entity-squid-glow_squid.png"),
+        EntityKind::Goat       => ("entitymodel-sheepfur.b3d", "entity-goat-goat.png"),
+        EntityKind::Guardian   => ("entitymodel-guardian.b3d", "entity-guardian.png"),
+        EntityKind::Hoglin     => ("entitymodel-hoglin.b3d" , "entity-hoglin-hoglin.png"),
+        EntityKind::HopperMinecart => ("entitymodel-minecart_hopper.b3d", "entity-minecart.png"),
+        EntityKind::Horse      => ("entitymodel-horse.b3d"  , "entity-horse-horse_brown.png"),
+        _ => ("entitymodel-pig.b3d", "entity-pig.png")
+    }
 }
 
 pub fn mc_packet_name(command: &Event) -> &str {

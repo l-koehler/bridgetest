@@ -35,6 +35,7 @@ use azalea_protocol::packets::game::{ClientboundGamePacket,
     clientbound_set_default_spawn_position_packet::ClientboundSetDefaultSpawnPositionPacket,
     clientbound_respawn_packet::ClientboundRespawnPacket,
     clientbound_add_entity_packet::ClientboundAddEntityPacket,
+    clientbound_move_entity_pos_packet::ClientboundMoveEntityPosPacket,
 };
 use azalea_protocol::packets::common::CommonPlayerSpawnInfo;
 use azalea_core::resource_location::ResourceLocation;
@@ -492,13 +493,15 @@ pub async fn add_entity(packet_data: Option<&ClientboundAddEntityPacket>, opt_se
     let name: String;
     let id: u16;
     let position: v3f;
+    let mesh: &str;
+    let texture: &str;
     match opt_server_state {
         None => {
             // use a network packet
             let ClientboundAddEntityPacket {
                 id: serverside_id,
                 uuid,
-                entity_type: _, // TODO: textures and models depend on this thing
+                entity_type, // TODO: textures and models depend on this thing
                 position: vec_pos,
                 x_rot: _, y_rot: _, y_head_rot: _, data: _, x_vel: _, y_vel: _, z_vel: _ } = packet_data
             .expect("add_entity got neither packet nor server state!");
@@ -506,6 +509,7 @@ pub async fn add_entity(packet_data: Option<&ClientboundAddEntityPacket>, opt_se
             name = format!("UUID-{}", uuid);
             id = *serverside_id as u16 + 1; // ensure 0 is always "free" for the local player, because the actual ID can't be known
             position = vec3_to_v3f(vec_pos);
+            (mesh, texture) = utils::get_entity_model(entity_type);
         },
         Some(server_state) => {
             // use the mt_server_state and lucky guesses
@@ -513,6 +517,8 @@ pub async fn add_entity(packet_data: Option<&ClientboundAddEntityPacket>, opt_se
             name = server_state.this_player.0.clone();
             id = 0; // ensured to be "free"
             position = v3f{x: 0.0, y: 0.0, z: 0.0}; // player will be moved somewhere else later
+            mesh = "entitymodel-villager.b3d"; // good enough
+            texture = "entity-player-slim-steve.png";
         }
     };
     
@@ -529,93 +535,93 @@ pub async fn add_entity(packet_data: Option<&ClientboundAddEntityPacket>, opt_se
             rotation: v3f{x: 0.0, y: 0.0, z: 0.0},
             hp: 100, // entity deaths handled by server
             messages: vec![
-                // ActiveObjectCommand::SetProperties(
-                //     wire::types::AOCSetProperties {
-                //         newprops: ObjectProperties {
-                //             version: 4,
-                //             hp_max: 100,
-                //             physical: true,
-                //             _unused: 0,
-                //             collision_box: aabb3f {
-                //                 min_edge: v3f {
-                //                     x: -0.5,
-                //                     y: -0.5,
-                //                     z: -0.5,
-                //                 },
-                //                 max_edge: v3f {
-                //                     x: 0.5,
-                //                     y: 0.5,
-                //                     z: 0.5,
-                //                 },
-                //             },
-                //             selection_box: aabb3f {
-                //                 min_edge: v3f {
-                //                     x: -0.5,
-                //                     y: -0.5,
-                //                     z: -0.5,
-                //                 },
-                //                 max_edge: v3f {
-                //                     x: 0.5,
-                //                     y: 0.5,
-                //                     z: 0.5,
-                //                 },
-                //             },
-                //             pointable: false,
-                //             visual: String::from("mesh"),
-                //             visual_size: v3f {
-                //                 x: 1.0,
-                //                 y: 1.0,
-                //                 z: 1.0,
-                //             },
-                //             textures: vec![String::from("entity-creeper.png")],
-                //             spritediv: v2s16 {
-                //                 x: 1,
-                //                 y: 1,
-                //             },
-                //             initial_sprite_basepos: v2s16 {
-                //                 x: 0,
-                //                 y: 0,
-                //             },
-                //             is_visible: true,
-                //             makes_footstep_sound: false,
-                //             automatic_rotate: 0.0,
-                //             mesh: String::from("entitymodel-creeper.b3d"), // it didnt have sane defaults qwq
-                //             colors: vec![
-                //                 SColor {
-                //                     r: 255,
-                //                     g: 255,
-                //                     b: 255,
-                //                     a: 255,
-                //                 },
-                //             ],
-                //             collide_with_objects: true,
-                //             stepheight: 0.0,
-                //             automatic_face_movement_dir: false,
-                //             automatic_face_movement_dir_offset: 0.0,
-                //             backface_culling: true,
-                //             nametag: String::from("AAAAA"),
-                //             nametag_color: SColor {
-                //                 r: 255,
-                //                 g: 255,
-                //                 b: 255,
-                //                 a: 255,
-                //             },
-                //             automatic_face_movement_max_rotation_per_sec: -1.0,
-                //             infotext: String::from("infotext?"),
-                //             wield_item: String::from("item-pufferfish.png"),
-                //             glow: 0,
-                //             breath_max: 0,
-                //             eye_height: 1.625,
-                //             zoom_fov: 0.0,
-                //             use_texture_alpha: false,
-                //             damage_texture_modifier: None,
-                //             shaded: None,
-                //             show_on_minimap: None,
-                //             nametag_bgcolor: None,
-                //             rotate_selectionbox: None
-                //         }
-                //     },
-                // )
+                ActiveObjectCommand::SetProperties(
+                    wire::types::AOCSetProperties {
+                        newprops: ObjectProperties {
+                            version: 4,
+                            hp_max: 100,
+                            physical: true,
+                            _unused: 0,
+                            collision_box: aabb3f {
+                                min_edge: v3f {
+                                    x: -0.5,
+                                    y: -0.5,
+                                    z: -0.5,
+                                },
+                                max_edge: v3f {
+                                    x: 0.5,
+                                    y: 0.5,
+                                    z: 0.5,
+                                },
+                            },
+                            selection_box: aabb3f {
+                                min_edge: v3f {
+                                    x: -0.5,
+                                    y: -0.5,
+                                    z: -0.5,
+                                },
+                                max_edge: v3f {
+                                    x: 0.5,
+                                    y: 0.5,
+                                    z: 0.5,
+                                },
+                            },
+                            pointable: false,
+                            visual: String::from("mesh"),
+                            visual_size: v3f {
+                                x: 1.0,
+                                y: 1.0,
+                                z: 1.0,
+                            },
+                            textures: vec![String::from(texture)],
+                            spritediv: v2s16 {
+                                x: 1,
+                                y: 1,
+                            },
+                            initial_sprite_basepos: v2s16 {
+                                x: 0,
+                                y: 0,
+                            },
+                            is_visible: true,
+                            makes_footstep_sound: false,
+                            automatic_rotate: 0.0,
+                            mesh: String::from(mesh), // it didnt have sane defaults qwq
+                            colors: vec![
+                                SColor {
+                                    r: 255,
+                                    g: 255,
+                                    b: 255,
+                                    a: 255,
+                                },
+                            ],
+                            collide_with_objects: true,
+                            stepheight: 0.0,
+                            automatic_face_movement_dir: false,
+                            automatic_face_movement_dir_offset: 0.0,
+                            backface_culling: true,
+                            nametag: String::from(""),
+                            nametag_color: SColor {
+                                r: 255,
+                                g: 255,
+                                b: 255,
+                                a: 255,
+                            },
+                            automatic_face_movement_max_rotation_per_sec: -1.0,
+                            infotext: String::from(""),
+                            wield_item: String::from(""),
+                            glow: 0,
+                            breath_max: 0,
+                            eye_height: 1.625,
+                            zoom_fov: 0.0,
+                            use_texture_alpha: false,
+                            damage_texture_modifier: None,
+                            shaded: None,
+                            show_on_minimap: None,
+                            nametag_bgcolor: None,
+                            rotate_selectionbox: None
+                        }
+                    },
+                )
             ]
         }
     };
@@ -627,4 +633,27 @@ pub async fn add_entity(packet_data: Option<&ClientboundAddEntityPacket>, opt_se
         })
     );
     let _ = conn.send(clientbound_addentity).await;
+}
+
+pub async fn move_entity(packet_data: &ClientboundMoveEntityPosPacket, conn: &mut MinetestConnection) {
+    let ClientboundMoveEntityPosPacket { entity_id, delta, on_ground } = packet_data;
+    let clientbound_moveentity = ToClientCommand::ActiveObjectMessages(
+        Box::new(wire::command::ActiveObjectMessagesSpec{
+            objects: vec![/*wire::types::ActiveObjectMessage{
+                id: (entity_id+1) as u16,
+                 data: wire::types::ActiveObjectCommand::UpdatePosition(
+                     wire::types::AOCUpdatePosition {
+                         position: ,
+                         velocity: ,
+                         acceleration: ,
+                         rotation: ,
+                         do_interpolate: ,
+                         is_end_position: ,
+                         update_interval:
+                    }
+                )
+            }*/]
+        })
+    );
+    
 }
