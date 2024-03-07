@@ -12,6 +12,7 @@ use crate::commands;
 use crate::utils::vec3_to_v3f;
 use crate::MTServerState;
 use azalea::BlockPos;
+use azalea_core::delta::PositionDelta8;
 use minetest_protocol::wire::types::ObjectProperties;
 use mt_definitions::{HeartDisplay, FoodDisplay, Dimensions};
 use minetest_protocol::peer::peer::PeerError;
@@ -25,6 +26,7 @@ use minetest_protocol::wire::types::{v3s16, v3f, MapNodesBulk, MapNode, MapBlock
 
 use azalea_client::{PlayerInfo, Client};
 use azalea_client::chat::ChatPacket;
+use azalea_entity::indexing::EntityIdIndex;
 
 use tokio::sync::mpsc::UnboundedReceiver;
 use azalea_client::Event;
@@ -43,7 +45,7 @@ use azalea_protocol::packets::game::clientbound_level_chunk_with_light_packet::{
 use azalea_protocol::packets::game::clientbound_system_chat_packet::ClientboundSystemChatPacket;
 use std::sync::Arc;
 use std::io::Cursor;
-use azalea_world::chunk_storage;
+use azalea_world::{chunk_storage, MinecraftEntityId};
 use azalea_block::BlockState;
 
 pub async fn update_dimension(source_packet: &ClientboundRespawnPacket, mt_server_state: &mut MTServerState) {
@@ -485,43 +487,45 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
 
 // either takes the server state or a packet.
 // if it gets a packet, it will translate it,
-// if it gets the server state, it will add the proxied player
+// else it will add the player as specified in the server state
 // (if it gets both or none, it will panic, but there is no reason for that to ever happen)
-pub async fn add_entity(packet_data: Option<&ClientboundAddEntityPacket>, opt_server_state: Option<&MTServerState>,
-                        conn: &mut MinetestConnection) { //packet_data: &ClientboundAddEntityPacket, 
+pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) { //packet_data: &ClientboundAddEntityPacket, 
     let is_player: bool;
     let name: String;
     let id: u16;
     let position: v3f;
     let mesh: &str;
     let texture: &str;
-    match opt_server_state {
-        None => {
+    match optional_packet {
+        Some(packet_data) => {
             // use a network packet
             let ClientboundAddEntityPacket {
                 id: serverside_id,
                 uuid,
                 entity_type, // TODO: textures and models depend on this thing
                 position: vec_pos,
-                x_rot: _, y_rot: _, y_head_rot: _, data: _, x_vel: _, y_vel: _, z_vel: _ } = packet_data
-            .expect("add_entity got neither packet nor server state!");
+                x_rot: _, y_rot: _, y_head_rot: _, data: _, x_vel: _, y_vel: _, z_vel: _ } = packet_data;
             is_player = false;
             name = format!("UUID-{}", uuid);
             id = *serverside_id as u16 + 1; // ensure 0 is always "free" for the local player, because the actual ID can't be known
             position = vec3_to_v3f(vec_pos);
             (mesh, texture) = utils::get_entity_model(entity_type);
         },
-        Some(server_state) => {
+        None => {
             // use the mt_server_state and lucky guesses
             is_player = true;
-            name = server_state.this_player.0.clone();
+            name = mt_server_state.this_player.0.clone();
             id = 0; // ensured to be "free"
             position = v3f{x: 0.0, y: 0.0, z: 0.0}; // player will be moved somewhere else later
             mesh = "entitymodel-villager.b3d"; // good enough
             texture = "entity-player-slim-steve.png";
         }
     };
-    
+    let insert_successful = mt_server_state.entity_id_pos_map.insert_checked(id.into(), (position.x, position.y, position.z));
+    if !insert_successful {
+        utils::logger(&format!("[Minetest] Failed to insert position for (adjusted) entity ID {}: ID already present, dropping the packet!", id), 2);
+        return
+    }
     
     let added_object: AddedObject = AddedObject {
         id,
@@ -599,7 +603,7 @@ pub async fn add_entity(packet_data: Option<&ClientboundAddEntityPacket>, opt_se
                             automatic_face_movement_dir: false,
                             automatic_face_movement_dir_offset: 0.0,
                             backface_culling: true,
-                            nametag: String::from(""),
+                            nametag: String::from("ENTITY!"),
                             nametag_color: SColor {
                                 r: 255,
                                 g: 255,
@@ -635,25 +639,39 @@ pub async fn add_entity(packet_data: Option<&ClientboundAddEntityPacket>, opt_se
     let _ = conn.send(clientbound_addentity).await;
 }
 
-pub async fn move_entity(packet_data: &ClientboundMoveEntityPosPacket, conn: &mut MinetestConnection) {
-    let ClientboundMoveEntityPosPacket { entity_id, delta, on_ground } = packet_data;
+pub async fn move_entity(packet_data: &ClientboundMoveEntityPosPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+    let ClientboundMoveEntityPosPacket { entity_id, delta, on_ground: _ } = packet_data;
+    let PositionDelta8 {xa, ya, za} = *delta;
+    // delta: offset from the current position
+    // minetest does not have that, it always expects a full position
+    // and i have no clue how to get a position from a entity
+
+    // force conversion u32->u16->u64, because the overflow behavior will differ with u32->u64
+    let adjusted_id = *entity_id as u16 + 1;
+    if !mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
+        utils::logger(&format!("[Minetest] Failed to update position for (adjusted) entity ID {}: ID not yet present, dropping the packet!", adjusted_id), 2);
+    }
+    let position = mt_server_state.entity_id_pos_map.get_mut(adjusted_id.into()).unwrap();
+    *position = (position.0 + xa as f32,
+                 position.1 + ya as f32,
+                 position.2 + za as f32);
     let clientbound_moveentity = ToClientCommand::ActiveObjectMessages(
         Box::new(wire::command::ActiveObjectMessagesSpec{
-            objects: vec![/*wire::types::ActiveObjectMessage{
-                id: (entity_id+1) as u16,
+            objects: vec![wire::types::ActiveObjectMessage{
+                id: adjusted_id,
                  data: wire::types::ActiveObjectCommand::UpdatePosition(
                      wire::types::AOCUpdatePosition {
-                         position: ,
-                         velocity: ,
-                         acceleration: ,
-                         rotation: ,
-                         do_interpolate: ,
-                         is_end_position: ,
-                         update_interval:
+                         position: v3f{x: position.0, y: position.1, z: position.2},
+                         velocity: v3f::new(0.0, 0.0, 0.0),
+                         acceleration: v3f::new(0.0, 0.0, 0.0),
+                         rotation: v3f::new(0.0, 0.0, 0.0),
+                         do_interpolate: false,
+                         is_end_position: true,
+                         update_interval: 1.0
                     }
                 )
-            }*/]
+            }]
         })
     );
-    
+    let _ = conn.send(clientbound_moveentity).await;
 }

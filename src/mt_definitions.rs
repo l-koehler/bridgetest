@@ -22,6 +22,7 @@ use serde_json;
 
 use azalea_registry::{self, Block};
 
+#[derive(Clone)]
 pub enum HeartDisplay {
     Absorb,
     Frozen,
@@ -39,6 +40,7 @@ pub enum HeartDisplay {
     NoChange // special value: do not change the heart texture
 }
 
+#[derive(Clone)]
 pub enum FoodDisplay {
     Normal,
     Hunger,
@@ -46,6 +48,7 @@ pub enum FoodDisplay {
     NoChange
 }
 
+#[derive(Clone)]
 pub enum Dimensions {
     Overworld,
     Nether,

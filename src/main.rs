@@ -13,6 +13,7 @@ mod mt_definitions;
 use minetest_protocol::MinetestServer;
 use mt_definitions::Dimensions;
 
+use intmap::IntMap;
 use alloc::vec::Vec;
 use config::Config;
 use std::path::PathBuf;
@@ -28,6 +29,7 @@ async fn main() {
     start_client_handler(settings).await;
 }
 
+#[derive(Clone)]
 pub struct MTServerState {
     // things the server should keep track of
     // mostly used to prevent sending useless/redundant packets
@@ -39,7 +41,8 @@ pub struct MTServerState {
     current_dimension: Dimensions,
     is_sneaking: bool,
     keys_pressed: u32,
-    last_yaw_pitch: (f32, f32)
+    last_yaw_pitch: (f32, f32),
+    entity_id_pos_map: IntMap<(f32, f32, f32)> // map id to v3f
 }
 
 async fn start_client_handler(settings: Config) {
@@ -58,7 +61,8 @@ async fn start_client_handler(settings: Config) {
         current_dimension: Dimensions::Overworld,
         is_sneaking: false,
         keys_pressed: 0,
-        last_yaw_pitch: (0.0, 0.0)
+        last_yaw_pitch: (0.0, 0.0),
+        entity_id_pos_map: IntMap::new()
     };
 
     // Wait for a client to join

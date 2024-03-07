@@ -109,7 +109,7 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     }
 
     utils::logger("[Minetest] S->C ActiveObjectRemoveAdd LocalPlayer", 1);
-    clientbound_translator::add_entity(None, Some(&mt_server_state), &mut mt_conn).await;
+    clientbound_translator::add_entity(None, &mut mt_conn, &mut mt_server_state).await;
     /*
      * Main Loop.
      * At this point, both the minetest client and the minecraft server
