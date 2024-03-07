@@ -42,7 +42,7 @@ pub struct MTServerState {
     is_sneaking: bool,
     keys_pressed: u32,
     last_yaw_pitch: (f32, f32),
-    entity_id_pos_map: IntMap<(f32, f32, f32)> // map id to v3f
+    entity_id_pos_map: IntMap<mt_definitions::EntityResendableData>
 }
 
 async fn start_client_handler(settings: Config) {

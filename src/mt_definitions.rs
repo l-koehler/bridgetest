@@ -22,6 +22,17 @@ use serde_json;
 
 use azalea_registry::{self, Block};
 
+// the only way to change an entitys pos/rot/vel in minetest is by updating *all* the values
+// but minecraft will send packets only updating one of these values, so the server_state needs to keep the values to resend.
+// IntMap<EntityResendableData> mapping MT-adjusted entity IDs to these values
+#[derive(Clone)]
+pub struct EntityResendableData {
+    pub position: v3f,
+    pub rotation: v3f,
+    pub velocity: v3f,
+    pub acceleration: v3f
+}
+
 #[derive(Clone)]
 pub enum HeartDisplay {
     Absorb,

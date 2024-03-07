@@ -66,7 +66,9 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
 
             ClientboundGamePacket::KeepAlive(_) => utils::logger("[Minecraft] Got KeepAlive packet, ignoring it.", 0),
             ClientboundGamePacket::AddEntity(addentity_packet) => clientbound_translator::add_entity(Some(&addentity_packet.clone()), mt_conn, mt_server_state).await,
-            ClientboundGamePacket::MoveEntityPos(entitypos_packet) => clientbound_translator::move_entity(&entitypos_packet.clone(), mt_conn, mt_server_state).await,
+            ClientboundGamePacket::MoveEntityPos(entitypos_packet) => clientbound_translator::entity_setpos(&entitypos_packet.clone(), mt_conn, mt_server_state).await,
+            ClientboundGamePacket::TeleportEntity(entitytp_packet) => clientbound_translator::entity_teleport(&entitytp_packet.clone(), mt_conn, mt_server_state).await,
+            ClientboundGamePacket::MoveEntityPosRot(entityposrot_packet) => clientbound_translator::entity_setposrot(&entityposrot_packet.clone(), mt_conn, mt_server_state).await,
             _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),
         }
         _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),
