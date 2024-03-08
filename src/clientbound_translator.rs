@@ -40,6 +40,7 @@ use azalea_protocol::packets::game::{ClientboundGamePacket,
     clientbound_teleport_entity_packet::ClientboundTeleportEntityPacket,
     clientbound_move_entity_pos_rot_packet::ClientboundMoveEntityPosRotPacket,
     clientbound_move_entity_rot_packet::ClientboundMoveEntityRotPacket,
+    clientbound_remove_entities_packet::ClientboundRemoveEntitiesPacket
 };
 use azalea_protocol::packets::common::CommonPlayerSpawnInfo;
 use azalea_core::resource_location::ResourceLocation;
@@ -678,6 +679,33 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
         })
     );
     let _ = conn.send(clientbound_addentity).await;
+}
+
+pub async fn remove_entity(packet_data: &ClientboundRemoveEntitiesPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+    let ClientboundRemoveEntitiesPacket { entity_ids } = packet_data;
+    let mut adjusted_id: u16;
+    let mut entity_ids_adjusted: Vec<u16> = vec![];
+    for entity_id in entity_ids {
+        adjusted_id = *entity_id as u16 + 1;
+        if mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
+            mt_server_state.entity_id_pos_map.remove(adjusted_id.into());
+            entity_ids_adjusted.push(adjusted_id);
+        } else {
+            utils::logger(&format!("[Minetest] Failed to remove entity with (adjusted) entity ID {}: ID not present. Skipping its removal!", adjusted_id), 2);
+        }
+
+    }
+    if !entity_ids_adjusted.is_empty() {
+        let clientbound_removeentity = ToClientCommand::ActiveObjectRemoveAdd(
+            Box::new(wire::command::ActiveObjectRemoveAddSpec {
+                removed_object_ids: entity_ids_adjusted,
+                added_objects: vec![],
+            })
+        );
+        let _ = conn.send(clientbound_removeentity).await;
+    } else {
+        utils::logger("[Minetest] Skipping RemoveEntitiesPacket, no entities to remove!", 2);
+    }
 }
 
 pub async fn entity_setpos(packet_data: &ClientboundMoveEntityPosPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {

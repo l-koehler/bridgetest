@@ -816,8 +816,20 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
         Block::Fire        => DrawType::FireLike,
         Block::SoulFire    => DrawType::FireLike,
         
+        // leaves, vines etc
         Block::MangroveRoots => DrawType::GlassLike,
         Block::Vine        => DrawType::GlassLike,
+        Block::GlowLichen  => DrawType::GlassLike,
+        Block::OakLeaves   => DrawType::GlassLike,
+        Block::SpruceLeaves => DrawType::GlassLike,
+        Block::BirchLeaves => DrawType::GlassLike,
+        Block::JungleLeaves => DrawType::GlassLike,
+        Block::AcaciaLeaves => DrawType::GlassLike,
+        Block::CherryPlanks => DrawType::GlassLike,
+        Block::DarkOakLeaves => DrawType::GlassLike,
+        Block::MangroveLeaves => DrawType::GlassLike,
+        Block::AzaleaLeaves => DrawType::GlassLike,
+        Block::FloweringAzaleaLeaves => DrawType::GlassLike,
         
         _ => DrawType::Normal,
     };
