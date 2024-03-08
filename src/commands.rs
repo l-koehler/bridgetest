@@ -39,7 +39,8 @@ pub async fn mt_auto(command: ToServerCommand, mt_conn: &mut MinetestConnection,
         ToServerCommand::ModchannelLeave(_) => utils::logger("[Minetest] Client sent ModchannelLeave, this does not exist in MC", 2),
         ToServerCommand::TSModchannelMsg(_) => utils::logger("[Minetest] Client sent TSModchannelMsg, this does not exist in MC", 2),
         ToServerCommand::Playerpos(specbox) => serverbound_translator::playerpos(mc_client, specbox, mt_server_state).await,
-        ToServerCommand::TSChatMessage(specbox) => serverbound_translator::send_message(&mc_client, specbox),
+        ToServerCommand::TSChatMessage(specbox) => serverbound_translator::send_message(mc_client, specbox),
+        ToServerCommand::Interact(specbox) => serverbound_translator::interact_generic(mc_client, specbox).await,
         _ => utils::logger(&format!("[Minetest] Got unimplemented command, dropping {}", command.command_name()), 2) // Drop packet if unable to match
     }
 }

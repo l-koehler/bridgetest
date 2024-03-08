@@ -6,8 +6,9 @@ use azalea_client::Client;
 use azalea_protocol::packets::game::ServerboundGamePacket;
 use azalea_protocol::packets::game::serverbound_move_player_pos_rot_packet::ServerboundMovePlayerPosRotPacket;
 use alloc::boxed::Box;
-use minetest_protocol::wire::command::{TSChatMessageSpec, PlayerposSpec};
-use minetest_protocol::wire::types::{PlayerPos, v3f};
+use minetest_protocol::wire::command::{TSChatMessageSpec, PlayerposSpec, InteractSpec};
+use minetest_protocol::wire::types::{PlayerPos, v3f, v3s16, PointedThing};
+use minetest_protocol::wire::types;
 use crate::MTServerState;
 
 pub fn send_message(mc_client: &Client, specbox: Box<TSChatMessageSpec>) {
@@ -85,5 +86,33 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
         let _ = mc_client.write_packet(movement_packet);
         mt_server_state.mt_clientside_pos = (x, y, z);
         mt_server_state.last_yaw_pitch = (yaw, pitch);
+    }
+}
+
+// This function only validates the interaction, then splits by node/object
+pub async fn interact_generic(mc_client: &mut Client, specbox: Box<InteractSpec>) {
+    let InteractSpec { action, item_index: _, pointed_thing, player_pos: _ } = *specbox;
+    match pointed_thing {
+        PointedThing::Nothing => (), // TODO might still be relevant in some cases, check that
+        PointedThing::Node { under_surface, above_surface } => interact_node(action, under_surface, above_surface, mc_client).await,
+        PointedThing::Object { object_id } => interact_object(action, object_id, mc_client).await,
+    }
+}
+
+async fn interact_object(action: types::InteractAction, object_id: u16, mc_client: &mut Client) {
+    match action {
+        types::InteractAction::Use => mc_client.attack(azalea_world::MinecraftEntityId(object_id.into())),
+        _ => utils::logger(&format!("[Minetest] Client sent unsupported entity interaction: {:?} (entity ID: {})", action, object_id), 2)
+    }
+    
+}
+
+async fn interact_node(action: types::InteractAction, under_surface: v3s16, above_surface: v3s16, mc_client: &mut Client) {
+    let under_blockpos = azalea::BlockPos { x: under_surface.x.into(), y: under_surface.y.into(), z: under_surface.z.into() };
+    let above_blockpos = azalea::BlockPos { x: above_surface.x.into(), y: above_surface.y.into(), z: above_surface.z.into() };
+    match action {
+        types::InteractAction::Use          => mc_client.block_interact(under_blockpos),
+        types::InteractAction::StartDigging => mc_client.start_mining(under_blockpos),
+        _ => utils::logger(&format!("[Minetest] Client sent unsupported node interaction: {:?}", action), 2)
     }
 }
