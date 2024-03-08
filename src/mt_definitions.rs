@@ -399,18 +399,18 @@ pub fn get_defaultpriv() -> ToClientCommand {
 pub fn get_movementspec() -> ToClientCommand {
     let movement_command = ToClientCommand::Movement(
         Box::new(command::MovementSpec {
-            acceleration_default: 3.0,
-            acceleration_air: 2.0,
+            acceleration_default: 2.4,
+            acceleration_air: 1.2,
             acceleration_fast: 10.0,
-            speed_walk: 4.0,
-            speed_crouch: 1.35,
-            speed_fast: 20.0,
-            speed_climb: 3.0,
-            speed_jump: 8.125, // roughly 1.25
-            liquid_fluidity: 1.0,
+            speed_walk: 4.317,
+            speed_crouch: 1.295,
+            speed_fast: 5.612,
+            speed_climb: 2.35,
+            speed_jump: 6.6,
+            liquid_fluidity: 1.13,
             liquid_fluidity_smooth: 0.5,
-            liquid_sink: 10.0,
-            gravity: 10.25,
+            liquid_sink: 23.0,
+            gravity: 10.4,
         })
     );
     movement_command

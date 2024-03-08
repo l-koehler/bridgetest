@@ -240,26 +240,40 @@ pub async fn set_player_pos(source_packet: &ClientboundPlayerPositionPacket, con
     // y_rot: yaw
     // x_rot: pitch
     // for some weird reason minetest uses 10*coordinates in packets
-    let ClientboundPlayerPositionPacket {x: source_x, y: source_y, z: source_z, y_rot: source_yaw, x_rot: source_pitch, relative_arguments: _, id: _} = source_packet;
+    let ClientboundPlayerPositionPacket {x: source_x, y: source_y, z: source_z, y_rot, x_rot, relative_arguments: _, id: _} = source_packet;
     let dest_x = (*source_x as f32) * 10.0;
     let dest_y = (*source_y as f32) * 10.0;
     let dest_z = (*source_z as f32) * 10.0;
 
     let abs_diff = (dest_x - mt_server_state.mt_clientside_pos.0).abs()/10.0 +
-                   (dest_y - mt_server_state.mt_clientside_pos.1).abs()/20.0 + // high tolerance to height problems, these are causing movement issues otherwise
+                   (dest_y - mt_server_state.mt_clientside_pos.1).abs()/10.0 +
                    (dest_z - mt_server_state.mt_clientside_pos.2).abs()/10.0;
     
     if abs_diff > settings::POS_DIFF_TOLERANCE {
         let setpos_packet = ToClientCommand::MovePlayer(
             Box::new(wire::command::MovePlayerSpec {
                 pos: v3f {x: dest_x, y: dest_y, z: dest_z},
-                pitch: *source_pitch,
-                yaw: *source_yaw
+                pitch: *y_rot,
+                yaw: *x_rot
             })
         );
         let _ = conn.send(setpos_packet).await;
         mt_server_state.mt_clientside_pos = (dest_x, dest_y, dest_z);
+        mt_server_state.ticks_since_sync = 0;
     }
+}
+
+pub async fn force_player_pos(position: v3f, conn: &MinetestConnection, mt_server_state: &mut MTServerState) {
+    let v3f { x, y, z } = position;
+    mt_server_state.mt_clientside_pos = (x, y, z);
+    let setpos_packet = ToClientCommand::MovePlayer(
+        Box::new(wire::command::MovePlayerSpec {
+            pos: position,
+            pitch: mt_server_state.last_yaw_pitch.1,
+            yaw: mt_server_state.last_yaw_pitch.0
+        })
+    );
+    let _ = conn.send(setpos_packet).await;
 }
 
 pub async fn send_message(conn: &mut MinetestConnection, message: ChatPacket) {

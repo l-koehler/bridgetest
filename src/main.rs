@@ -42,7 +42,8 @@ pub struct MTServerState {
     is_sneaking: bool,
     keys_pressed: u32,
     last_yaw_pitch: (f32, f32),
-    entity_id_pos_map: IntMap<mt_definitions::EntityResendableData>
+    entity_id_pos_map: IntMap<mt_definitions::EntityResendableData>,
+    ticks_since_sync: u32,
 }
 
 async fn start_client_handler(settings: Config) {
@@ -62,7 +63,8 @@ async fn start_client_handler(settings: Config) {
         is_sneaking: false,
         keys_pressed: 0,
         last_yaw_pitch: (0.0, 0.0),
-        entity_id_pos_map: IntMap::new()
+        entity_id_pos_map: IntMap::new(),
+        ticks_since_sync: 0
     };
 
     // Wait for a client to join

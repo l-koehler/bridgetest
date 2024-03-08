@@ -5,6 +5,7 @@
  * Minecraft client.
  */
 
+use crate::settings;
 use crate::utils;
 use crate::serverbound_translator;
 use crate::clientbound_translator;
@@ -13,6 +14,7 @@ extern crate alloc;
 
 use minetest_protocol::wire::command::CommandProperties;
 use minetest_protocol::wire::command::ToServerCommand;
+use minetest_protocol::wire::packet::OriginalBody;
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::wire::command::ToClientCommand;
 use minetest_protocol::wire::command::HelloSpec;
@@ -82,7 +84,13 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
 }
 
 pub async fn on_minecraft_tick(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_server_state: &mut MTServerState) {
-    
+    if mt_server_state.ticks_since_sync >= settings::POS_FORCE_AFTER {
+        // force MT to use the MC clients position
+        let new_position = utils::vec3_to_v3f(&mc_client.position(), 0.1);
+        clientbound_translator::force_player_pos(new_position, mt_conn, mt_server_state).await;
+    } else {
+        mt_server_state.ticks_since_sync += 1;
+    }
 }
 
 pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState, settings: &Config) -> (azalea::Client, UnboundedReceiver<azalea::Event>) {
