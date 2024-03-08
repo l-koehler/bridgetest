@@ -6,15 +6,41 @@ use crate::settings;
 
 use minetest_protocol::CommandRef;
 use minetest_protocol::CommandDirection;
-use minetest_protocol::wire::types::v3f;
+use minetest_protocol::wire::types::{v3f, MapNode};
 use azalea_client::Event;
 use azalea_core::position::Vec3;
 use azalea_protocol::packets::game::ClientboundGamePacket;
-use azalea_registry::EntityKind;
+use azalea_registry::{EntityKind, Registry};
+use azalea_block::BlockState;
 use std::path::Path;
 use std::path::PathBuf;
 use std::io::Read;
 use rand::Rng;
+
+pub fn state_to_node(state: BlockState, cave_air_glow: bool) -> MapNode {
+    let mut param0: u16;
+    let param1: u8;
+    let param2: u8;
+    param0 = azalea_registry::Block::try_from(state).unwrap().to_u32() as u16 + 128;
+    param2 = 0;
+    
+    // param1: transparency i think
+    if state.is_air() {
+        param0 = 126;
+        param1 = 0xEE;
+    } else if (azalea_registry::Block::try_from(state).unwrap() == azalea_registry::Block::CaveAir) && cave_air_glow {
+        param0 = 120; // custom node: glowing_air
+        param1 = 0xEE;
+    } else {
+        param1 = 0x00;
+    }
+    
+    MapNode {
+        param0,
+        param1,
+        param2,
+    }
+}
 
 pub fn vec3_to_v3f(input_vector: &Vec3, scale: f64) -> v3f {
     // loss of precision, f64 -> f32

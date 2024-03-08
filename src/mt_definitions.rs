@@ -59,7 +59,7 @@ pub enum FoodDisplay {
     NoChange
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Dimensions {
     Overworld,
     Nether,

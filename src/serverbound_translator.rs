@@ -2,6 +2,7 @@
 // and send it to the MC server.
 use crate::utils;
 
+use azalea::BotClientExt;
 use azalea_client::Client;
 use azalea_protocol::packets::game::ServerboundGamePacket;
 use azalea_protocol::packets::game::serverbound_move_player_pos_rot_packet::ServerboundMovePlayerPosRotPacket;
@@ -30,6 +31,8 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
     // y_rot: yaw
     // x_rot: pitch
     
+    // FIXME discards yaw, thus breaking any movement after the player changed the yaw
+    
     // keys_pressed:
     // https://github.com/minetest/minetest/blob/e734b3f0d8055ff3ae710f3632726a711603bf84/src/player.cpp#L217
     
@@ -39,7 +42,7 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
     let left_pressed  = (direction_keys >> 2) & 1;
     let right_pressed = (direction_keys >> 3) & 1;
 
-    //let jump_pressed  = (keys_pressed & (1 << 4)) != 0;
+    let jump_pressed  = (keys_pressed & (1 << 4)) != 0;
     let aux1_pressed  = keys_pressed & (1 << 5);
     let sneak_pressed = (keys_pressed & (1 << 6)) != 0;
     //let dig_pressed   = (keys_pressed & (1 << 7)) != 0;
@@ -53,7 +56,10 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
         //mt_server_state.is_sneaking = sneak_pressed;
         //mc_client.sneak(sneak_pressed);
     }
-    
+    if (yaw, pitch) != mt_server_state.last_yaw_pitch {
+        mt_server_state.last_yaw_pitch = (yaw, pitch);
+        mc_client.set_direction(yaw, pitch);
+    }
     if keys_pressed != mt_server_state.keys_pressed {
         match (aux1_pressed, up_pressed, down_pressed, left_pressed, right_pressed) {
             (0, 1, 0, 1, 0) => mc_client.walk(azalea::WalkDirection::ForwardLeft),
@@ -71,22 +77,7 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
         }
         mt_server_state.keys_pressed = keys_pressed;
     }
-
-    if (yaw, pitch) != mt_server_state.last_yaw_pitch {
-        let movement_packet = ServerboundGamePacket::MovePlayerPosRot {
-            0: ServerboundMovePlayerPosRotPacket {
-                x: (x as f64) / 10.0,
-                y: (y as f64) / 10.0,
-                z: (z as f64) / 10.0,
-                y_rot: yaw,
-                x_rot: pitch,
-                on_ground: true // i don't know, thats why the server needs to not have an anticheat
-            }
-        };
-        let _ = mc_client.write_packet(movement_packet);
-        mt_server_state.mt_clientside_pos = (x, y, z);
-        mt_server_state.last_yaw_pitch = (yaw, pitch);
-    }
+    mc_client.set_jumping(jump_pressed)
 }
 
 // This function only validates the interaction, then splits by node/object
@@ -104,7 +95,6 @@ async fn interact_object(action: types::InteractAction, object_id: u16, mc_clien
         types::InteractAction::Use => mc_client.attack(azalea_world::MinecraftEntityId(object_id.into())),
         _ => utils::logger(&format!("[Minetest] Client sent unsupported entity interaction: {:?} (entity ID: {})", action, object_id), 2)
     }
-    
 }
 
 async fn interact_node(action: types::InteractAction, under_surface: v3s16, above_surface: v3s16, mc_client: &mut Client) {

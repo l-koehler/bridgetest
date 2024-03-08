@@ -43,6 +43,7 @@ use azalea_protocol::packets::game::{ClientboundGamePacket,
     clientbound_remove_entities_packet::ClientboundRemoveEntitiesPacket,
     clientbound_set_entity_motion_packet::ClientboundSetEntityMotionPacket,
     clientbound_rotate_head_packet::ClientboundRotateHeadPacket,
+    clientbound_block_update_packet::ClientboundBlockUpdatePacket,
 };
 use azalea_protocol::packets::common::CommonPlayerSpawnInfo;
 use azalea_core::resource_location::ResourceLocation;
@@ -323,30 +324,9 @@ pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &mut
     
     let mut nodes: [MapNode; 4096] = [MapNode{ param0: 126, param1: 0, param2: 0 }; 4096];
     let mut state: BlockState;
-    let mut param0: u16;
-    let mut param1: u8;
-    let mut param2: u8;
     for state_arr_i in 0..4095 {
-        state = state_arr[state_arr_i];
-        param0 = azalea_registry::Block::try_from(state).unwrap().to_u32() as u16 + 128;
-        param2 = 0;
-        
-        // param1: transparency i think
-        if state.is_air() {
-            param0 = 126;
-            param1 = 0xEE;
-        } else if (azalea_registry::Block::try_from(state).unwrap() == azalea_registry::Block::CaveAir) && cave_air_glow {
-            param0 = 120; // custom node: glowing_air
-            param1 = 0xEE;
-        } else {
-            param1 = 0x00;
-        }
-        
-        nodes[state_arr_i] = MapNode {
-            param0,
-            param1,
-            param2,
-        }
+        state = state_arr[state_arr_i];        
+        nodes[state_arr_i] = utils::state_to_node(state, cave_air_glow)
     }
     
     let addblockcommand = ToClientCommand::Blockdata(
@@ -853,4 +833,19 @@ async fn send_entity_data(id: u16, entitydata: &EntityResendableData, conn: &mut
         })
     );
     let _ = conn.send(clientbound_moveentity).await;
+}
+
+// block placement/destruction
+pub async fn blockupdate(packet_data: &ClientboundBlockUpdatePacket, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
+    let ClientboundBlockUpdatePacket { pos, block_state } = packet_data;
+    let cave_air_glow = mt_server_state.current_dimension == Dimensions::Nether;
+    let BlockPos { x, y, z } = pos;
+    let addnodecommand = ToClientCommand::Addnode(
+        Box::new(wire::command::AddnodeSpec {
+            pos: v3s16 { x: *x as i16, y: *y as i16, z: *z as i16 },
+            node: utils::state_to_node(*block_state, cave_air_glow),
+            keep_metadata: false
+        })
+    );
+    let _ = conn.send(addnodecommand).await;
 }
