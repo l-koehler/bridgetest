@@ -179,7 +179,7 @@ pub fn get_entity_model(entity: &EntityKind) -> (&str, Vec<String>) {
         EntityKind::PolarBear  => ("entitymodel-polarbear.b3d", vec![String::from("entity-bear-polarbear.png")]),
         EntityKind::Rabbit     => ("entitymodel-rabbit.b3d"  , vec![String::from("entity-rabbit-brown.png")]),
         EntityKind::Salmon     => ("entitymodel-salmon.b3d"  , vec![String::from("entity-fish-salmon.png")]),
-        EntityKind::Sheep      => ("entitymodel-sheepfur.b3d", vec![String::from("entity-sheep-sheep_fur.png")]),
+        EntityKind::Sheep      => ("entitymodel-sheepfur.b3d", vec![String::from("entity-sheep-sheep_fur.png"),String::from("entity-sheep-sheep.png")]),
         EntityKind::Shulker    => ("entitymodel-shulker.b3d" , vec![String::from("entity-shulker-shulker.png")]),
         EntityKind::Silverfish => ("entitymodel-silverfish.b3d", vec![String::from("entity-silverfish.png")]),
         EntityKind::Skeleton   => ("entitymodel-skeleton.b3d", vec![String::from("entity-skeleton-skeleton.png"), String::from("bow_pulling_2.png")]),

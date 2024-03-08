@@ -718,7 +718,10 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
     } else {
         texture_base_name = texture_base_name.replace("_carpet", "_block");
     }
-
+    // dripstone cant be implemented properly with the current metadata system
+    if this_block == Block::PointedDripstone {
+        texture_base_name = String::from("pointed_dripstone_down_middle")
+    }
     
     // drawtype is a little complicated, there isn't a field in the json for that.
     /*
