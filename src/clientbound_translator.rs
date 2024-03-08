@@ -13,7 +13,6 @@ use crate::commands;
 use crate::MTServerState;
 use azalea::BlockPos;
 use azalea_core::delta::PositionDelta8;
-use azalea_entity::OptionalUnsignedInt;
 use minetest_protocol::wire::types::ObjectProperties;
 use mt_definitions::{HeartDisplay, FoodDisplay, Dimensions};
 use minetest_protocol::peer::peer::PeerError;
@@ -23,7 +22,7 @@ use minetest_protocol::wire::command::ToClientCommand;
 use minetest_protocol::wire::types::HudStat;
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::wire;
-use minetest_protocol::wire::types::{v3s16, v3f, MapNodesBulk, MapNode, MapBlock, NodeMetadataList, AddedObject, GenericInitData, ActiveObjectCommand, SColor, aabb3f, v2s16};
+use minetest_protocol::wire::types::{v3s16, v3f, v2f, MapNodesBulk, MapNode, MapBlock, NodeMetadataList, AddedObject, GenericInitData, ActiveObjectCommand, SColor, aabb3f, v2s16};
 
 use azalea_client::{PlayerInfo, Client};
 use azalea_client::chat::ChatPacket;
@@ -498,6 +497,7 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
     let position: v3f;
     let mesh: &str;
     let texture: &str;
+    let type_str: String;
     match optional_packet {
         Some(packet_data) => {
             // use a network packet
@@ -509,13 +509,15 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
                 x_rot: _, y_rot: _, y_head_rot: _, data: _, x_vel: _, y_vel: _, z_vel: _ } = packet_data;
             is_player = false;
             name = format!("UUID-{}", uuid);
+            type_str = format!("{}", entity_type);
             id = *serverside_id as u16 + 1; // ensure 0 is always "free" for the local player, because the actual ID can't be known
-            position = utils::vec3_to_v3f(vec_pos);
+            position = utils::vec3_to_v3f(vec_pos, 0.1);
             (mesh, texture) = utils::get_entity_model(entity_type);
         },
         None => {
             // use the mt_server_state and lucky guesses
             is_player = true;
+            type_str = String::from("Player");
             name = mt_server_state.this_player.0.clone();
             id = 0; // ensured to be "free"
             position = v3f{x: 0.0, y: 0.0, z: 0.0}; // player will be moved somewhere else later
@@ -523,6 +525,7 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
             texture = "entity-player-slim-steve.png";
         }
     };
+    
     let entitydata = EntityResendableData {
         position,
         rotation: v3f::new(0.0, 0.0, 0.0),
@@ -595,7 +598,7 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
                                 y: 0,
                             },
                             is_visible: true,
-                            makes_footstep_sound: false,
+                            makes_footstep_sound: true,
                             automatic_rotate: 0.0,
                             mesh: String::from(mesh), // it didnt have sane defaults qwq
                             colors: vec![
@@ -606,19 +609,19 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
                                     a: 255,
                                 },
                             ],
-                            collide_with_objects: true,
+                            collide_with_objects: false,
                             stepheight: 0.0,
                             automatic_face_movement_dir: false,
                             automatic_face_movement_dir_offset: 0.0,
                             backface_culling: true,
-                            nametag: String::from("ENTITY!"),
+                            nametag: type_str,
                             nametag_color: SColor {
                                 r: 255,
                                 g: 255,
                                 b: 255,
                                 a: 255,
                             },
-                            automatic_face_movement_max_rotation_per_sec: -1.0,
+                            automatic_face_movement_max_rotation_per_sec: 360.0,
                             infotext: String::from(""),
                             wield_item: String::from(""),
                             glow: 0,
@@ -626,13 +629,42 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
                             eye_height: 1.625,
                             zoom_fov: 0.0,
                             use_texture_alpha: false,
-                            damage_texture_modifier: None,
-                            shaded: None,
-                            show_on_minimap: None,
+                            damage_texture_modifier: Some(String::from("^[brighten")),
+                            shaded: Some(true),
+                            show_on_minimap: Some(false),
                             nametag_bgcolor: None,
-                            rotate_selectionbox: None
+                            rotate_selectionbox: Some(false)
                         }
                     },
+                ),
+                ActiveObjectCommand::SetTextureMod(
+                    wire::types::AOCSetTextureMod {
+                        modifier: String::from("")
+                    }
+                ),
+                ActiveObjectCommand::SetAnimation(
+                    wire::types::AOCSetAnimation {
+                        range: v2f { x: 0.0, y: 0.0 },
+                        speed: 0.0,
+                        blend: 0.0,
+                        no_loop: false
+                    }
+                ),
+                ActiveObjectCommand::UpdateArmorGroups(
+                    wire::types::AOCUpdateArmorGroups {
+                        ratings: vec![
+                            (String::from("immortal"), 1)
+                        ]
+                    }
+                ),
+                ActiveObjectCommand::AttachTo(
+                    wire::types::AOCAttachTo {
+                        parent_id: 0,
+                        bone: String::from(""),
+                        position: v3f { x: 0.0, y: 0.0, z: 0.0 },
+                        rotation: v3f { x: 0.0, y: 0.0, z: 0.0 },
+                        force_visible: false
+                    }
                 )
             ]
         }
@@ -689,7 +721,7 @@ pub async fn entity_teleport(packet_data: &ClientboundTeleportEntityPacket, conn
     } = entitydata.clone();
     let v3f { x: _, y: _, z: old_z_rot } = old_rotation;
     *entitydata = EntityResendableData {
-        position: utils::vec3_to_v3f(position),
+        position: utils::vec3_to_v3f(position, 0.1),
         rotation: v3f { x: *x_rot as f32, y: *y_rot as f32, z: old_z_rot },
         velocity, acceleration
     };

@@ -16,10 +16,14 @@ use std::path::PathBuf;
 use std::io::Read;
 use rand::Rng;
 
-pub const fn vec3_to_v3f(input_vector: &Vec3) -> v3f {
+pub fn vec3_to_v3f(input_vector: &Vec3, scale: f64) -> v3f {
     // loss of precision, f64 -> f32
     let Vec3 { x: xf64, y: yf64, z: zf64 } = input_vector;
-    v3f { x: *xf64 as f32, y: *yf64 as f32, z: *zf64 as f32 }
+    v3f {
+        x: (*xf64/scale) as f32,
+        y: (*yf64/scale) as f32,
+        z: (*zf64/scale) as f32
+    }
 }
 
 pub fn b3d_sanitize(input_path: String) -> String {
