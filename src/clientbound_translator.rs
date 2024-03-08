@@ -40,7 +40,9 @@ use azalea_protocol::packets::game::{ClientboundGamePacket,
     clientbound_teleport_entity_packet::ClientboundTeleportEntityPacket,
     clientbound_move_entity_pos_rot_packet::ClientboundMoveEntityPosRotPacket,
     clientbound_move_entity_rot_packet::ClientboundMoveEntityRotPacket,
-    clientbound_remove_entities_packet::ClientboundRemoveEntitiesPacket
+    clientbound_remove_entities_packet::ClientboundRemoveEntitiesPacket,
+    clientbound_set_entity_motion_packet::ClientboundSetEntityMotionPacket,
+    clientbound_rotate_head_packet::ClientboundRotateHeadPacket,
 };
 use azalea_protocol::packets::common::CommonPlayerSpawnInfo;
 use azalea_core::resource_location::ResourceLocation;
@@ -719,6 +721,7 @@ pub async fn entity_setpos(packet_data: &ClientboundMoveEntityPosPacket, conn: &
     let adjusted_id = *entity_id as u16 + 1;
     if !mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
         utils::logger(&format!("[Minetest] Failed to update data for (adjusted) entity ID {}: ID not yet present, dropping the packet!", adjusted_id), 2);
+        return
     }
     let entitydata = mt_server_state.entity_id_pos_map.get_mut(adjusted_id.into()).unwrap();
     let EntityResendableData {
@@ -740,6 +743,7 @@ pub async fn entity_teleport(packet_data: &ClientboundTeleportEntityPacket, conn
     let adjusted_id = *entity_id as u16 + 1;
     if !mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
         utils::logger(&format!("[Minetest] Failed to update data for (adjusted) entity ID {}: ID not yet present, dropping the packet!", adjusted_id), 2);
+        return
     }
     let entitydata = mt_server_state.entity_id_pos_map.get_mut(adjusted_id.into()).unwrap();
     let EntityResendableData {
@@ -763,6 +767,7 @@ pub async fn entity_setposrot(packet_data: &ClientboundMoveEntityPosRotPacket, c
     let adjusted_id = *entity_id as u16 + 1;
     if !mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
         utils::logger(&format!("[Minetest] Failed to update data for (adjusted) entity ID {}: ID not yet present, dropping the packet!", adjusted_id), 2);
+        return
     }
     let entitydata = mt_server_state.entity_id_pos_map.get_mut(adjusted_id.into()).unwrap();
     let EntityResendableData {
@@ -786,6 +791,7 @@ pub async fn entity_setrot(packet_data: &ClientboundMoveEntityRotPacket, conn: &
     let adjusted_id = *entity_id as u16 + 1;
     if !mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
         utils::logger(&format!("[Minetest] Failed to update data for (adjusted) entity ID {}: ID not yet present, dropping the packet!", adjusted_id), 2);
+        return
     }
     let entitydata = mt_server_state.entity_id_pos_map.get_mut(adjusted_id.into()).unwrap();
     let EntityResendableData {
@@ -800,6 +806,31 @@ pub async fn entity_setrot(packet_data: &ClientboundMoveEntityRotPacket, conn: &
         position, velocity, acceleration
     };
     send_entity_data(adjusted_id, entitydata, conn).await;
+}
+
+pub async fn entity_setmotion(packet_data: &ClientboundSetEntityMotionPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+    let ClientboundSetEntityMotionPacket { id, xa, ya, za } = packet_data;
+    let adjusted_id = *id as u16 + 1;
+    if !mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
+        utils::logger(&format!("[Minetest] Failed to update data for (adjusted) entity ID {}: ID not yet present, dropping the packet!", adjusted_id), 2);
+        return
+    }
+    let entitydata = mt_server_state.entity_id_pos_map.get_mut(adjusted_id.into()).unwrap();
+    let EntityResendableData {
+        position,
+        rotation,
+        velocity: _,
+        acceleration
+    } = entitydata.clone();
+    *entitydata = EntityResendableData {
+        velocity: v3f { x: *xa as f32, y: *ya as f32, z: *za as f32 },
+        position, acceleration, rotation
+    };
+    send_entity_data(adjusted_id, entitydata, conn).await;
+}
+
+pub async fn entity_rotatehead(packet_data: &ClientboundRotateHeadPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+    // TODO
 }
 
 async fn send_entity_data(id: u16, entitydata: &EntityResendableData, conn: &mut MinetestConnection) {

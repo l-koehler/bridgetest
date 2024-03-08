@@ -69,7 +69,9 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
             ClientboundGamePacket::TeleportEntity(entitytp_packet) => clientbound_translator::entity_teleport(&entitytp_packet.clone(), mt_conn, mt_server_state).await,
             ClientboundGamePacket::MoveEntityPosRot(entityposrot_packet) => clientbound_translator::entity_setposrot(&entityposrot_packet.clone(), mt_conn, mt_server_state).await,
             ClientboundGamePacket::MoveEntityRot(entityrot_packet) => clientbound_translator::entity_setrot(&entityrot_packet.clone(), mt_conn, mt_server_state).await,
+            ClientboundGamePacket::SetEntityMotion(entitymotion_packet) => clientbound_translator::entity_setmotion(&entitymotion_packet.clone(), mt_conn, mt_server_state).await,
             ClientboundGamePacket::RemoveEntities(removeentity_packet) => clientbound_translator::remove_entity(&removeentity_packet.clone(), mt_conn, mt_server_state).await,
+            ClientboundGamePacket::RotateHead(rotatehead_packet) => clientbound_translator::entity_rotatehead(&rotatehead_packet.clone(), mt_conn, mt_server_state).await,
             _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),
         }
         _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),

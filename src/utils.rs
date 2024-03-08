@@ -125,7 +125,7 @@ pub fn show_mc_command(command: &Event) {
 }
 
 pub fn get_random_username() -> String {
-    let hs_name = String::from(settings::HS_NAMES[rand::thread_rng().gen_range(0..27)]);
+    let hs_name = String::from(settings::HS_NAMES[rand::thread_rng().gen_range(0..26)]);
     format!("{}{:0>3}", hs_name, rand::thread_rng().gen_range(0..1000))
 }
 
