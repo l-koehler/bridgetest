@@ -38,7 +38,8 @@ use azalea_protocol::packets::game::{ClientboundGamePacket,
     clientbound_add_entity_packet::ClientboundAddEntityPacket,
     clientbound_move_entity_pos_packet::ClientboundMoveEntityPosPacket,
     clientbound_teleport_entity_packet::ClientboundTeleportEntityPacket,
-    clientbound_move_entity_pos_rot_packet::ClientboundMoveEntityPosRotPacket
+    clientbound_move_entity_pos_rot_packet::ClientboundMoveEntityPosRotPacket,
+    clientbound_move_entity_rot_packet::ClientboundMoveEntityRotPacket,
 };
 use azalea_protocol::packets::common::CommonPlayerSpawnInfo;
 use azalea_core::resource_location::ResourceLocation;
@@ -496,7 +497,7 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
     let id: u16;
     let position: v3f;
     let mesh: &str;
-    let texture: &str;
+    let textures: Vec<String>;
     let type_str: String;
     match optional_packet {
         Some(packet_data) => {
@@ -512,7 +513,7 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
             type_str = format!("{}", entity_type);
             id = *serverside_id as u16 + 1; // ensure 0 is always "free" for the local player, because the actual ID can't be known
             position = utils::vec3_to_v3f(vec_pos, 0.1);
-            (mesh, texture) = utils::get_entity_model(entity_type);
+            (mesh, textures) = utils::get_entity_model(entity_type);
         },
         None => {
             // use the mt_server_state and lucky guesses
@@ -522,7 +523,7 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
             id = 0; // ensured to be "free"
             position = v3f{x: 0.0, y: 0.0, z: 0.0}; // player will be moved somewhere else later
             mesh = "entitymodel-villager.b3d"; // TODO
-            texture = "entity-player-slim-steve.png";
+            textures = vec![String::from("entity-player-slim-steve.png")];
         }
     };
     
@@ -588,7 +589,7 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
                                 y: 1.0,
                                 z: 1.0,
                             },
-                            textures: vec![String::from(texture)],
+                            textures,
                             spritediv: v2s16 {
                                 x: 1,
                                 y: 1,
@@ -614,7 +615,7 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
                             automatic_face_movement_dir: false,
                             automatic_face_movement_dir_offset: 0.0,
                             backface_culling: true,
-                            nametag: type_str,
+                            nametag: String::from(""), // type_str,
                             nametag_color: SColor {
                                 r: 255,
                                 g: 255,
@@ -748,6 +749,27 @@ pub async fn entity_setposrot(packet_data: &ClientboundMoveEntityPosRotPacket, c
         position: v3f { x: old_x + xa as f32, y: old_y + ya as f32, z: old_z + za as f32},
         rotation: v3f { x: *x_rot as f32, y: *y_rot as f32, z: old_z_rot },
         velocity, acceleration
+    };
+    send_entity_data(adjusted_id, entitydata, conn).await;
+}
+
+pub async fn entity_setrot(packet_data: &ClientboundMoveEntityRotPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+    let ClientboundMoveEntityRotPacket { entity_id, y_rot, x_rot, on_ground: _ } = packet_data;
+    let adjusted_id = *entity_id as u16 + 1;
+    if !mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
+        utils::logger(&format!("[Minetest] Failed to update data for (adjusted) entity ID {}: ID not yet present, dropping the packet!", adjusted_id), 2);
+    }
+    let entitydata = mt_server_state.entity_id_pos_map.get_mut(adjusted_id.into()).unwrap();
+    let EntityResendableData {
+        position,
+        rotation: old_rotation,
+        velocity,
+        acceleration
+    } = entitydata.clone();
+    let v3f { x: _, y: _, z: old_z_rot } = old_rotation;
+    *entitydata = EntityResendableData {
+        rotation: v3f { x: *x_rot as f32, y: *y_rot as f32, z: old_z_rot },
+        position, velocity, acceleration
     };
     send_entity_data(adjusted_id, entitydata, conn).await;
 }
