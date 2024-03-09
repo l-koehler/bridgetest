@@ -17,7 +17,7 @@ use minetest_protocol::wire::types::ObjectProperties;
 use mt_definitions::{HeartDisplay, FoodDisplay, Dimensions};
 use minetest_protocol::peer::peer::PeerError;
 
-use azalea_registry::Registry;
+use azalea_registry::{Registry, EntityKind};
 use minetest_protocol::wire::command::ToClientCommand;
 use minetest_protocol::wire::types::HudStat;
 use minetest_protocol::MinetestConnection;
@@ -496,6 +496,7 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
     let mesh: &str;
     let textures: Vec<String>;
     let type_str: String;
+    let visual: String;
     match optional_packet {
         Some(packet_data) => {
             // use a network packet
@@ -510,11 +511,21 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
             type_str = format!("{}", entity_type);
             id = *serverside_id as u16 + 1; // ensure 0 is always "free" for the local player, because the actual ID can't be known
             position = utils::vec3_to_v3f(vec_pos, 0.1);
-            (mesh, textures) = utils::get_entity_model(entity_type);
+            if *entity_type == EntityKind::Item {
+                visual = String::from("sprite");
+                mesh = "";
+                // what item it is can't be known at this time
+                textures = vec![String::from("missing-texture.png")];
+            } else {
+                visual = String::from("mesh");
+                (mesh, textures) = utils::get_entity_model(entity_type);
+            }
+            
         },
         None => {
             // use the mt_server_state and lucky guesses
             is_player = true;
+            visual = String::from("mesh");
             type_str = String::from("Player");
             name = mt_server_state.this_player.0.clone();
             id = 0; // ensured to be "free"
@@ -580,7 +591,7 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
                                 },
                             },
                             pointable: false,
-                            visual: String::from("mesh"),
+                            visual,
                             visual_size: v3f {
                                 x: 1.0,
                                 y: 1.0,
