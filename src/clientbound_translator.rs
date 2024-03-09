@@ -827,8 +827,17 @@ pub async fn entity_setmotion(packet_data: &ClientboundSetEntityMotionPacket, co
         velocity: _,
         acceleration
     } = entitydata.clone();
+    /* Translation for velocity:
+     * MT expects Nodes/Second
+     * MC sends in 1/8000 of a Node/Tick (Server Tick: 50ms)
+     * So MC/400 = MT
+     */
     *entitydata = EntityResendableData {
-        velocity: v3f { x: *xa as f32, y: *ya as f32, z: *za as f32 },
+        velocity: v3f {
+            x: *xa as f32/400.0,
+            y: *ya as f32/400.0,
+            z: *za as f32/400.0
+        },
         position, acceleration, rotation
     };
     send_entity_data(adjusted_id, entitydata, conn).await;
