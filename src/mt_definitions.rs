@@ -20,7 +20,7 @@ use sha1::{Sha1, Digest};
 use base64::{Engine as _, engine::general_purpose};
 use serde_json;
 
-use azalea_registry::{self, Block};
+use azalea_registry::{self, Block, EntityKind};
 
 // the only way to change an entitys pos/rot/vel in minetest is by updating *all* the values
 // but minecraft will send packets only updating one of these values, so the server_state needs to keep the values to resend.
@@ -30,7 +30,10 @@ pub struct EntityResendableData {
     pub position: v3f,
     pub rotation: v3f,
     pub velocity: v3f,
-    pub acceleration: v3f
+    pub acceleration: v3f,
+     // Not really resendable data, but we need a way to map entity IDs to entity kinds
+    // without sending requests to the azalea ECS
+    pub entity_kind: EntityKind
 }
 
 #[derive(Clone)]

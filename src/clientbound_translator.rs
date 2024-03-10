@@ -44,6 +44,7 @@ use azalea_protocol::packets::game::{ClientboundGamePacket,
     clientbound_set_entity_motion_packet::ClientboundSetEntityMotionPacket,
     clientbound_rotate_head_packet::ClientboundRotateHeadPacket,
     clientbound_block_update_packet::ClientboundBlockUpdatePacket,
+    clientbound_entity_event_packet::ClientboundEntityEventPacket,
 };
 use azalea_protocol::packets::common::CommonPlayerSpawnInfo;
 use azalea_core::resource_location::ResourceLocation;
@@ -497,6 +498,7 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
     let textures: Vec<String>;
     let type_str: String;
     let visual: String;
+    let entity_kind: EntityKind;
     match optional_packet {
         Some(packet_data) => {
             // use a network packet
@@ -511,6 +513,7 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
             type_str = format!("{}", entity_type);
             id = *serverside_id as u16 + 1; // ensure 0 is always "free" for the local player, because the actual ID can't be known
             position = utils::vec3_to_v3f(vec_pos, 0.1);
+            entity_kind = *entity_type;
             if *entity_type == EntityKind::Item {
                 visual = String::from("sprite");
                 mesh = "";
@@ -532,6 +535,7 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
             position = v3f{x: 0.0, y: 0.0, z: 0.0}; // player will be moved somewhere else later
             mesh = "entitymodel-villager.b3d"; // TODO
             textures = vec![String::from("entity-player-slim-steve.png")];
+            entity_kind = EntityKind::Player;
         }
     };
     
@@ -539,7 +543,8 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
         position,
         rotation: v3f::new(0.0, 0.0, 0.0),
         velocity: v3f::new(0.0, 0.0, 0.0),
-        acceleration: v3f::new(0.0, 0.0, 0.0)
+        acceleration: v3f::new(0.0, 0.0, 0.0),
+        entity_kind
     };
     let insert_successful = mt_server_state.entity_id_pos_map.insert_checked(id.into(), entitydata);
     if !insert_successful {
@@ -733,12 +738,13 @@ pub async fn entity_setpos(packet_data: &ClientboundMoveEntityPosPacket, conn: &
         position: old_position,
         rotation,
         velocity,
-        acceleration
+        acceleration,
+        entity_kind
     } = entitydata.clone();
     let v3f { x: old_x, y: old_y, z: old_z } = old_position;
     *entitydata = EntityResendableData {
         position: v3f { x: old_x + xa as f32, y: old_y + ya as f32, z: old_z + za as f32},
-        rotation, velocity, acceleration
+        rotation, velocity, acceleration, entity_kind
     };
     send_entity_data(adjusted_id, entitydata, conn).await;
 }
@@ -755,13 +761,14 @@ pub async fn entity_teleport(packet_data: &ClientboundTeleportEntityPacket, conn
         position: _,
         rotation: old_rotation,
         velocity,
-        acceleration
+        acceleration,
+        entity_kind
     } = entitydata.clone();
     let v3f { x: _, y: _, z: old_z_rot } = old_rotation;
     *entitydata = EntityResendableData {
         position: utils::vec3_to_v3f(position, 0.1),
         rotation: v3f { x: *x_rot as f32, y: *y_rot as f32, z: old_z_rot },
-        velocity, acceleration
+        velocity, acceleration, entity_kind
     };
     send_entity_data(adjusted_id, entitydata, conn).await;
 }
@@ -779,14 +786,15 @@ pub async fn entity_setposrot(packet_data: &ClientboundMoveEntityPosRotPacket, c
         position: old_position,
         rotation: old_rotation,
         velocity,
-        acceleration
+        acceleration,
+        entity_kind,
     } = entitydata.clone();
     let v3f { x: old_x, y: old_y, z: old_z } = old_position;
     let v3f { x: _, y: _, z: old_z_rot } = old_rotation;
     *entitydata = EntityResendableData {
         position: v3f { x: old_x + xa as f32, y: old_y + ya as f32, z: old_z + za as f32},
         rotation: v3f { x: *x_rot as f32, y: *y_rot as f32, z: old_z_rot },
-        velocity, acceleration
+        velocity, acceleration, entity_kind
     };
     send_entity_data(adjusted_id, entitydata, conn).await;
 }
@@ -803,12 +811,13 @@ pub async fn entity_setrot(packet_data: &ClientboundMoveEntityRotPacket, conn: &
         position,
         rotation: old_rotation,
         velocity,
-        acceleration
+        acceleration,
+        entity_kind
     } = entitydata.clone();
     let v3f { x: _, y: _, z: old_z_rot } = old_rotation;
     *entitydata = EntityResendableData {
         rotation: v3f { x: *x_rot as f32, y: *y_rot as f32, z: old_z_rot },
-        position, velocity, acceleration
+        position, velocity, acceleration, entity_kind
     };
     send_entity_data(adjusted_id, entitydata, conn).await;
 }
@@ -825,7 +834,8 @@ pub async fn entity_setmotion(packet_data: &ClientboundSetEntityMotionPacket, co
         position,
         rotation,
         velocity: _,
-        acceleration
+        acceleration,
+        entity_kind,
     } = entitydata.clone();
     /* Translation for velocity:
      * MT expects Nodes/Second
@@ -838,13 +848,76 @@ pub async fn entity_setmotion(packet_data: &ClientboundSetEntityMotionPacket, co
             y: *ya as f32/400.0,
             z: *za as f32/400.0
         },
-        position, acceleration, rotation
+        position, acceleration, rotation, entity_kind
     };
     send_entity_data(adjusted_id, entitydata, conn).await;
 }
 
 pub async fn entity_rotatehead(packet_data: &ClientboundRotateHeadPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
     // TODO
+}
+
+pub async fn entity_event(packet_data: &ClientboundEntityEventPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+    let ClientboundEntityEventPacket { entity_id, event_id } = packet_data;
+    let adjusted_id = *entity_id as u16 + 1;
+    if !mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
+        utils::logger(&format!("[Minetest] Failed to get entity kind for (adjusted) entity ID {}: ID not yet present, dropping the packet!", adjusted_id), 2);
+        return
+    }
+    let entitydata = mt_server_state.entity_id_pos_map.get_mut(adjusted_id.into()).unwrap();
+    let entity_kind = entitydata.entity_kind;
+    let bad_id_for_entity = format!("[Minecraft] Got entity event with ID {} referring to a entity of type {}, this event isn't implemented for that entity.", adjusted_id, entity_kind);
+    // https://wiki.vg/Entity_statuses
+    match event_id {
+        0 => (), // Tipped Arrow particles
+        1 => {
+            match entity_kind {
+                EntityKind::Rabbit => (), // Rabbit Jump animation
+                EntityKind::SpawnerMinecart => (), // Reset cooldown to 200 ticks
+                _ => utils::logger(&bad_id_for_entity, 2)
+            }
+        }
+        3 => {
+            match entity_kind {
+                EntityKind::Egg => (), // Display "ironcrack" particles at own location
+                EntityKind::Snowball => (), // Display "snowballpoof" particles at own location
+                _ => () // Death sound & animation
+            }
+        }
+        4 => {
+            match entity_kind {
+                EntityKind::EvokerFangs => (), // Attack animation and sound
+                EntityKind::Hoglin => (), // Attack animation and sound
+                EntityKind::IronGolem => (), // Attack animation and sound
+                EntityKind::Ravager => (), // Attack animation for 10 ticks
+                EntityKind::Zoglin => (), // Attack animation and sound
+                _ => utils::logger(&bad_id_for_entity, 2)
+            }
+        }
+        6 => (), // Taming Fail particles (smoke)
+        7 => (), // Taming Success particles (heart)
+        8 => (), // Wolf shaking water animation
+        9 => (), // Item usage finished (e.g. eating done)
+        10 => {
+            match entity_kind {
+                EntityKind::Sheep => (), // Sheep eating grass animation
+                EntityKind::TntMinecart => (), // Ignite TntMinecart
+                _ => utils::logger(&bad_id_for_entity, 2)
+            }
+        }
+        11 => (), // Iron golem holding flower for 20 seconds animation
+        12 => (), // villager mating heart particles
+        13 => (), // villager angry particles
+        14 => (), // villager happy particles
+        15 => (), // spawn 10 to 45 "witchMagic" particles
+        16 => (), // play zombieVillagerCure sound
+        17 => (), // trigger firework explosion
+        18 => (), // spawn heart particles
+        19 => (), // reset rotation
+        20 => (), // spawn explosion particles
+        
+        _ => utils::logger(&format!("[Minecraft] Got unsupported Entity Event (Event ID: {}, Entity ID: {})", event_id, adjusted_id), 2),
+    }
 }
 
 async fn send_entity_data(id: u16, entitydata: &EntityResendableData, conn: &mut MinetestConnection) {
