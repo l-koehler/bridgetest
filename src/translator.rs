@@ -54,24 +54,17 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
         }
     }
     
-    let media_packets = mt_definitions::get_texture_media_commands(&settings).await;
-    utils::logger("[Minetest] S->C MediaAnnouncement", 1); // This will cause cached media to load, breaking stuff (idc, delete your cache before each start? low priority)
-    let _ = mt_conn.send(media_packets.0).await;
-    utils::logger("[Minetest] S->C Media (Blocks)", 1);
-    let _ = mt_conn.send(media_packets.1).await;
-    utils::logger("[Minetest] S->C Media (Particle)", 1);
-    let _ = mt_conn.send(media_packets.2).await;
-    utils::logger("[Minetest] S->C Media (Entity)", 1);
-    let _ = mt_conn.send(media_packets.3).await;
-    utils::logger("[Minetest] S->C Media (Item)", 1);
-    let _ = mt_conn.send(media_packets.4).await;
-    utils::logger("[Minetest] S->C Media (Misc)", 1);
-    let _ = mt_conn.send(media_packets.5).await;
+    let media_packets = mt_definitions::get_texture_media_commands(&settings, &mut mt_server_state).await;
+    let packet_names = ["MediaAnnouncement", "Media (Blocks)", "Media (Particle)", "Media (Entity)", "Media (Item)", "Media (Misc)"];
+    for index in 0..media_packets.len() {
+        utils::logger(&format!("[Minetest] S->C {}", packet_names[index]), 1);
+        let _ = mt_conn.send(media_packets[index].clone()).await;
+    }
 
     utils::logger("[Minetest] S->C Itemdef", 1);
-    let _ = mt_conn.send(mt_definitions::get_item_def_command(&settings, &mut mt_server_state).await).await;
+    let _ = mt_conn.send(mt_definitions::get_item_def_command(&settings).await).await;
     utils::logger("[Minetest] S->C Nodedef", 1);
-    let _ = mt_conn.send(mt_definitions::get_node_def_command(&settings, &mut mt_server_state).await).await;
+    let _ = mt_conn.send(mt_definitions::get_node_def_command(&settings).await).await;
 
     utils::logger("[Minetest] S->C Movement", 1);
     let _ = mt_conn.send(mt_definitions::get_movementspec()).await;

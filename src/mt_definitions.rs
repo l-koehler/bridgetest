@@ -453,7 +453,7 @@ pub const fn get_metadata_placeholder(x_pos: u16, y_pos: u16, z_pos: u16) -> (Bl
 
 // item def stuff
 
-pub async fn get_item_def_command(settings: &Config, mt_server_state: &mut MTServerState) -> ToClientCommand {
+pub async fn get_item_def_command(settings: &Config) -> ToClientCommand {
     // ensure arcticdata_items exists
     let data_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/");
     if !Path::new(data_folder.join("arcticdata_items.json").as_path()).exists() {
@@ -478,7 +478,6 @@ pub async fn get_item_def_command(settings: &Config, mt_server_state: &mut MTSer
         texture_name = format!("item-{}.png", mc_name.replace("minecraft:", ""));
         utils::logger(&format!("[Itemdefs] Mapped {} to the texture {}", mc_name, texture_name), 0);
         item_definitions.push(generate_itemdef(&mc_name, item.1, &texture_name));
-        mt_server_state.sent_media.push(texture_name);
     }
     
     let alias_definitions: Vec<ItemAlias> = vec![ItemAlias {name: String::from(""), convert_to: String::from("")}];
@@ -553,7 +552,7 @@ pub fn generate_itemdef(name: &str, item: serde_json::Value, inventory_image: &s
 
 // node def stuff
 
-pub async fn get_node_def_command(settings: &Config, mt_server_state: &mut MTServerState) -> ToClientCommand {
+pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
     // ensure arcticdata_blocks exists
     let data_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/");
     if !Path::new(data_folder.join("arcticdata_blocks.json").as_path()).exists() {
@@ -575,7 +574,6 @@ pub async fn get_node_def_command(settings: &Config, mt_server_state: &mut MTSer
     let mut id: u16;
     let mut content_features: Vec<(u16, ContentFeatures)> = Vec::new();
     let mut content_feature: ContentFeatures;
-    let mut item_name: String;
     for block in arcticdata_blocks {
         mc_name = block.0;
         texture_base_name = mc_name.replace("minecraft:", "").replace(".png", "");
@@ -585,8 +583,7 @@ pub async fn get_node_def_command(settings: &Config, mt_server_state: &mut MTSer
         // everything else must adjust for this offset.
         let texture_pack_res: u16 = settings.get_int("texture_pack_res").expect("Failed to read config!")
         .try_into().expect("Texture pack resolutions above u16 are not supported. What are you even doing?");
-        (content_feature, item_name) = generate_contentfeature(id, &mc_name, block.1, texture_base_name, texture_pack_res);
-        mt_server_state.sent_media.push(item_name);
+        content_feature = generate_contentfeature(id, &mc_name, block.1, texture_base_name, texture_pack_res);
         content_features.push((id+128, content_feature));
     }
     
@@ -681,7 +678,7 @@ pub async fn get_node_def_command(settings: &Config, mt_server_state: &mut MTSer
     return nodedef_command;
 }
 
-pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mut texture_base_name: String, texture_pack_res: u16) -> (ContentFeatures, String) {
+pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mut texture_base_name: String, texture_pack_res: u16) -> ContentFeatures {
     // If *every* possible state is solid, then walkable=true
     // for light stuff, use the "brightest" state
     // for everything else, do other stuff idk look at the code
@@ -870,7 +867,6 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
     let texture_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/assets/minecraft/textures/block/");
     let texture_fallback_name = format!("block-{}.png", texture_base_name);
     let mut tiledef_sides: [TileDef; 6] = [get_tiledef(&texture_fallback_name, &animation), get_tiledef(&texture_fallback_name, &animation), get_tiledef(&texture_fallback_name, &animation), get_tiledef(&texture_fallback_name, &animation), get_tiledef(&texture_fallback_name, &animation), get_tiledef(&texture_fallback_name, &animation)];
-    let texture_as_item: String;
     // TODO: This breaks tall blocks (doors etc) which use _top and _bottom
     if Path::new(texture_folder.join(format!("{}_top.png", texture_base_name)).as_path()).exists() {
         tiledef_sides[0] = get_tiledef(&format!("block-{}_top.png", texture_base_name), &animation);
@@ -883,9 +879,6 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
         tiledef_sides[3] = get_tiledef(&format!("block-{}_side.png", texture_base_name), &animation);
         tiledef_sides[4] = get_tiledef(&format!("block-{}_side.png", texture_base_name), &animation);
         tiledef_sides[5] = get_tiledef(&format!("block-{}_side.png", texture_base_name), &animation);
-        texture_as_item = format!("block-{}_side.png", texture_base_name)
-    } else {
-        texture_as_item = texture_fallback_name;
     }
     let contentfeatures: ContentFeatures = ContentFeatures {
         version: 13, // https://github.com/minetest/minetest/blob/master/src/nodedef.h#L313
@@ -949,7 +942,7 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
         move_resistance: None,
         liquid_move_physics: None
     };
-    (contentfeatures, texture_as_item)
+    contentfeatures
 }
 
 /*
@@ -1080,7 +1073,7 @@ fn texture_vec_iterator(texture_vec: &mut Vec<(PathBuf, String)>, media_folder: 
     }
 }
 
-pub async fn get_texture_media_commands(settings: &Config) -> (ToClientCommand, ToClientCommand, ToClientCommand, ToClientCommand, ToClientCommand, ToClientCommand) {
+pub async fn get_texture_media_commands(settings: &Config, mt_server_state: &mut MTServerState) -> [ToClientCommand; 6] {
     // TODO: This is *very* inefficient. not that bad, its only run once each start, but still..
     // returns (announcemedia, media)
     // ensure a texture pack exists
@@ -1139,6 +1132,10 @@ pub async fn get_texture_media_commands(settings: &Config) -> (ToClientCommand, 
         announcement_vec.push(mediafilevecs.1);
         misc_file_vec.push(mediafilevecs.0);
     }
+    // add to sent_media
+    for announcement in announcement_vec.clone() {
+        mt_server_state.sent_media.push(announcement.name);
+    }
     let announcemedia = ToClientCommand::AnnounceMedia(
         Box::new(command::AnnounceMediaSpec {
             files: announcement_vec,
@@ -1181,5 +1178,5 @@ pub async fn get_texture_media_commands(settings: &Config) -> (ToClientCommand, 
             files: misc_file_vec
         })
     );
-    return (announcemedia, block_media_packet, particle_media_packet, entity_media_packet, item_media_packet, misc_media_packet);
+    return [announcemedia, block_media_packet, particle_media_packet, entity_media_packet, item_media_packet, misc_media_packet];
 }
