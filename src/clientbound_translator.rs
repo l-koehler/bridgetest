@@ -11,6 +11,7 @@ use crate::utils;
 use crate::mt_definitions;
 use crate::commands;
 use crate::MTServerState;
+use azalea::inventory::ItemSlot;
 use azalea::BlockPos;
 use azalea_core::delta::PositionDelta8;
 use azalea_entity::{EntityDataValue, EntityDataItem};
@@ -498,7 +499,6 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
     let position: v3f;
     let mesh: &str;
     let textures: Vec<String>;
-    let type_str: String;
     let visual: String;
     let entity_kind: EntityKind;
     match optional_packet {
@@ -512,15 +512,15 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
                 x_rot: _, y_rot: _, y_head_rot: _, data: _, x_vel: _, y_vel: _, z_vel: _ } = packet_data;
             is_player = false;
             name = format!("UUID-{}", uuid);
-            type_str = format!("{}", entity_type);
             id = *serverside_id as u16 + 1; // ensure 0 is always "free" for the local player, because the actual ID can't be known
             position = utils::vec3_to_v3f(vec_pos, 0.1);
             entity_kind = *entity_type;
             if *entity_type == EntityKind::Item {
                 visual = String::from("sprite");
                 mesh = "";
-                // what item it is can't be known at this time
-                textures = vec![String::from("missing-texture.png")];
+                // what item it is can't be known at this time, leave empty so
+                // a "texture modifier" sent later will just set the texture
+                textures = vec![String::from("")];
             } else {
                 visual = String::from("mesh");
                 (mesh, textures) = utils::get_entity_model(entity_type);
@@ -531,7 +531,6 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
             // use the mt_server_state and lucky guesses
             is_player = true;
             visual = String::from("mesh");
-            type_str = String::from("Player");
             name = mt_server_state.this_player.0.clone();
             id = 0; // ensured to be "free"
             position = v3f{x: 0.0, y: 0.0, z: 0.0}; // player will be moved somewhere else later
@@ -924,15 +923,28 @@ pub async fn entity_event(packet_data: &ClientboundEntityEventPacket, conn: &mut
 }
 
 pub async fn set_entity_data(packet_data: &ClientboundSetEntityDataPacket, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
+    // Currently, the only data that will actually be used is EntityDataValue::ItemStack in EntityKind::Item
+    // Everything else gets dropped.
     let ClientboundSetEntityDataPacket { id, packed_items } = packet_data;
     let adjusted_id = *id as u16 + 1;
+
+    if !mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
+        utils::logger(&format!("[Minetest] Failed to update data for (adjusted) entity ID {}: ID not yet present, dropping the packet!", adjusted_id), 2);
+        return
+    }
+    let entity_kind = mt_server_state.entity_id_pos_map.get(adjusted_id.into()).unwrap().entity_kind;
+    
     let mut metadata_item: &EntityDataItem;
     for i in 0..packed_items.len() {
         metadata_item = &packed_items[i];
         let EntityDataItem { index: _, value } = metadata_item;
         match value {
-            // TODO actually implement this thing
-            EntityDataValue::ItemStack(data) => (),
+            EntityDataValue::ItemStack(data) => {
+                match entity_kind {
+                    EntityKind::Item => set_entity_texture(adjusted_id, utils::texture_from_itemslot(data, mt_server_state), conn).await,
+                    _ => utils::logger("[Minecraft] Server sent SetEntityData with ItemStack, but this is only implemented for dropped items! Dropping this EntityDataItem.", 2)
+                }
+            },
             _ => (),
         }
     }
@@ -943,21 +955,44 @@ async fn send_entity_data(id: u16, entitydata: &EntityResendableData, conn: &mut
         Box::new(wire::command::ActiveObjectMessagesSpec{
             objects: vec![wire::types::ActiveObjectMessage{
                 id,
-                 data: wire::types::ActiveObjectCommand::UpdatePosition(
-                     wire::types::AOCUpdatePosition {
-                         position: entitydata.position,
-                         velocity: entitydata.velocity,
-                         acceleration: entitydata.acceleration,
-                         rotation: entitydata.rotation,
-                         do_interpolate: false,
-                         is_end_position: true,
-                         update_interval: 1.0
+                data: wire::types::ActiveObjectCommand::UpdatePosition(
+                    wire::types::AOCUpdatePosition {
+                        position: entitydata.position,
+                        velocity: entitydata.velocity,
+                        acceleration: entitydata.acceleration,
+                        rotation: entitydata.rotation,
+                        do_interpolate: false,
+                        is_end_position: true,
+                        update_interval: 1.0
                     }
                 )
             }]
         })
     );
     let _ = conn.send(clientbound_moveentity).await;
+}
+
+async fn set_entity_texture(id: u16, texture: String, conn: &MinetestConnection) {
+    /*
+     * Strictly speaking, this does not *set* a texture.
+     * It only works when the previous texture was "".
+     * Currently, it *should* only be called when that's the case,
+     * but that won't stay so forever (or even always hold true
+     * currently, I don't know what MC does). FIXME (later)
+     */
+    let update_texture_packet = ToClientCommand::ActiveObjectMessages(
+        Box::new(wire::command::ActiveObjectMessagesSpec {
+            objects: vec![wire::types::ActiveObjectMessage{
+                id,
+                data: wire::types::ActiveObjectCommand::SetTextureMod(
+                    wire::types::AOCSetTextureMod {
+                        modifier: texture
+                   }
+                )
+            }]
+        })
+    );
+    let _ = conn.send(update_texture_packet).await;
 }
 
 // block placement/destruction

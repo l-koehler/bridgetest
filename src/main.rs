@@ -33,6 +33,8 @@ async fn main() {
 pub struct MTServerState {
     // things the server should keep track of
     // mostly used to prevent sending useless/redundant packets
+    // and for everything else
+    // qwq this thing sucks...
     players: Vec<String>, // names of all players
     this_player: (String, String), // the proxied player (0: clientside name, 1: name passed to the mc server)
     mt_clientside_pos: (f32, f32, f32), // used to tolerate slight position differences, resulting in far smoother movement
@@ -44,6 +46,7 @@ pub struct MTServerState {
     last_yaw_pitch: (f32, f32),
     entity_id_pos_map: IntMap<mt_definitions::EntityResendableData>,
     ticks_since_sync: u32,
+    sent_media: Vec<String> // all the media things we sent, by names like "item-fish.png"
 }
 
 async fn start_client_handler(settings: Config) {
@@ -64,7 +67,8 @@ async fn start_client_handler(settings: Config) {
         keys_pressed: 0,
         last_yaw_pitch: (0.0, 0.0),
         entity_id_pos_map: IntMap::new(),
-        ticks_since_sync: 0
+        ticks_since_sync: 0,
+        sent_media: Vec::new()
     };
 
     // Wait for a client to join

@@ -3,7 +3,9 @@
  */
 
 use crate::settings;
+use crate::MTServerState;
 
+use azalea::inventory::ItemSlot;
 use minetest_protocol::CommandRef;
 use minetest_protocol::CommandDirection;
 use minetest_protocol::wire::types::{v3f, MapNode};
@@ -16,6 +18,21 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::io::Read;
 use rand::Rng;
+
+pub fn texture_from_itemslot(item: &ItemSlot, mt_server_state: &MTServerState) -> String {
+    match item {
+        ItemSlot::Empty => String::from("block-air.png"),
+        ItemSlot::Present(slot_data) => {
+            let item_name = slot_data.kind.to_string().replace("minecraft:", "").to_lowercase() + ".png";
+            if mt_server_state.sent_media.contains(&format!("item-{}", &item_name)) {
+                // the thing is a item
+                format!("item-{}", item_name)
+            } else {
+                format!("block-{}", item_name)
+            }
+        }
+    }
+}
 
 pub fn state_to_node(state: BlockState, cave_air_glow: bool) -> MapNode {
     let mut param0: u16;

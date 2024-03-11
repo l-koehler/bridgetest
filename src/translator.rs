@@ -6,7 +6,6 @@
 
 use crate::clientbound_translator;
 use crate::mt_definitions;
-use crate::settings;
 use crate::utils;
 use crate::commands;
 use crate::MTServerState; // ok this is stupid to do whatever it works (i need global variables) (for normal reasons)
@@ -70,9 +69,9 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     let _ = mt_conn.send(media_packets.5).await;
 
     utils::logger("[Minetest] S->C Itemdef", 1);
-    let _ = mt_conn.send(mt_definitions::get_item_def_command(&settings).await).await;
+    let _ = mt_conn.send(mt_definitions::get_item_def_command(&settings, &mut mt_server_state).await).await;
     utils::logger("[Minetest] S->C Nodedef", 1);
-    let _ = mt_conn.send(mt_definitions::get_node_def_command(&settings).await).await;
+    let _ = mt_conn.send(mt_definitions::get_node_def_command(&settings, &mut mt_server_state).await).await;
 
     utils::logger("[Minetest] S->C Movement", 1);
     let _ = mt_conn.send(mt_definitions::get_movementspec()).await;
