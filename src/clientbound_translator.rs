@@ -13,11 +13,12 @@ use crate::commands;
 use crate::MTServerState;
 use azalea::BlockPos;
 use azalea_core::delta::PositionDelta8;
+use azalea_entity::{EntityDataValue, EntityDataItem};
 use minetest_protocol::wire::types::ObjectProperties;
 use mt_definitions::{HeartDisplay, FoodDisplay, Dimensions};
 use minetest_protocol::peer::peer::PeerError;
 
-use azalea_registry::{Registry, EntityKind};
+use azalea_registry::EntityKind;
 use minetest_protocol::wire::command::ToClientCommand;
 use minetest_protocol::wire::types::HudStat;
 use minetest_protocol::MinetestConnection;
@@ -45,6 +46,7 @@ use azalea_protocol::packets::game::{ClientboundGamePacket,
     clientbound_rotate_head_packet::ClientboundRotateHeadPacket,
     clientbound_block_update_packet::ClientboundBlockUpdatePacket,
     clientbound_entity_event_packet::ClientboundEntityEventPacket,
+    clientbound_set_entity_data_packet::ClientboundSetEntityDataPacket,
 };
 use azalea_protocol::packets::common::CommonPlayerSpawnInfo;
 use azalea_core::resource_location::ResourceLocation;
@@ -853,11 +855,12 @@ pub async fn entity_setmotion(packet_data: &ClientboundSetEntityMotionPacket, co
     send_entity_data(adjusted_id, entitydata, conn).await;
 }
 
-pub async fn entity_rotatehead(packet_data: &ClientboundRotateHeadPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+pub async fn entity_rotatehead(packet_data: &ClientboundRotateHeadPacket, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
     // TODO
 }
 
-pub async fn entity_event(packet_data: &ClientboundEntityEventPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+pub async fn entity_event(packet_data: &ClientboundEntityEventPacket, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
+    return; // TODO finish this fn
     let ClientboundEntityEventPacket { entity_id, event_id } = packet_data;
     let adjusted_id = *entity_id as u16 + 1;
     if !mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
@@ -915,8 +918,23 @@ pub async fn entity_event(packet_data: &ClientboundEntityEventPacket, conn: &mut
         18 => (), // spawn heart particles
         19 => (), // reset rotation
         20 => (), // spawn explosion particles
-        
+        //TODO finish this (after implementing the particle system)
         _ => utils::logger(&format!("[Minecraft] Got unsupported Entity Event (Event ID: {}, Entity ID: {})", event_id, adjusted_id), 2),
+    }
+}
+
+pub async fn set_entity_data(packet_data: &ClientboundSetEntityDataPacket, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
+    let ClientboundSetEntityDataPacket { id, packed_items } = packet_data;
+    let adjusted_id = *id as u16 + 1;
+    let mut metadata_item: &EntityDataItem;
+    for i in 0..packed_items.len() {
+        metadata_item = &packed_items[i];
+        let EntityDataItem { index: _, value } = metadata_item;
+        match value {
+            // TODO actually implement this thing
+            EntityDataValue::ItemStack(data) => (),
+            _ => (),
+        }
     }
 }
 
