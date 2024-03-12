@@ -14,7 +14,6 @@ extern crate alloc;
 
 use minetest_protocol::wire::command::CommandProperties;
 use minetest_protocol::wire::command::ToServerCommand;
-use minetest_protocol::wire::packet::OriginalBody;
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::wire::command::ToClientCommand;
 use minetest_protocol::wire::command::HelloSpec;
@@ -43,6 +42,7 @@ pub async fn mt_auto(command: ToServerCommand, mt_conn: &mut MinetestConnection,
         ToServerCommand::Playerpos(specbox) => serverbound_translator::playerpos(mc_client, specbox, mt_server_state).await,
         ToServerCommand::TSChatMessage(specbox) => serverbound_translator::send_message(mc_client, specbox),
         ToServerCommand::Interact(specbox) => serverbound_translator::interact_generic(mc_client, specbox).await,
+        //ToServerCommand::Gotblocks(specbox) => serverbound_translator::gotblocks(mc_client, specbox, mt_conn, mt_server_state.current_dimension).await,
         _ => utils::logger(&format!("[Minetest] Got unimplemented command, dropping {}", command.command_name()), 2) // Drop packet if unable to match
     }
 }

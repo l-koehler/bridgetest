@@ -1,13 +1,16 @@
+use crate::mt_definitions::Dimensions;
 // this contains functions that TAKE data from the client
 // and send it to the MC server.
-use crate::utils;
+use crate::{clientbound_translator, mt_definitions, utils};
 
-use azalea::BotClientExt;
 use azalea_client::Client;
-use azalea_protocol::packets::game::ServerboundGamePacket;
-use azalea_protocol::packets::game::serverbound_move_player_pos_rot_packet::ServerboundMovePlayerPosRotPacket;
+use azalea_core::position::{ChunkPos, ChunkBlockPos};
+use azalea_block::BlockState;
+
 use alloc::boxed::Box;
-use minetest_protocol::wire::command::{TSChatMessageSpec, PlayerposSpec, InteractSpec};
+use azalea_entity::metadata::CaveSpider;
+use minetest_protocol::MinetestConnection;
+use minetest_protocol::wire::command::{TSChatMessageSpec, PlayerposSpec, InteractSpec, GotblocksSpec};
 use minetest_protocol::wire::types::{PlayerPos, v3f, v3s16, PointedThing};
 use minetest_protocol::wire::types;
 use crate::MTServerState;
@@ -104,5 +107,39 @@ async fn interact_node(action: types::InteractAction, under_surface: v3s16, abov
         types::InteractAction::Use          => mc_client.block_interact(under_blockpos),
         types::InteractAction::StartDigging => mc_client.start_mining(under_blockpos),
         _ => utils::logger(&format!("[Minetest] Client sent unsupported node interaction: {:?}", action), 2)
+    }
+}
+
+pub async fn gotblocks(mc_client: &mut Client, specbox: Box<GotblocksSpec>, mt_conn: &MinetestConnection, current_dimension: mt_definitions::Dimensions) {
+    let partial_world = mc_client.partial_world();
+    let world_data = partial_world.read();
+    for to_send in specbox.blocks {
+        let fullheight = world_data.chunks.limited_get(&ChunkPos::new(to_send.x.into(), to_send.y.into()));
+        match fullheight {
+            Some(chunk_data) => {
+                // copying some stuff from clientbound_translator::send_level_chunk
+                let mut nodearr: [BlockState; 4096] = [BlockState{id:125};4096];
+                let block_y = to_send.y * 16;
+                for y in block_y..block_y+16 {
+                    for x in 0..16 {
+                        for z in 0..16 {
+                            let current_state = chunk_data.read().get(&ChunkBlockPos { x: x as u8, y: y as i32, z: z as u8 },
+                                                                      mt_definitions::get_y_bounds(&current_dimension).0.into());
+                            match current_state {
+                                Some(state) => nodearr[x+((y%16) as usize*16)+(z*256)] = state,
+                                // Air for unknown Nodes. The existance of the chunk was ensured previously.
+                                None => nodearr[x+((y%16) as usize*16)+(z*256)] = BlockState{id:125}
+                            }
+                        }
+                    }
+                }
+                // call the clientbound translator to send the created node array
+                let cave_air_glow = current_dimension == Dimensions::Nether;
+                clientbound_translator::initialize_16node_chunk(to_send.x, to_send.y, to_send.z,
+                                                                mt_conn, nodearr, cave_air_glow).await;
+            },
+            // TODO can i request the chunk from the server?
+            None => utils::logger(&format!("[Minetest] Client requested {:?}, but the ECS is not aware of this chunk.", to_send), 2),
+        }
     }
 }

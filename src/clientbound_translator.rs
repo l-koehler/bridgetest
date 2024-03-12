@@ -11,7 +11,6 @@ use crate::utils;
 use crate::mt_definitions;
 use crate::commands;
 use crate::MTServerState;
-use azalea::inventory::ItemSlot;
 use azalea::BlockPos;
 use azalea_core::delta::PositionDelta8;
 use azalea_entity::{EntityDataValue, EntityDataItem};
@@ -312,7 +311,7 @@ pub async fn send_sys_message(conn: &mut MinetestConnection, message: &Clientbou
 
 }
 
-pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &mut MinetestConnection, state_arr: [BlockState; 4096], cave_air_glow: bool) {
+pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &MinetestConnection, state_arr: [BlockState; 4096], cave_air_glow: bool) {
     // Fills a 16^3 area with a vector of map nodes, where param0 is a MC-compatible ID.
     // remember that this is limited to 16 blocks of heigth, while a MC chunk goes from -64 to 320
     // y_pos of 0 -> actual y filled from 0 to 16
