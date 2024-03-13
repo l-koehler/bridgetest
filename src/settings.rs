@@ -63,6 +63,9 @@ pub const HS_NAMES: [&str; 26] = [
 "John_Crocker",
 "Jade_English"];
 
+// formspecs (basically UI definitions)
+pub const PLAYER_INV_FORMSPEC: &str = "size[9,7.5]list[current_player;main;0,3.5;9,4;]list[current_player;craft;3,0;3,3;]listring[]list[current_player;craftpreview;7,1;1,1;]";
+
 /*
  * 0: Display every recieved packet
  * 1: Display some extra status messages (and every SENT packet lol i suck at this)

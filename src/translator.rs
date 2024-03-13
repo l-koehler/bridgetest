@@ -9,6 +9,7 @@ use crate::mt_definitions;
 use crate::utils;
 use crate::commands;
 use crate::MTServerState; // ok this is stupid to do whatever it works (i need global variables) (for normal reasons)
+use crate::settings;
 
 use minetest_protocol::peer::peer::PeerError;
 use minetest_protocol::wire::command::CommandProperties;
@@ -78,7 +79,10 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     let _ = mt_conn.send(mt_definitions::add_foodbar()).await;
     utils::logger("[Minetest] S->C AddHud Airbar", 1);
     let _ = mt_conn.send(mt_definitions::add_airbar()).await;
-    
+
+    utils::logger("[Minetest] S->C Formspec", 1);
+    let _ = mt_conn.send(mt_definitions::get_inventory_formspec(settings::PLAYER_INV_FORMSPEC)).await;
+
     utils::logger("[Minetest] S->C CsmRestrictions", 1);
     let _ = mt_conn.send(mt_definitions::get_csmrestrictions()).await;
 
