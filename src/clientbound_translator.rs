@@ -364,8 +364,6 @@ pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &Min
             network_specific_version: 2 // what does this meeeean qwq
         })
     );
-    //println!("{:#?}", addblockcommand);
-    //panic!("done here");
     let _ = conn.send(addblockcommand).await;
 }
 
@@ -388,10 +386,7 @@ pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut Unbounde
     // first let azalea do everything until ChunkBatchFinished,
     // then move the azalea world over to the client
     let y_bounds = mt_definitions::get_y_bounds(&mt_server_state.current_dimension);
-    let is_nether = match mt_server_state.current_dimension {
-        Dimensions::Nether => true,
-        _ => false
-    };
+    let is_nether = matches!(mt_server_state.current_dimension, Dimensions::Nether);
     loop {
         tokio::select! {
             t = mc_conn.recv() => {
@@ -399,8 +394,8 @@ pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut Unbounde
                     Some(_) => {
                         let mc_command = t.expect("[Minecraft] Failed to unwrap non-empty packet from Server!");
                         utils::show_mc_command(&mc_command);
-                        match mc_command {
-                            Event::Packet(packet_value) => match Arc::unwrap_or_clone(packet_value) {
+                        if let Event::Packet(packet_value) = mc_command {
+                            match Arc::unwrap_or_clone(packet_value) {
                                 ClientboundGamePacket::LevelChunkWithLight(packet_data) => {
                                     utils::logger("[Minecraft] S->C LevelchunkWithLight", 1);
                                     send_level_chunk(&packet_data, mt_conn, &y_bounds, is_nether).await;
@@ -410,8 +405,7 @@ pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut Unbounde
                                     return; // Done
                                 },
                                 _ => (),
-                            },
-                            _ => (),
+                            }
                         }
                     },
                     None => utils::logger(&format!("[Minecraft] Recieved empty/none, skipping: {:#?}", t), 2),
@@ -424,10 +418,7 @@ pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut Unbounde
                     Ok(_) => (),
                     Err(err) => {
                         let show_err = if let Some(err) = err.downcast_ref::<PeerError>() {
-                            match err {
-                                PeerError::PeerSentDisconnect => false,
-                                _ => true,
-                            }
+                            !matches!(err, PeerError::PeerSentDisconnect)
                         } else {
                             true
                         };
@@ -944,7 +935,7 @@ pub async fn set_entity_data(packet_data: &ClientboundSetEntityDataPacket, conn:
                     _ => utils::logger("[Minecraft] Server sent SetEntityData with ItemStack, but this is only implemented for dropped items! Dropping this EntityDataItem.", 2)
                 }
             },
-            _ => (),
+            _ => utils::logger("[Minecraft] Server sent SetEntityData with unsupported EntityDataValue! Dropping this EntityDataItem.", 2),
         }
     }
 }
