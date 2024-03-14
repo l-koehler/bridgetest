@@ -88,7 +88,7 @@ fn load_config() -> Config {
     if !Path::new(config_file_path.as_path()).exists() {
         // Create config and set defaults
         let mut data_file = File::create(config_file_path.as_path()).expect("Creating config file failed!");
-        data_file.write(settings::CONF_FALLBACK.as_bytes()).expect("Writing defaults to config file failed!");
+        data_file.write_all(settings::CONF_FALLBACK.as_bytes()).expect("Writing defaults to config file failed!");
     }
     let builder = Config::builder()
         .set_default("texture_pack_path", "").unwrap()

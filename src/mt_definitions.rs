@@ -203,7 +203,7 @@ pub fn get_sky_stuff() -> [ToClientCommand; 5] {
 }
 
 pub fn empty_inventory() -> ToClientCommand {
-    let inventory_command = ToClientCommand::Inventory(
+    ToClientCommand::Inventory(
         Box::new(command::InventorySpec {
             inventory: Inventory {
                 entries: vec![
@@ -238,12 +238,11 @@ pub fn empty_inventory() -> ToClientCommand {
                 ]
             }
         })
-    );
-    inventory_command
+    )
 }
 
 pub fn add_healthbar() -> ToClientCommand {
-    let hudadd_command = ToClientCommand::Hudadd(
+    ToClientCommand::Hudadd(
         Box::new(command::HudaddSpec {
             server_id: settings::HEALTHBAR_ID,
             typ: 2,
@@ -287,12 +286,11 @@ pub fn add_healthbar() -> ToClientCommand {
             ),
             style: Some(0)
         })
-    );
-    hudadd_command
+    )
 }
 
 pub fn add_foodbar() -> ToClientCommand {
-    let hudadd_command = ToClientCommand::Hudadd(
+    ToClientCommand::Hudadd(
         Box::new(command::HudaddSpec {
             server_id: settings::FOODBAR_ID,
             typ: 2,
@@ -336,12 +334,11 @@ pub fn add_foodbar() -> ToClientCommand {
             ),
             style: Some(0)
         })
-    );
-    hudadd_command
+    )
 }
 
 pub fn add_airbar() -> ToClientCommand {
-    let hudadd_command = ToClientCommand::Hudadd(
+    ToClientCommand::Hudadd(
         Box::new(command::HudaddSpec {
             server_id: settings::AIRBAR_ID,
             typ: 2,
@@ -383,24 +380,22 @@ pub fn add_airbar() -> ToClientCommand {
             text2: None,
             style: Some(0)
         })
-    );
-    hudadd_command
+    )
 }
 
 pub fn get_defaultpriv() -> ToClientCommand {
-    let priv_command = ToClientCommand::Privileges(
+    ToClientCommand::Privileges(
         Box::new(command::PrivilegesSpec {
             privileges: vec![
                 String::from("interact"),
                 String::from("shout"),
             ]
         })
-    );
-    priv_command
+    )
 }
 
 pub fn get_movementspec() -> ToClientCommand {
-    let movement_command = ToClientCommand::Movement(
+    ToClientCommand::Movement(
         Box::new(command::MovementSpec {
             acceleration_default: 2.4,
             acceleration_air: 1.2,
@@ -415,27 +410,24 @@ pub fn get_movementspec() -> ToClientCommand {
             liquid_sink: 23.0,
             gravity: 10.4,
         })
-    );
-    movement_command
+    )
 }
 
 pub fn get_inventory_formspec(formspec: &str) -> ToClientCommand {
-    let formspec_command = ToClientCommand::InventoryFormspec(
+    ToClientCommand::InventoryFormspec(
         Box::new(command::InventoryFormspecSpec{
             formspec: String::from(formspec),
         })
-    );
-    formspec_command
+    )
 }
 
 pub fn get_csmrestrictions() -> ToClientCommand {
-    let csm_command = ToClientCommand::CsmRestrictionFlags(
+    ToClientCommand::CsmRestrictionFlags(
         Box::new(command::CsmRestrictionFlagsSpec {
             csm_restriction_flags: 0,
             csm_restriction_noderange: 0
         })
-    );
-    csm_command
+    )
 }
 
 pub const fn get_metadata_placeholder(x_pos: u16, y_pos: u16, z_pos: u16) -> (BlockPos, NodeMetadata) {
@@ -462,7 +454,7 @@ pub async fn get_item_def_command(settings: &Config) -> ToClientCommand {
         let resp = reqwest::get(data_url).await.expect("Failed to request texture pack!");
         let arctic_items_data = resp.text().await.expect("Recieved invalid response! This might be caused by not supplying a direct download link.");
         let mut json_file = fs::File::create(data_folder.join("arcticdata_items.json").as_path()).expect("Creating arcticdata_items.json failed!");
-        json_file.write(arctic_items_data.as_bytes()).expect("Writing data to arcticdata_items.json failed!");
+        json_file.write_all(arctic_items_data.as_bytes()).expect("Writing data to arcticdata_items.json failed!");
     }
     // parse arcticdata_blocks.json
     let arcticdata_items: std::collections::HashMap<String, serde_json::Value> = 
@@ -482,7 +474,7 @@ pub async fn get_item_def_command(settings: &Config) -> ToClientCommand {
     
     let alias_definitions: Vec<ItemAlias> = vec![ItemAlias {name: String::from(""), convert_to: String::from("")}];
 
-    let itemdef_command = ToClientCommand::Itemdef(
+    ToClientCommand::Itemdef(
         Box::new(command::ItemdefSpec {
             item_def: ItemdefList {
                 itemdef_manager_version: 0, // https://github.com/minetest/minetest/blob/master/src/itemdef.cpp#L616
@@ -490,8 +482,7 @@ pub async fn get_item_def_command(settings: &Config) -> ToClientCommand {
                  aliases: alias_definitions
             }
         })
-    );
-    return itemdef_command;
+    )
 }
 
 pub fn generate_itemdef(name: &str, item: serde_json::Value, inventory_image: &str) -> ItemDef {
@@ -561,7 +552,7 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
         let resp = reqwest::get(data_url).await.expect("Failed to request texture pack!");
         let arctic_block_data = resp.text().await.expect("Recieved invalid response! This might be caused by not supplying a direct download link.");
         let mut json_file = fs::File::create(data_folder.join("arcticdata_blocks.json").as_path()).expect("Creating arcticdata_blocks.json failed!");
-        json_file.write(arctic_block_data.as_bytes()).expect("Writing data to arcticdata_blocks.json failed!");
+        json_file.write_all(arctic_block_data.as_bytes()).expect("Writing data to arcticdata_blocks.json failed!");
     }
     // parse arcticdata_blocks.json
     let arcticdata_blocks: std::collections::HashMap<String, serde_json::Value> = 
@@ -668,14 +659,13 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
         liquid_move_physics: None
     }));
     
-    let nodedef_command = ToClientCommand::Nodedef(
+    ToClientCommand::Nodedef(
         Box::new(command::NodedefSpec {
             node_def: NodeDefManager {
                 content_features,
             }
         })
-    );
-    return nodedef_command;
+    )
 }
 
 pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mut texture_base_name: String, texture_pack_res: u16) -> ContentFeatures {
@@ -985,7 +975,7 @@ pub async fn validate_texture_pack(settings: &Config) -> bool {
         utils::logger("url.dsv is missing, creating it.", 1);
         let dsv_content = format!("{}:{}", chrono::Utc::now().timestamp(), texture_pack_url);
         let mut url_dsv = fs::File::create(data_folder.join("url.dsv").as_path()).expect("Creating url.dsv failed!");
-        url_dsv.write(dsv_content.as_bytes()).expect("Writing data to url.dsv failed!");
+        url_dsv.write_all(dsv_content.as_bytes()).expect("Writing data to url.dsv failed!");
         // we need to re-download in this case
         do_download = true;
     } else {
@@ -997,7 +987,7 @@ pub async fn validate_texture_pack(settings: &Config) -> bool {
             utils::logger("url.dsv does exist, but contains the wrong URL. re-writing it.", 1);
             let new_dsv_content = format!("{}:{}", chrono::Utc::now().timestamp(), texture_pack_url);
             let mut url_dsv = fs::File::open(data_folder.join("url.dsv").as_path()).expect("Opening url.dsv failed!");
-            url_dsv.write(new_dsv_content.as_bytes()).expect("Writing data to url.dsv failed!");
+            url_dsv.write_all(new_dsv_content.as_bytes()).expect("Writing data to url.dsv failed!");
             do_download = true;
         } else {
             utils::logger(&format!("Found url.dsv at {}", data_folder.join("url.dsv").display()), 1)
@@ -1020,17 +1010,17 @@ pub async fn validate_texture_pack(settings: &Config) -> bool {
             let resp = reqwest::get(texture_pack_url).await.expect("Failed to request texture pack!");
             let texture_pack_data = resp.bytes().await.expect("Recieved invalid response! This might be caused by not supplying a direct download link.");
             utils::logger("Unpacking textures.zip to data_dir/textures", 1);
-            zip_extract::extract(Cursor::new(texture_pack_data), &data_folder.join("textures/").as_path(), true).expect("Failed to extract! Check Permissions!");
+            zip_extract::extract(Cursor::new(texture_pack_data), data_folder.join("textures/").as_path(), true).expect("Failed to extract! Check Permissions!");
         }
     } // else the textures are already installed
-    return do_download;
+    do_download
 }
 
 pub fn get_mediafilevecs(filename: PathBuf, name: &str) -> (MediaFileData, MediaAnnouncement) {
     let mut texture_file = fs::File::open(&filename).unwrap();
     let metadata = fs::metadata(&filename).expect("Unable to read File Metadata! (Check Permissions?)");
     let mut buffer = vec![0; metadata.len() as usize];
-    texture_file.read(&mut buffer).expect("File Metadata lied about File Size. This should NOT happen, what the hell is wrong with your device?");
+    texture_file.read_exact(&mut buffer).expect("File Metadata lied about File Size. This should NOT happen, what the hell is wrong with your device?");
     // buffer: Vec<u8> with the png's content.
     let filedata = MediaFileData {
         name: String::from(name),
@@ -1045,13 +1035,13 @@ pub fn get_mediafilevecs(filename: PathBuf, name: &str) -> (MediaFileData, Media
         name: String::from(name),
         sha1_base64: buffer_hash_b64,
     };
-    return (filedata, fileannounce);
+    (filedata, fileannounce)
 }
 
 fn texture_vec_iterator(texture_vec: &mut Vec<(PathBuf, String)>, media_folder: PathBuf, prefix: &str, recurse: bool) {
     let mut name: String;
     let mut path: PathBuf;
-    let iterator = fs::read_dir(&media_folder).expect("Failed to read media");
+    let iterator = fs::read_dir(media_folder).expect("Failed to read media");
     for item in iterator {
         name = item.as_ref().unwrap().file_name().into_string().unwrap();
         if item.as_ref().unwrap().file_type().unwrap().is_dir() && recurse {
@@ -1178,5 +1168,5 @@ pub async fn get_texture_media_commands(settings: &Config, mt_server_state: &mut
             files: misc_file_vec
         })
     );
-    return [announcemedia, block_media_packet, particle_media_packet, entity_media_packet, item_media_packet, misc_media_packet];
+    [announcemedia, block_media_packet, particle_media_packet, entity_media_packet, item_media_packet, misc_media_packet]
 }

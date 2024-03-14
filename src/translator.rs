@@ -122,10 +122,7 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
                     Ok(_) => (),
                     Err(err) => {
                         let show_err = if let Some(err) = err.downcast_ref::<PeerError>() {
-                            match err {
-                                PeerError::PeerSentDisconnect => false,
-                                _ => true,
-                            }
+                            !matches!(err, PeerError::PeerSentDisconnect)
                         } else {
                             true
                         };

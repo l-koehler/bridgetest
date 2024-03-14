@@ -159,6 +159,5 @@ pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection, 
     let mc_server_addr: SocketAddr = settings.get_string("mc_server_addr").expect("Failed to read config!")
                                              .parse().expect("Failed to parse mc_server_addr!");
     let mc_account: Account = Account::offline(player_name.as_str());
-    let (mut mc_client, mut rx) = Client::join(&mc_account, mc_server_addr).await.expect("[Minecraft] Failed to log in!");
-    return (mc_client, rx)
+    Client::join(&mc_account, mc_server_addr).await.expect("[Minecraft] Failed to log in!")
 }
