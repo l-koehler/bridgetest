@@ -37,9 +37,8 @@ pub fn texture_from_itemslot(item: &ItemSlot, mt_server_state: &MTServerState) -
 pub fn state_to_node(state: BlockState, cave_air_glow: bool) -> MapNode {
     let mut param0: u16;
     let param1: u8;
-    let param2: u8;
+    let param2: u8 = 0;
     param0 = azalea_registry::Block::try_from(state).unwrap().to_u32() as u16 + 128;
-    param2 = 0;
     
     // param1: transparency i think
     if state.is_air() {
