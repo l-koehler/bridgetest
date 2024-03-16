@@ -47,6 +47,7 @@ use azalea_protocol::packets::game::{ClientboundGamePacket,
     clientbound_block_update_packet::ClientboundBlockUpdatePacket,
     clientbound_entity_event_packet::ClientboundEntityEventPacket,
     clientbound_set_entity_data_packet::ClientboundSetEntityDataPacket,
+    
 };
 use azalea_protocol::packets::common::CommonPlayerSpawnInfo;
 use azalea_core::resource_location::ResourceLocation;
@@ -138,14 +139,14 @@ pub async fn edit_healthbar(mode: HeartDisplay, num: u32, conn: &MinetestConnect
         HeartDisplay::Vehicle => "heart-vehicle_full.png",
         HeartDisplay::NoChange => ""
     };
-    if hearth_texture != "" {
+    if !hearth_texture.is_empty() {
         let set_bar_texture = ToClientCommand::Hudchange(
             Box::new(wire::command::HudchangeSpec {
                 server_id: settings::HEALTHBAR_ID,
                 stat: HudStat::Text(String::from(hearth_texture))
             })
         );
-        let _ = conn.send(set_bar_texture);
+        let _ = conn.send(set_bar_texture).await;
     }
     if num < 21 {
         let set_bar_number = ToClientCommand::Hudchange(
@@ -164,14 +165,14 @@ pub async fn edit_foodbar(mode: FoodDisplay, num: u32, conn: &MinetestConnection
         FoodDisplay::Hunger => "hud-food_full_hunger.png",
         FoodDisplay::NoChange => ""
     };
-    if food_texture != "" {
+    if !food_texture.is_empty() {
         let set_bar_texture = ToClientCommand::Hudchange(
             Box::new(wire::command::HudchangeSpec {
                 server_id: settings::FOODBAR_ID,
                 stat: HudStat::Text(String::from(food_texture))
             })
         );
-        let _ = conn.send(set_bar_texture);
+        let _ = conn.send(set_bar_texture).await;
     }
     if num < 21 {
         let set_bar_number = ToClientCommand::Hudchange(
@@ -293,23 +294,21 @@ pub async fn send_message(conn: &mut MinetestConnection, message: ChatPacket) {
 }
 
 pub async fn send_sys_message(conn: &mut MinetestConnection, message: &ClientboundSystemChatPacket) {
-    match &message.content {
-        azalea_chat::FormattedText::Text(component) => {
-            let chat_packet = ToClientCommand::TCChatMessage(
-                Box::new(wire::command::TCChatMessageSpec {
-                    version: 1, // idk what this or message_type do
-                    message_type: 1, // but it works, dont touch it
-                    sender: String::from("System"),
-                    message: component.text.to_string(),
-                    timestamp: chrono::Utc::now().timestamp().try_into().unwrap_or(0),
-                })
-            );
-            let _ = conn.send(chat_packet).await;
-        },
-        _ => (),
+    if let azalea_chat::FormattedText::Text(component) = &message.content {
+        let chat_packet = ToClientCommand::TCChatMessage(
+            Box::new(wire::command::TCChatMessageSpec {
+                version: 1, // idk what this or message_type do
+                message_type: 1, // but it works, dont touch it
+                sender: String::from("System"),
+                message: component.text.to_string(),
+                timestamp: chrono::Utc::now().timestamp().try_into().unwrap_or(0),
+            })
+        );
+        let _ = conn.send(chat_packet).await;
     }
-
 }
+
+pub async fn send_complete_inventory(conn: &mut MinetestConnection, source_packet:i32) {}
 
 pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &MinetestConnection, state_arr: [BlockState; 4096], cave_air_glow: bool) {
     // Fills a 16^3 area with a vector of map nodes, where param0 is a MC-compatible ID.
@@ -478,11 +477,8 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
     }
 }
 
-// either takes the server state or a packet.
-// if it gets a packet, it will translate it,
-// else it will add the player as specified in the server state
-// (if it gets both or none, it will panic, but there is no reason for that to ever happen)
-pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) { //packet_data: &ClientboundAddEntityPacket, 
+// if no packet is passed, add the player using data from the server state
+pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
     let is_player: bool;
     let name: String;
     let id: u16;
