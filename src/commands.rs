@@ -96,9 +96,26 @@ pub async fn on_minecraft_tick(mt_conn: &mut MinetestConnection, mc_client: &Cli
     // update the MT clients inventory if it changed
     match mc_client.menu() {
         inventory::Menu::Player(serverside_inventory) => {
-            // TODO update armor and stuff
-            if serverside_inventory.inventory.as_slice() == mt_server_state.mt_clientside_player_inv.inventory.as_slice() {
-                
+            // fields of the inventory needing a update
+            let mut to_update: Vec<(&str,Vec<inventory::ItemSlot>)> = vec![];
+            if serverside_inventory.craft_result != mt_server_state.mt_clientside_player_inv.craft_result {
+                to_update.push(("craftpreview", vec![serverside_inventory.craft_result.clone()]));
+            }
+            if serverside_inventory.craft.as_slice() != mt_server_state.mt_clientside_player_inv.craft.as_slice() {
+                to_update.push(("craft", serverside_inventory.craft.to_vec()))
+            }
+            if serverside_inventory.armor.as_slice() != mt_server_state.mt_clientside_player_inv.armor.as_slice() {
+                to_update.push(("armor", serverside_inventory.armor.to_vec()))
+            }
+            if serverside_inventory.inventory.as_slice() != mt_server_state.mt_clientside_player_inv.inventory.as_slice() {
+                to_update.push(("main", serverside_inventory.inventory.to_vec()))
+            }
+            if serverside_inventory.offhand != mt_server_state.mt_clientside_player_inv.offhand {
+                to_update.push(("offhand", vec![serverside_inventory.offhand.clone()]))
+            }
+            if !to_update.is_empty() {
+                clientbound_translator::update_inventory(mt_conn, to_update).await;
+                mt_server_state.mt_clientside_player_inv = serverside_inventory;
             }
         },
         _ => () // some menu is open, TODO update that

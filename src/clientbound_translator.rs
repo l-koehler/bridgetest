@@ -14,6 +14,7 @@ use crate::MTServerState;
 use azalea::BlockPos;
 use azalea_core::delta::PositionDelta8;
 use azalea_entity::{EntityDataValue, EntityDataItem};
+use minetest_protocol::wire::types::ItemStackMetadata;
 use minetest_protocol::wire::types::ObjectProperties;
 use mt_definitions::{HeartDisplay, FoodDisplay, Dimensions};
 use minetest_protocol::peer::peer::PeerError;
@@ -23,9 +24,9 @@ use minetest_protocol::wire::command::ToClientCommand;
 use minetest_protocol::wire::types::HudStat;
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::wire;
-use minetest_protocol::wire::types::{v3s16, v3f, v2f, MapNodesBulk, MapNode, MapBlock, NodeMetadataList, AddedObject, GenericInitData, ActiveObjectCommand, SColor, aabb3f, v2s16};
+use minetest_protocol::wire::types::{v3s16, v3f, v2f, MapNodesBulk, MapNode, MapBlock, NodeMetadataList, AddedObject, GenericInitData, ActiveObjectCommand, SColor, aabb3f, v2s16, InventoryEntry, InventoryList, ItemStackUpdate, ItemStack };
 
-use azalea_client::{PlayerInfo, Client};
+use azalea_client::{PlayerInfo, Client, inventory};
 use azalea_client::chat::ChatPacket;
 
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -291,6 +292,54 @@ pub async fn force_player_pos(position: v3f, conn: &MinetestConnection, mt_serve
     let _ = conn.send(setpos_packet).await;
 }
 
+pub async fn update_inventory(conn: &mut MinetestConnection, to_change: Vec<(&str, Vec<inventory::ItemSlot>)>) {
+    // let mut fields_not_updated = settings::ALL_INV_FIELDS.to_vec();
+    let mut entries: Vec<InventoryEntry> = vec![];
+    for field in to_change {
+        // field = (name, vec<itemslot>)
+        let mut field_items: Vec<ItemStackUpdate> = vec![];
+        for item in field.1 {
+            match item {
+                inventory::ItemSlot::Present(slot_data) => {
+                    field_items.push(ItemStackUpdate::Item(
+                        ItemStack {
+                            name: slot_data.kind.to_string(),
+                            count: slot_data.count as u16,
+                            wear: 0,
+                            metadata: ItemStackMetadata {
+                                string_vars: vec![]
+                            }
+                        }
+                    ));
+                },
+                inventory::ItemSlot::Empty => {
+                    field_items.push(ItemStackUpdate::Empty)
+                }
+            }
+        };
+        entries.push(InventoryEntry::Update {
+            0: InventoryList {
+                name: String::from(field.0),
+                width: 0, // idk what this does
+                items: field_items
+            }
+        });
+    }
+    // for field in fields_not_updated {
+    //     entries.push(InventoryEntry::KeepList(String::from(field)));
+    // }
+    println!("Entries {:?}", entries);
+    // panic!();
+    let update_inventory_packet = ToClientCommand::Inventory(
+        Box::new(wire::command::InventorySpec {
+            inventory: wire::types::Inventory {
+                entries
+            }
+        })
+    );
+    let _ = conn.send(update_inventory_packet).await;
+}
+
 pub async fn send_message(conn: &mut MinetestConnection, message: ChatPacket) {
     let chat_packet = ToClientCommand::TCChatMessage(
         Box::new(wire::command::TCChatMessageSpec {
@@ -319,7 +368,6 @@ pub async fn send_sys_message(conn: &mut MinetestConnection, message: &Clientbou
     }
 }
 
-pub async fn send_complete_inventory(conn: &mut MinetestConnection, source_packet:i32) {}
 
 pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &MinetestConnection, state_arr: [BlockState; 4096], cave_air_glow: bool) {
     // Fills a 16^3 area with a vector of map nodes, where param0 is a MC-compatible ID.

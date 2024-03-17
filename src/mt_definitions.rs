@@ -232,7 +232,7 @@ pub fn empty_inventory() -> ToClientCommand {
                         0: InventoryList {
                             name: String::from("craft"),
                             width: 3,
-                            items: vec![ItemStackUpdate::Empty; 36]
+                            items: vec![ItemStackUpdate::Empty; 4]
                         }
                     },
                     InventoryEntry::Update {
@@ -241,14 +241,7 @@ pub fn empty_inventory() -> ToClientCommand {
                             width: 0,
                             items: vec![ItemStackUpdate::Empty]
                         }
-                    },
-                    InventoryEntry::Update {
-                        0: InventoryList {
-                            name: String::from("craftresult"),
-                            width: 0,
-                            items: vec![ItemStackUpdate::Empty]
-                        }
-                    },
+                    }
                 ]
             }
         })
