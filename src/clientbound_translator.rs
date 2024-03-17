@@ -294,7 +294,9 @@ pub async fn force_player_pos(position: v3f, conn: &MinetestConnection, mt_serve
 
 pub async fn update_inventory(conn: &mut MinetestConnection, mt_server_state: &MTServerState, to_change: Vec<(&str, Vec<inventory::ItemSlot>)>) {
     let mut entries: Vec<InventoryEntry> = vec![];
+    let mut changed_fields: Vec<&str> = vec![];
     for field in to_change {
+        changed_fields.push(field.0);
         let mut field_items: Vec<ItemStackUpdate> = vec![];
         for item in field.1 {
             match item {
@@ -322,6 +324,12 @@ pub async fn update_inventory(conn: &mut MinetestConnection, mt_server_state: &M
                 items: field_items
             }
         });
+    }
+    // send keep to unchanged fields
+    let all_fields = ["main", "armor", "offhand", "craft", "craftpreview"];
+    let unchanged_fields: Vec<&str> = all_fields.into_iter().filter(|item| !changed_fields.contains(item)).collect();
+    for field in unchanged_fields {
+        entries.push(InventoryEntry::KeepList(String::from(field)))
     }
     let update_inventory_packet = ToClientCommand::Inventory(
         Box::new(wire::command::InventorySpec {
