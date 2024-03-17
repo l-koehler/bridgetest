@@ -12,6 +12,7 @@ mod mt_definitions;
 
 use minetest_protocol::MinetestServer;
 use mt_definitions::Dimensions;
+use azalea_client::inventory;
 
 use intmap::IntMap;
 use alloc::vec::Vec;
@@ -38,12 +39,13 @@ pub struct MTServerState {
     players: Vec<String>, // names of all players
     this_player: (String, String), // the proxied player (0: clientside name, 1: name passed to the mc server)
     mt_clientside_pos: (f32, f32, f32), // used to tolerate slight position differences, resulting in far smoother movement
+    mt_clientside_rot: (f32, f32),
+    mt_clientside_player_inv: inventory::Player,
     mt_last_known_health: u16, // used to determine if a HP change should trigger a damage effect flash
     respawn_pos: (f32, f32, f32),
     current_dimension: Dimensions,
     is_sneaking: bool,
     keys_pressed: u32,
-    last_yaw_pitch: (f32, f32),
     entity_id_pos_map: IntMap<mt_definitions::EntityResendableData>,
     ticks_since_sync: u32,
     sent_media: Vec<String> // all the media things we sent, by names like "item-fish.png"
@@ -60,12 +62,19 @@ async fn start_client_handler(settings: Config) {
         players: Vec::new(),
         this_player: (String::from(""), String::from("")),
         mt_clientside_pos: (0.0, 0.0, 0.0),
+        mt_clientside_player_inv: inventory::Player {
+            craft_result: inventory::ItemSlot::default(),
+            craft: inventory::SlotList::default(),
+            armor: inventory::SlotList::default(),
+            inventory: inventory::SlotList::default(),
+            offhand: inventory::ItemSlot::default()
+        },
         mt_last_known_health: 0,
         respawn_pos: (0.0, 0.0, 0.0),
         current_dimension: Dimensions::Overworld,
         is_sneaking: false,
         keys_pressed: 0,
-        last_yaw_pitch: (0.0, 0.0),
+        mt_clientside_rot: (0.0, 0.0),
         entity_id_pos_map: IntMap::new(),
         ticks_since_sync: 0,
         sent_media: Vec::new()

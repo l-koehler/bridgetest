@@ -251,7 +251,11 @@ pub async fn set_player_pos(source_packet: &ClientboundPlayerPositionPacket, con
      * will fix/re-sync by sending these packets.
      */
 
-    let ClientboundPlayerPositionPacket {x: source_x, y: source_y, z: source_z, y_rot, x_rot, relative_arguments: _, id: _} = source_packet;
+    let ClientboundPlayerPositionPacket {
+        x: source_x,
+        y: source_y,
+        z: source_z,
+        y_rot: _, x_rot: _, relative_arguments: _, id: _} = source_packet;
     let dest_x = (*source_x as f32) * 10.0;
     let dest_y = (*source_y as f32) * 10.0;
     let dest_z = (*source_z as f32) * 10.0;
@@ -264,8 +268,8 @@ pub async fn set_player_pos(source_packet: &ClientboundPlayerPositionPacket, con
         let setpos_packet = ToClientCommand::MovePlayer(
             Box::new(wire::command::MovePlayerSpec {
                 pos: v3f {x: dest_x, y: dest_y, z: dest_z},
-                pitch: mt_server_state.last_yaw_pitch.1, // not syncing rotation, we do that at movement anyways,
-                yaw: mt_server_state.last_yaw_pitch.0,
+                pitch: mt_server_state.mt_clientside_rot.1, // not syncing rotation, we do that at movement anyways
+                yaw: mt_server_state.mt_clientside_rot.0,
             })
         );
         let _ = conn.send(setpos_packet).await;
@@ -280,8 +284,8 @@ pub async fn force_player_pos(position: v3f, conn: &MinetestConnection, mt_serve
     let setpos_packet = ToClientCommand::MovePlayer(
         Box::new(wire::command::MovePlayerSpec {
             pos: position,
-            pitch: mt_server_state.last_yaw_pitch.1,
-            yaw: mt_server_state.last_yaw_pitch.0
+            pitch: mt_server_state.mt_clientside_rot.1,
+            yaw: mt_server_state.mt_clientside_rot.0
         })
     );
     let _ = conn.send(setpos_packet).await;

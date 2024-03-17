@@ -216,6 +216,20 @@ pub fn empty_inventory() -> ToClientCommand {
                     },
                     InventoryEntry::Update {
                         0: InventoryList {
+                            name: String::from("armor"),
+                            width: 0,
+                            items: vec![ItemStackUpdate::Empty; 4]
+                        }
+                    },
+                    InventoryEntry::Update {
+                        0: InventoryList {
+                            name: String::from("offhand"),
+                            width: 0,
+                            items: vec![ItemStackUpdate::Empty]
+                        }
+                    },
+                    InventoryEntry::Update {
+                        0: InventoryList {
                             name: String::from("craft"),
                             width: 3,
                             items: vec![ItemStackUpdate::Empty; 36]
@@ -417,6 +431,14 @@ pub fn get_inventory_formspec(formspec: &str) -> ToClientCommand {
     ToClientCommand::InventoryFormspec(
         Box::new(command::InventoryFormspecSpec{
             formspec: String::from(formspec),
+        })
+    )
+}
+
+pub fn get_formspec_prepend(formspec: &str) -> ToClientCommand {
+    ToClientCommand::FormspecPrepend(
+        Box::new(command::FormspecPrependSpec{
+            formspec_prepend: String::from(formspec),
         })
     )
 }

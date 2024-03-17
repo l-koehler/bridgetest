@@ -25,7 +25,7 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
     let PlayerPos { position, speed: _, pitch, yaw, keys_pressed, fov: _, wanted_range: _ } = player_pos;
     let v3f {x: mt_x, y: mt_y, z: mt_z } = position;
     mt_server_state.mt_clientside_pos = (mt_x, mt_y, mt_z);
-    mt_server_state.last_yaw_pitch = (yaw, pitch);
+    mt_server_state.mt_clientside_rot = (yaw, pitch);
 
     // keys_pressed:
     // https://github.com/minetest/minetest/blob/e734b3f0d8055ff3ae710f3632726a711603bf84/src/player.cpp#L217    
