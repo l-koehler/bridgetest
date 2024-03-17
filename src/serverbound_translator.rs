@@ -8,7 +8,6 @@ use azalea_core::position::{ChunkPos, ChunkBlockPos};
 use azalea_block::BlockState;
 
 use alloc::boxed::Box;
-use azalea_entity::metadata::CaveSpider;
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::wire::command::{TSChatMessageSpec, PlayerposSpec, InteractSpec, GotblocksSpec};
 use minetest_protocol::wire::types::{PlayerPos, v3f, v3s16, PointedThing};
@@ -24,21 +23,12 @@ pub fn send_message(mc_client: &Client, specbox: Box<TSChatMessageSpec>) {
 pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_server_state: &mut MTServerState) {
     let PlayerposSpec { player_pos } = *specbox;
     let PlayerPos { position, speed: _, pitch, yaw, keys_pressed, fov: _, wanted_range: _ } = player_pos;
-    let v3f {x, y, z } = position;
-    // this will need to be handled by manually sending
-    // a ServerboundMovePlayerPosRotPacket over the mc_conn, the
-    // azalea-client library does not give the user direct access
-    // to the vectors that will be sent and translating MT C->S movement vectors
-    // into whatever azalea is using is too difficult.
+    let v3f {x: mt_x, y: mt_y, z: mt_z } = position;
+    mt_server_state.mt_clientside_pos = (mt_x, mt_y, mt_z);
+    mt_server_state.last_yaw_pitch = (yaw, pitch);
 
-    // y_rot: yaw
-    // x_rot: pitch
-    
-    // FIXME discards yaw, thus breaking any movement after the player changed the yaw
-    
     // keys_pressed:
-    // https://github.com/minetest/minetest/blob/e734b3f0d8055ff3ae710f3632726a711603bf84/src/player.cpp#L217
-    
+    // https://github.com/minetest/minetest/blob/e734b3f0d8055ff3ae710f3632726a711603bf84/src/player.cpp#L217    
     let direction_keys = keys_pressed & 0xf;
     let up_pressed    = (direction_keys >> 0) & 1;
     let down_pressed  = (direction_keys >> 1) & 1;
@@ -48,22 +38,16 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
     let jump_pressed  = (keys_pressed & (1 << 4)) != 0;
     let aux1_pressed  = keys_pressed & (1 << 5);
     let sneak_pressed = (keys_pressed & (1 << 6)) != 0;
-    //let dig_pressed   = (keys_pressed & (1 << 7)) != 0;
-    //let place_pressed = (keys_pressed & (1 << 8)) != 0;
-    //let zoom_pressed  = (keys_pressed & (1 << 9)) != 0;
-    
-    if mt_server_state.is_sneaking != sneak_pressed {
-        // player started/stopped sneaking, update the mc client
-        // TODO: wait on upstream. 27-02-2024 the feature was confirmed, but its not yet on github
+    let _dig_pressed   = (keys_pressed & (1 << 7)) != 0;
+    let _place_pressed = (keys_pressed & (1 << 8)) != 0;
+    let _zoom_pressed  = (keys_pressed & (1 << 9)) != 0;
 
-        //mt_server_state.is_sneaking = sneak_pressed;
-        //mc_client.sneak(sneak_pressed);
-    }
-    if (yaw, pitch) != mt_server_state.last_yaw_pitch {
-        mt_server_state.last_yaw_pitch = (yaw, pitch);
-        mc_client.set_direction(yaw, pitch);
-    }
     if keys_pressed != mt_server_state.keys_pressed {
+        // always sync rotation over to MC before moving
+        // this is also the only occasion where rotation will be
+        // sent to the server, as to minimize "rubberbanding"
+        // with rotation.
+        mc_client.set_direction(yaw, pitch);
         match (aux1_pressed, up_pressed, down_pressed, left_pressed, right_pressed) {
             (0, 1, 0, 1, 0) => mc_client.walk(azalea::WalkDirection::ForwardLeft),
             (0, 1, 0, 0, 1) => mc_client.walk(azalea::WalkDirection::ForwardRight),
@@ -80,7 +64,14 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
         }
         mt_server_state.keys_pressed = keys_pressed;
     }
-    mc_client.set_jumping(jump_pressed)
+
+    mc_client.set_jumping(jump_pressed);
+
+    if mt_server_state.is_sneaking != sneak_pressed {
+        // player started/stopped sneaking, update the mc client
+        // TODO: not added to azalea yet, check if this is still accurate:
+        // https://github.com/azalea-rs/azalea/commits/sneaking
+    };
 }
 
 // This function only validates the interaction, then splits by node/object

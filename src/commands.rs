@@ -21,7 +21,6 @@ use minetest_protocol::wire::command::AuthAcceptSpec;
 use minetest_protocol::wire::command::InitSpec;
 use minetest_protocol::wire::types;
 
-use azalea;
 use azalea_client::{Client, Account};
 
 use tokio::sync::mpsc::UnboundedReceiver;

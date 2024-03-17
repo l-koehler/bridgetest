@@ -47,8 +47,8 @@ use azalea_protocol::packets::game::{ClientboundGamePacket,
     clientbound_block_update_packet::ClientboundBlockUpdatePacket,
     clientbound_entity_event_packet::ClientboundEntityEventPacket,
     clientbound_set_entity_data_packet::ClientboundSetEntityDataPacket,
-    
 };
+
 use azalea_protocol::packets::common::CommonPlayerSpawnInfo;
 use azalea_core::resource_location::ResourceLocation;
 use azalea_protocol::packets::game::clientbound_level_chunk_with_light_packet::{ClientboundLevelChunkWithLightPacket, ClientboundLevelChunkPacketData};
@@ -241,9 +241,16 @@ pub async fn set_time(source_packet: &ClientboundSetTimePacket, conn: &MinetestC
 }
 
 pub async fn set_player_pos(source_packet: &ClientboundPlayerPositionPacket, conn: &MinetestConnection, mt_server_state: &mut MTServerState) {
-    // y_rot: yaw
-    // x_rot: pitch
-    // for some weird reason minetest uses 10*coordinates in packets
+    /* y_rot: yaw
+     * x_rot: pitch
+     * 
+     * This packet gets sent a whole lot more often than to actual minecraft
+     * clients. This is due to subtle oddities in minetest's movement code (
+     * when compared to minecraft), that are impossible to fix without SSCSM
+     * , and cause the client to attempt invalid movements, which the server
+     * will fix/re-sync by sending these packets.
+     */
+
     let ClientboundPlayerPositionPacket {x: source_x, y: source_y, z: source_z, y_rot, x_rot, relative_arguments: _, id: _} = source_packet;
     let dest_x = (*source_x as f32) * 10.0;
     let dest_y = (*source_y as f32) * 10.0;
@@ -257,8 +264,8 @@ pub async fn set_player_pos(source_packet: &ClientboundPlayerPositionPacket, con
         let setpos_packet = ToClientCommand::MovePlayer(
             Box::new(wire::command::MovePlayerSpec {
                 pos: v3f {x: dest_x, y: dest_y, z: dest_z},
-                pitch: *y_rot,
-                yaw: *x_rot
+                pitch: mt_server_state.last_yaw_pitch.1, // not syncing rotation, we do that at movement anyways,
+                yaw: mt_server_state.last_yaw_pitch.0,
             })
         );
         let _ = conn.send(setpos_packet).await;
@@ -931,7 +938,7 @@ pub async fn set_entity_data(packet_data: &ClientboundSetEntityDataPacket, conn:
                     _ => utils::logger("[Minecraft] Server sent SetEntityData with ItemStack, but this is only implemented for dropped items! Dropping this EntityDataItem.", 2)
                 }
             },
-            _ => utils::logger("[Minecraft] Server sent SetEntityData with unsupported EntityDataValue! Dropping this EntityDataItem.", 2),
+            _ => utils::logger(&format!("[Minecraft] Server sent SetEntityData with unsupported EntityDataValue ({:?})! Dropping this EntityDataItem.", value), 2),
         }
     }
 }
