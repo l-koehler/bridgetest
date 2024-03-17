@@ -460,7 +460,7 @@ pub const fn get_metadata_placeholder(x_pos: u16, y_pos: u16, z_pos: u16) -> (Bl
 
 // item def stuff
 
-pub async fn get_item_def_command(settings: &Config) -> ToClientCommand {
+pub async fn get_item_def_command(sent_media: &Vec<String>, settings: &Config) -> ToClientCommand {
     // ensure arcticdata_items exists
     let data_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/");
     if !Path::new(data_folder.join("arcticdata_items.json").as_path()).exists() {
@@ -482,7 +482,11 @@ pub async fn get_item_def_command(settings: &Config) -> ToClientCommand {
     let mut item_definitions: Vec<ItemDef> = Vec::new();
     for item in arcticdata_items {
         mc_name = item.0;
-        texture_name = format!("item-{}.png", mc_name.replace("minecraft:", ""));
+        if sent_media.contains(&format!("item-{}.png", mc_name.replace("minecraft:", ""))) {
+            texture_name = format!("item-{}.png", mc_name.replace("minecraft:", ""));
+        } else {
+            texture_name = format!("block-{}.png", mc_name.replace("minecraft:", ""));
+        };
         utils::logger(&format!("[Itemdefs] Mapped {} to the texture {}", mc_name, texture_name), 0);
         item_definitions.push(generate_itemdef(&mc_name, item.1, &texture_name));
     }

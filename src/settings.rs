@@ -67,14 +67,15 @@ pub const HS_NAMES: [&str; 26] = [
 pub const FORMSPEC_PREPEND: &str = "\
 ";
 
+// list[current_player; _NAME_ ; x,y ; size_x,size_y;]
 pub const PLAYER_INV_FORMSPEC: &str = "\
 size[9,8]
-image[                           1.5, 1.1 ; 1,2;player.png]
-list[current_player;armor;       0  , 0   ; 1,4;]
-list[current_player;offhand;     3  , 3   ; 1,1;]
-list[current_player;main;        0  , 4.25; 9,4;]
-list[current_player;craft;       4.5, 0   ; 3,3;]
-list[current_player;craftpreview;8  , 1   ; 1,1;]
+image[1.5,1.1;1,2;player.png]
+list[current_player;armor;0,0;1,4;]
+list[current_player;offhand;3,3;1,1;]
+list[current_player;main;0,4.25;9,4;]
+list[current_player;craft;4.5,0;3,3;]
+list[current_player;craftpreview;8,1;1,1;]
 ";
 
 /*

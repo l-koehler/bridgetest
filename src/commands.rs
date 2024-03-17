@@ -114,7 +114,7 @@ pub async fn on_minecraft_tick(mt_conn: &mut MinetestConnection, mc_client: &Cli
                 to_update.push(("offhand", vec![serverside_inventory.offhand.clone()]))
             }
             if !to_update.is_empty() {
-                clientbound_translator::update_inventory(mt_conn, to_update).await;
+                clientbound_translator::update_inventory(mt_conn, mt_server_state, to_update).await;
                 mt_server_state.mt_clientside_player_inv = serverside_inventory;
             }
         },

@@ -292,15 +292,13 @@ pub async fn force_player_pos(position: v3f, conn: &MinetestConnection, mt_serve
     let _ = conn.send(setpos_packet).await;
 }
 
-pub async fn update_inventory(conn: &mut MinetestConnection, to_change: Vec<(&str, Vec<inventory::ItemSlot>)>) {
-    // let mut fields_not_updated = settings::ALL_INV_FIELDS.to_vec();
+pub async fn update_inventory(conn: &mut MinetestConnection, mt_server_state: &MTServerState, to_change: Vec<(&str, Vec<inventory::ItemSlot>)>) {
     let mut entries: Vec<InventoryEntry> = vec![];
     for field in to_change {
-        // field = (name, vec<itemslot>)
         let mut field_items: Vec<ItemStackUpdate> = vec![];
         for item in field.1 {
             match item {
-                inventory::ItemSlot::Present(slot_data) => {
+                inventory::ItemSlot::Present(ref slot_data) => {
                     field_items.push(ItemStackUpdate::Item(
                         ItemStack {
                             name: slot_data.kind.to_string(),
@@ -325,11 +323,6 @@ pub async fn update_inventory(conn: &mut MinetestConnection, to_change: Vec<(&st
             }
         });
     }
-    // for field in fields_not_updated {
-    //     entries.push(InventoryEntry::KeepList(String::from(field)));
-    // }
-    println!("Entries {:?}", entries);
-    // panic!();
     let update_inventory_packet = ToClientCommand::Inventory(
         Box::new(wire::command::InventorySpec {
             inventory: wire::types::Inventory {
