@@ -292,7 +292,7 @@ pub async fn force_player_pos(position: v3f, conn: &MinetestConnection, mt_serve
     let _ = conn.send(setpos_packet).await;
 }
 
-pub async fn update_inventory(conn: &mut MinetestConnection, mt_server_state: &MTServerState, to_change: Vec<(&str, Vec<inventory::ItemSlot>)>) {
+pub async fn update_inventory(conn: &mut MinetestConnection, to_change: Vec<(&str, Vec<inventory::ItemSlot>)>) {
     let mut entries: Vec<InventoryEntry> = vec![];
     let mut changed_fields: Vec<&str> = vec![];
     for field in to_change {
@@ -317,11 +317,20 @@ pub async fn update_inventory(conn: &mut MinetestConnection, mt_server_state: &M
                 }
             }
         };
+        // swap some rows to prevent the minetest hotbar from breaking
+        // minecraft fills bottom row first, then top-down
+        // minetest fills rows top-to-down consistently because the hotbar
+        // pulls from the top inv row and i cant figure out how to change that
+        let mut sorted_items: Vec<ItemStackUpdate> = vec![ItemStackUpdate::Empty; 36];
+        for index in 0..field_items.len() {
+            sorted_items[index] = field_items[(index+27)%36].clone();
+        }
+        println!("{:?}",sorted_items);
         entries.push(InventoryEntry::Update {
             0: InventoryList {
                 name: String::from(field.0),
                 width: 0, // idk what this does
-                items: field_items
+                items: sorted_items
             }
         });
     }
