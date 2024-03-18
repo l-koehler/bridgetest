@@ -79,6 +79,13 @@ pub const fn get_y_bounds(dimension: &Dimensions) -> (i16, i16) {
     }
 }
 
+pub fn set_hotbar_size() ->ToClientCommand {
+    ToClientCommand::HudSetParam(
+        Box::new(command::HudSetParamSpec {
+            value: types::HudSetParam::SetHotBarItemCount(settings::HOTBAR_SIZE)
+        })
+    )
+}
 
 pub fn get_sky_stuff() -> [ToClientCommand; 5] {
     [

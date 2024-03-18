@@ -68,6 +68,7 @@ pub const FORMSPEC_PREPEND: &str = "\
 ";
 
 // list[current_player; _NAME_ ; x,y ; size_x,size_y;]
+pub const ALL_INV_FIELDS: [&str; 5] = ["main", "armor", "offhand", "craft", "craftpreview"];
 pub const PLAYER_INV_FORMSPEC: &str = "\
 size[9,8]
 image[1.5,1.1;1,2;player.png]
@@ -77,6 +78,7 @@ list[current_player;main;0,4.25;9,4;]
 list[current_player;craft;5.5,0.5;2,2;]
 list[current_player;craftpreview;8,1;1,1;]
 ";
+pub const HOTBAR_SIZE: i32 = 9;
 
 /*
  * 0: Display every recieved packet

@@ -325,9 +325,8 @@ pub async fn update_inventory(conn: &mut MinetestConnection, mt_server_state: &M
             }
         });
     }
-    // send keep to unchanged fields
-    let all_fields = ["main", "armor", "offhand", "craft", "craftpreview"];
-    let unchanged_fields: Vec<&str> = all_fields.into_iter().filter(|item| !changed_fields.contains(item)).collect();
+    // send keep to unchanged fields (not doing that deletes the associated UI element)
+    let unchanged_fields: Vec<&str> = settings::ALL_INV_FIELDS.into_iter().filter(|item| !changed_fields.contains(item)).collect();
     for field in unchanged_fields {
         entries.push(InventoryEntry::KeepList(String::from(field)))
     }
