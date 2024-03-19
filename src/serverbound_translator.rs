@@ -91,25 +91,28 @@ async fn interact_object(action: types::InteractAction, object_id: u16, mc_clien
     }
 }
 
-async fn stop_digging(mc_client: &mut Client) {
+fn stop_digging(mc_client: &mut Client) {
     // HACK: azalea does not seem to have a proper way to do this.
     // mining a block that is out-of-range should cancel any current mining (and trigger
     // anticheats)
     mc_client.start_mining(azalea::BlockPos { x: 0, y: 1000, z: 0 })
-    /* Seemingly proper way to do this, crashes azalea. do not use. probably just
-     * refrain from sending events directly to the ECS in general.
-     *let event = azalea::mining::StopMiningBlockEvent { entity: mc_client.entity };
-     *mc_client.ecs.lock().send_event(event);
-     */
+}
+
+fn interact_mainhand(mc_client: &mut Client, position: azalea::BlockPos) {
+    // assumes the main hand is properly set
+    mc_client.block_interact(position)
 }
 
 async fn interact_node(action: types::InteractAction, under_surface: v3s16, above_surface: v3s16,mc_client: &mut Client) {
     let under_blockpos = azalea::BlockPos { x: under_surface.x.into(), y: under_surface.y.into(), z: under_surface.z.into() };
     let above_blockpos = azalea::BlockPos { x: above_surface.x.into(), y: above_surface.y.into(), z: above_surface.z.into() };
     match action {
-        types::InteractAction::Use          => mc_client.block_interact(under_blockpos),
         types::InteractAction::StartDigging => mc_client.start_mining(under_blockpos),
-        types::InteractAction::StopDigging  => stop_digging(mc_client).await,
+        types::InteractAction::StopDigging  => stop_digging(mc_client),
+        // using a node needs the position of the node that was clicked
+        types::InteractAction::Use          => interact_mainhand(mc_client, under_blockpos),
+        // placing a node needs the position the node is meant to be at, so the node face that was clicked
+        types::InteractAction::Place        => interact_mainhand(mc_client, above_blockpos),
         _ => utils::logger(&format!("[Minetest] Client sent unsupported node interaction: {:?}", action), 2)
     }
 }
