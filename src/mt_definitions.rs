@@ -478,7 +478,7 @@ pub async fn get_item_def_command(sent_media: &Vec<String>, settings: &Config) -
         let mut json_file = fs::File::create(data_folder.join("arcticdata_items.json").as_path()).expect("Creating arcticdata_items.json failed!");
         json_file.write_all(arctic_items_data.as_bytes()).expect("Writing data to arcticdata_items.json failed!");
     }
-    // parse arcticdata_blocks.json
+    // parse arcticdata_items.json
     let arcticdata_items: std::collections::HashMap<String, serde_json::Value> = 
     serde_json::from_str(&fs::read_to_string(data_folder.join("arcticdata_items.json"))
     .expect("Failed to read arcticdata_items.json"))
@@ -512,7 +512,7 @@ pub async fn get_item_def_command(sent_media: &Vec<String>, settings: &Config) -
 }
 
 pub fn generate_itemdef(name: &str, item: serde_json::Value, inventory_image: &str) -> ItemDef {
-    let stack_max: i16 = item.get("maxStackSize").unwrap().as_i64().unwrap_or(0).try_into().unwrap();
+    let stack_max: i16 = item.get("maxStackSize").unwrap().as_i64().unwrap_or(1) as i16;
     let block_id: String = item.get("blockId").unwrap().to_string();
     let max_durability: i64 = item.get("maxDamage").unwrap().as_i64().unwrap_or(0);
     let is_edible: bool = item.get("edible").unwrap().as_bool().unwrap_or(false);
@@ -547,7 +547,7 @@ pub fn generate_itemdef(name: &str, item: serde_json::Value, inventory_image: &s
         liquids_pointable: false,
         tool_capabilities: Option16::None,
         groups: Vec::new(),
-        node_placement_prediction: block_id, // air if the item is not a node
+        node_placement_prediction: String::from(""),
         sound_place: simplesound_placeholder.clone(),
         sound_place_failed: simplesound_placeholder,
         range: 5.0,
@@ -896,7 +896,7 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
         tiledef_sides[4] = get_tiledef(&format!("block-{}_side.png", texture_base_name), &animation);
         tiledef_sides[5] = get_tiledef(&format!("block-{}_side.png", texture_base_name), &animation);
     }
-    let contentfeatures: ContentFeatures = ContentFeatures {
+    ContentFeatures {
         version: 13, // https://github.com/minetest/minetest/blob/master/src/nodedef.h#L313
         name: String::from(name),
         groups: vec![(String::from(""), 1)], // [(String, i16), (String, i16)], IDK what this does
@@ -957,8 +957,7 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
         alpha: None,
         move_resistance: None,
         liquid_move_physics: None
-    };
-    contentfeatures
+    }
 }
 
 /*

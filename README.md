@@ -23,17 +23,9 @@ and pasting them into `~/.local/share/bridgetest/models/` (on linux).
 
 #### Things that are still missing:
 
-* Items (and inventory support)
-
-* Entitys (including other players and item drops)
-
-* Block Entitys (chests and stuff)
-
-(just going to put some notes here nobody reads this anyways)  
-entities are nodes with mesh render mode (or the ~~documentation~~  
-uhh packet dump from connecting to a regular server sucks)
-it sends .obj files as mesh
-use ActiveObjectRemoveAddSpec for that
+* Crafting  
+* Attacking/usable combat in general  
+* burn the entire movement thing down and do the same mistakes again  
 
 #### Limitations:
 
@@ -69,11 +61,6 @@ Technical Limitations:
   needs to be the bleeding-edge git version, but you can simply ignore  
   this warning here if you only want to *use* this program.  
 
-* You will need a decent computer to run this program. Also, unoptimized  
-  builds will **not** work. This program  
-  needs to process every packet fast enough to not let the unprocessed  
-  packets pile up (slowing it down further).  
-
 #### Isn't this violating Microsofts Intellectual Property?
 
 The minecraft protocol is implemented by another library, not by me.  
@@ -85,3 +72,4 @@ You can change what pack is used by changing the URL the config file
 (at `~/.config/bridgetest.toml`) points to or by changing the texture pack  
 itself, at `~/.local/share/bridgetest/textures`).  
 (these paths are dirs::local_data_dir and dirs::config_dir, not hardcoded)  
+The 3D-models are also not provided by this program.  
