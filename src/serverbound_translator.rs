@@ -4,12 +4,13 @@ use crate::mt_definitions::Dimensions;
 use crate::{clientbound_translator, mt_definitions, utils};
 
 use azalea_client::Client;
+use azalea_client::inventory::InventoryComponent;
 use azalea_core::position::{ChunkPos, ChunkBlockPos};
 use azalea_block::BlockState;
 
 use alloc::boxed::Box;
 use minetest_protocol::MinetestConnection;
-use minetest_protocol::wire::command::{TSChatMessageSpec, PlayerposSpec, InteractSpec, GotblocksSpec};
+use minetest_protocol::wire::command::{TSChatMessageSpec, PlayerposSpec, InteractSpec, GotblocksSpec, PlayeritemSpec};
 use minetest_protocol::wire::types::{PlayerPos, v3f, v3s16, PointedThing};
 use minetest_protocol::wire::types;
 use crate::MTServerState;
@@ -72,6 +73,15 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
         // TODO: not added to azalea yet, check if this is still accurate:
         // https://github.com/azalea-rs/azalea/commits/sneaking
     };
+}
+
+pub fn set_mainhand(mc_client: &mut Client, specbox: Box<PlayeritemSpec>) {
+    // hotbar_index: 0..8, first..last slot of hotbar
+    let PlayeritemSpec { item: hotbar_index } = *specbox;
+    let mut ecs = mc_client.ecs.lock();
+    let mut inventory = mc_client.query::<&mut InventoryComponent>(&mut ecs);
+    inventory.selected_hotbar_slot = hotbar_index as u8;
+    drop(ecs);
 }
 
 // This function only validates the interaction, then splits by node/object
