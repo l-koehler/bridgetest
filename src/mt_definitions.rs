@@ -700,6 +700,7 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
     // for everything else, do other stuff idk look at the code
     let this_block: azalea_registry::Block = (id as u32).try_into().expect("Got invalid ID!");
     let mut walkable = true;
+    let mut rightclickable = false;
     let mut light_source = 0;
     let mut sunlight_propagates = 0;
     let mut liquid_range = 0;
@@ -934,7 +935,7 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
         diggable: true,
         climbable: false,
         buildable_to: true,
-        rightclickable: false,
+        rightclickable,
         damage_per_second: 0,
         liquid_type_bc: 0,
         liquid_alternative_flowing: String::from(""),

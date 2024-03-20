@@ -48,6 +48,7 @@ use azalea_protocol::packets::game::{ClientboundGamePacket,
     clientbound_block_update_packet::ClientboundBlockUpdatePacket,
     clientbound_entity_event_packet::ClientboundEntityEventPacket,
     clientbound_set_entity_data_packet::ClientboundSetEntityDataPacket,
+    clientbound_block_destruction_packet::ClientboundBlockDestructionPacket,
 };
 
 use azalea_protocol::packets::common::CommonPlayerSpawnInfo;
@@ -1062,4 +1063,23 @@ pub async fn blockupdate(packet_data: &ClientboundBlockUpdatePacket, conn: &mut 
         })
     );
     let _ = conn.send(addnodecommand).await;
+}
+
+// block destruction overlay stuff
+pub async fn destruction_overlay(packet_data: &ClientboundBlockDestructionPacket, conn: &mut MinetestConnection) {
+    let ClientboundBlockDestructionPacket { id: _, pos, progress } = packet_data;
+    let new_overlay = match progress {
+        0 => "block-destroy_stage_0.png",
+        1 => "block-destroy_stage_1.png",
+        2 => "block-destroy_stage_2.png",
+        3 => "block-destroy_stage_3.png",
+        4 => "block-destroy_stage_4.png",
+        5 => "block-destroy_stage_5.png",
+        6 => "block-destroy_stage_6.png",
+        7 => "block-destroy_stage_7.png",
+        8 => "block-destroy_stage_8.png",
+        9 => "block-destroy_stage_9.png",
+        _ => ""
+    };
+    
 }
