@@ -116,6 +116,7 @@ fn interact_mainhand(mc_client: &mut Client, position: azalea::BlockPos) {
 async fn interact_node(action: types::InteractAction, under_surface: v3s16, above_surface: v3s16,mc_client: &mut Client) {
     let under_blockpos = azalea::BlockPos { x: under_surface.x.into(), y: under_surface.y.into(), z: under_surface.z.into() };
     let above_blockpos = azalea::BlockPos { x: above_surface.x.into(), y: above_surface.y.into(), z: above_surface.z.into() };
+    println!("{:?}", action);
     match action {
         types::InteractAction::StartDigging => mc_client.start_mining(under_blockpos),
         types::InteractAction::StopDigging  => stop_digging(mc_client),

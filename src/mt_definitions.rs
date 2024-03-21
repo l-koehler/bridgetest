@@ -2,6 +2,7 @@
 // the functions are actually more like consts but
 // the "String" type cant be a constant so :shrug:
 
+use chrono::round;
 use minetest_protocol::wire::command::{MediaSpec, ToClientCommand};
 use minetest_protocol::wire::command;
 use minetest_protocol::wire::types::{ v2f, v3f, v2s32, AlignStyle, BlockPos, ContentFeatures, DrawType, Inventory, ItemAlias, ItemDef, ItemType, ItemdefList, MediaAnnouncement, MediaFileData, NodeBox, NodeDefManager, NodeMetadata, Option16, SColor, SimpleSoundSpec, TileAnimationParams, TileDef, InventoryEntry, InventoryList, ItemStackUpdate}; // AAAAAA
@@ -626,7 +627,9 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
     content_features.push((120, ContentFeatures {
         version: 13,
         name: String::from("glowing_air"),
-        groups: vec![(String::from(""), 1)],
+        groups: vec![
+            (String::from("handy_dig"), 1),
+        ],
         param_type: 0,
         param_type_2: 0,
         drawtype: DrawType::AirLike,
@@ -700,7 +703,6 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
     // for everything else, do other stuff idk look at the code
     let this_block: azalea_registry::Block = (id as u32).try_into().expect("Got invalid ID!");
     let mut walkable = true;
-    let mut rightclickable = false;
     let mut light_source = 0;
     let mut sunlight_propagates = 0;
     let mut liquid_range = 0;
@@ -859,6 +861,53 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
         _ => DrawType::Normal,
     };
     
+    let rightclickable = match this_block {
+        // opens inventory
+        Block::Chest => true,
+        Block::EnderChest => true,
+        Block::EnchantingTable => true,
+        Block::Anvil => true,
+        Block::Grindstone => true,
+        
+        // changes own state
+        Block::Lever => true,
+        Block::Comparator => true,
+        Block::Repeater => true,
+        Block::RedstoneOre => true,
+        Block::RedstoneWire => true,
+        
+        Block::OakButton => true,
+        Block::SpruceButton => true,
+        Block::BirchButton => true,
+        Block::JungleButton => true,
+        Block::AcaciaButton => true,
+        Block::DarkOakButton => true,
+        Block::MangroveButton => true,
+        Block::CherryButton => true,
+        Block::BambooButton => true,
+        Block::CrimsonButton => true,
+        Block::WarpedButton => true,
+
+        // other stuff
+        Block::WhiteBed => true,
+        Block::LightGrayBed => true,
+        Block::GrayBed  => true,
+        Block::BlackBed => true,
+        Block::BrownBed => true,
+        Block::RedBed   => true,
+        Block::OrangeBed => true,
+        Block::YellowBed => true,
+        Block::LimeBed  => true,
+        Block::CyanBed  => true,
+        Block::LightBlueBed => true,
+        Block::BlueBed  => true,
+        Block::PurpleBed => true,
+        Block::MagentaBed => true,
+        Block::PinkBed  => true,
+        
+        _ => false
+    };
+    
     let simplesound_placeholder: SimpleSoundSpec = SimpleSoundSpec {
         name: String::from("[[ERROR]]"),
         gain: 1.0,
@@ -932,9 +981,9 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
         is_ground_content: false,
         walkable,
         pointable: true,
-        diggable: true,
+        diggable: !matches!(this_block, Block::Bedrock),
         climbable: false,
-        buildable_to: true,
+        buildable_to: !rightclickable, // TODO this is a oversimplification and likely needs its own match abomination
         rightclickable,
         damage_per_second: 0,
         liquid_type_bc: 0,
