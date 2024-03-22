@@ -31,7 +31,7 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
     // keys_pressed:
     // https://github.com/minetest/minetest/blob/e734b3f0d8055ff3ae710f3632726a711603bf84/src/player.cpp#L217    
     let direction_keys = keys_pressed & 0xf;
-    let up_pressed    = (direction_keys >> 0) & 1;
+    let up_pressed    = direction_keys & 1;
     let down_pressed  = (direction_keys >> 1) & 1;
     let left_pressed  = (direction_keys >> 2) & 1;
     let right_pressed = (direction_keys >> 3) & 1;
@@ -88,7 +88,7 @@ pub fn set_mainhand(mc_client: &mut Client, specbox: Box<PlayeritemSpec>) {
 pub async fn interact_generic(mc_client: &mut Client, specbox: Box<InteractSpec>) {
     let InteractSpec { action, item_index: _, pointed_thing, player_pos: _ } = *specbox;
     match pointed_thing {
-        PointedThing::Nothing => (), // TODO might still be relevant in some cases, check that
+        PointedThing::Nothing => (), // TODO might still be relevant in some cases (eating), check that
         PointedThing::Node { under_surface, above_surface } => interact_node(action, under_surface, above_surface, mc_client).await,
         PointedThing::Object { object_id } => interact_object(action, object_id, mc_client).await,
     }
@@ -122,8 +122,7 @@ async fn interact_node(action: types::InteractAction, under_surface: v3s16, abov
         types::InteractAction::StopDigging  => stop_digging(mc_client),
         // using a node needs the position of the node that was clicked
         types::InteractAction::Use          => interact_mainhand(mc_client, under_blockpos),
-        // placing a node needs the position the node is meant to be at, so the node face that was clicked
-        types::InteractAction::Place        => interact_mainhand(mc_client, above_blockpos),
+        types::InteractAction::Place        => interact_mainhand(mc_client, under_blockpos),
         _ => utils::logger(&format!("[Minetest] Client sent unsupported node interaction: {:?}", action), 2)
     }
 }

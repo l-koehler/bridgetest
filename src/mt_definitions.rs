@@ -627,9 +627,7 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
     content_features.push((120, ContentFeatures {
         version: 13,
         name: String::from("glowing_air"),
-        groups: vec![
-            (String::from("handy_dig"), 1),
-        ],
+        groups: vec![(String::from(""), 1)],
         param_type: 0,
         param_type_2: 0,
         drawtype: DrawType::AirLike,
@@ -949,7 +947,9 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
     ContentFeatures {
         version: 13, // https://github.com/minetest/minetest/blob/master/src/nodedef.h#L313
         name: String::from(name),
-        groups: vec![(String::from(""), 1)], // [(String, i16), (String, i16)], IDK what this does
+        groups: vec![
+            (String::from("handy_dig"), 1),
+        ],
         param_type: 0,
         param_type_2: 0,
         drawtype,
@@ -983,7 +983,7 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
         pointable: true,
         diggable: !matches!(this_block, Block::Bedrock),
         climbable: false,
-        buildable_to: !rightclickable, // TODO this is a oversimplification and likely needs its own match abomination
+        buildable_to: (rightclickable == false), // TODO this is a oversimplification and likely needs its own match abomination
         rightclickable,
         damage_per_second: 0,
         liquid_type_bc: 0,

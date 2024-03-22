@@ -24,7 +24,7 @@ use minetest_protocol::wire::command::ToClientCommand;
 use minetest_protocol::wire::types::HudStat;
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::wire;
-use minetest_protocol::wire::types::{v3s16, v3f, v2f, MapNodesBulk, MapNode, MapBlock, NodeMetadataList, AddedObject, GenericInitData, ActiveObjectCommand, SColor, aabb3f, v2s16, InventoryEntry, InventoryList, ItemStackUpdate, ItemStack };
+use minetest_protocol::wire::types::{v3s16, v3f, v2f, MapNodesBulk, MapNode, MapBlock, NodeMetadataList, AddedObject, GenericInitData, ActiveObjectCommand, SColor, aabb3f, v2s16, InventoryEntry, InventoryList, ItemStackUpdate, ItemStack, AbsNodeMetadataList, AbsBlockPos, NodeMetadata };
 
 use azalea_client::{PlayerInfo, Client, inventory};
 use azalea_client::chat::ChatPacket;
@@ -49,6 +49,7 @@ use azalea_protocol::packets::game::{ClientboundGamePacket,
     clientbound_entity_event_packet::ClientboundEntityEventPacket,
     clientbound_set_entity_data_packet::ClientboundSetEntityDataPacket,
     clientbound_block_destruction_packet::ClientboundBlockDestructionPacket,
+    clientbound_container_set_content_packet::ClientboundContainerSetContentPacket,
 };
 
 use azalea_protocol::packets::common::CommonPlayerSpawnInfo;
@@ -1067,6 +1068,7 @@ pub async fn blockupdate(packet_data: &ClientboundBlockUpdatePacket, conn: &mut 
 
 // block destruction overlay stuff
 pub async fn destruction_overlay(packet_data: &ClientboundBlockDestructionPacket, conn: &mut MinetestConnection) {
+    return; // TODO finish this thing as soon as i figure out how to send overlays
     let ClientboundBlockDestructionPacket { id: _, pos, progress } = packet_data;
     let new_overlay = match progress {
         0 => "block-destroy_stage_0.png",
@@ -1081,5 +1083,10 @@ pub async fn destruction_overlay(packet_data: &ClientboundBlockDestructionPacket
         9 => "block-destroy_stage_9.png",
         _ => ""
     };
-    
+}
+
+// container stuff
+pub async fn set_container_content(packet_data: &ClientboundContainerSetContentPacket, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
+    let ClientboundContainerSetContentPacket { container_id, state_id, items, carried_item } = packet_data;
+    // TODO do stuff with mc_client to map the ID to a position, then send ClientboundContainerSetContentPacket
 }

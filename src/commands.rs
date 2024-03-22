@@ -42,6 +42,7 @@ pub async fn mt_auto(command: ToServerCommand, mt_conn: &mut MinetestConnection,
         ToServerCommand::TSChatMessage(specbox) => serverbound_translator::send_message(mc_client, specbox),
         ToServerCommand::Interact(specbox) => serverbound_translator::interact_generic(mc_client, specbox).await,
         ToServerCommand::Playeritem(specbox) => serverbound_translator::set_mainhand(mc_client, specbox),
+        // Breaks yaw/pitch somehow, no clue why
         //ToServerCommand::Gotblocks(specbox) => serverbound_translator::gotblocks(mc_client, specbox, mt_conn, mt_server_state.current_dimension).await,
         _ => utils::logger(&format!("[Minetest] Got unimplemented command, dropping {}", command.command_name()), 2) // Drop packet if unable to match
     }
@@ -78,6 +79,8 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
             
             ClientboundGamePacket::EntityEvent(event_packet) => clientbound_translator::entity_event(&event_packet, mt_conn, mt_server_state).await,
             ClientboundGamePacket::SetEntityData(data_packet) => clientbound_translator::set_entity_data(&data_packet, mt_conn, mt_server_state).await,
+            
+            ClientboundGamePacket::ContainerSetContent(content_packet) => clientbound_translator::set_container_content(&content_packet, mt_conn, mt_server_state).await,
             
             ClientboundGamePacket::BlockUpdate(blockupdate_packet) => clientbound_translator::blockupdate(&blockupdate_packet, mt_conn, mt_server_state).await,
             _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),
@@ -119,7 +122,7 @@ pub async fn on_minecraft_tick(mt_conn: &mut MinetestConnection, mc_client: &Cli
                 mt_server_state.mt_clientside_player_inv = serverside_inventory;
             }
         },
-        _ => () // some menu is open, TODO update that
+        _ => utils::logger(&format!("[Minecraft] Cannot sync inventory: other inventory blocking ({:?})", mc_client.menu()), 2) // some menu is open, TODO update that
     }
 }
 
