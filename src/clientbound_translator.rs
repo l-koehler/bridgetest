@@ -5,6 +5,8 @@
 
 extern crate alloc;
 
+use bitreader::BitReader;
+
 use crate::mt_definitions::EntityResendableData;
 use crate::settings;
 use crate::utils;
@@ -19,7 +21,7 @@ use minetest_protocol::wire::types::ObjectProperties;
 use mt_definitions::{HeartDisplay, FoodDisplay, Dimensions};
 use minetest_protocol::peer::peer::PeerError;
 
-use azalea_registry::EntityKind;
+use azalea_registry::{EntityKind, BlockEntityKind};
 use minetest_protocol::wire::command::ToClientCommand;
 use minetest_protocol::wire::types::HudStat;
 use minetest_protocol::MinetestConnection;
@@ -467,7 +469,7 @@ pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut Unbounde
                             match Arc::unwrap_or_clone(packet_value) {
                                 ClientboundGamePacket::LevelChunkWithLight(packet_data) => {
                                     utils::logger("[Minecraft] S->C LevelchunkWithLight", 1);
-                                    send_level_chunk(&packet_data, mt_conn, &y_bounds, is_nether).await;
+                                    send_level_chunk(&packet_data, mt_conn, mt_server_state).await;
                                 },
                                 ClientboundGamePacket::ChunkBatchFinished(_) => {
                                     utils::logger("[Minecraft] S->C ChunkBatchFinished", 1);
@@ -507,10 +509,12 @@ pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut Unbounde
     }
 }
 
-pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket, mt_conn: &mut MinetestConnection, y_bounds: &(i16, i16), is_nether: bool) {
+pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket, mt_conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+    let y_bounds = mt_definitions::get_y_bounds(&mt_server_state.current_dimension);
+    let is_nether = matches!(mt_server_state.current_dimension, Dimensions::Nether);
     // Parse packet
     let ClientboundLevelChunkWithLightPacket {x: chunk_x_pos, z: chunk_z_pos, chunk_data: chunk_packet_data, light_data: _} = packet_data;
-    let ClientboundLevelChunkPacketData { heightmaps: chunk_heightmaps, data: chunk_data, block_entities: _ } = chunk_packet_data;
+    let ClientboundLevelChunkPacketData { heightmaps: chunk_heightmaps, data: chunk_data, block_entities } = chunk_packet_data;
     utils::logger(&format!("[Minecraft] Server sent chunk x/z {}/{}", chunk_x_pos, chunk_z_pos), 0);
     //let chunk_location: ChunkPos = ChunkPos { x: *chunk_x_pos, z: *chunk_z_pos }; // unused
     // send chunk to the MT client
@@ -544,6 +548,16 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
         }
         initialize_16node_chunk(*chunk_x_pos as i16, chunk_y_pos, *chunk_z_pos as i16, mt_conn, nodearr, is_nether).await;
         chunk_y_pos += 1;
+    }
+    for block_entity in block_entities {
+        if block_entity.data.is_some() {
+            let id = block_entity.data.clone().unwrap().get("id").unwrap().int().unwrap();
+            let packed = &[block_entity.packed_xz];
+            let mut reader = BitReader::new(packed);
+            let x = reader.read_u8(4).unwrap();
+            let z = reader.read_u8(4).unwrap();
+            mt_server_state.container_id_pos_map.insert(id as u64, (x as i32 * chunk_x_pos, block_entity.y.into(), z as i32 * chunk_z_pos));
+        }
     }
 }
 
@@ -1087,6 +1101,7 @@ pub async fn destruction_overlay(packet_data: &ClientboundBlockDestructionPacket
 
 // container stuff
 pub async fn set_container_content(packet_data: &ClientboundContainerSetContentPacket, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
-    let ClientboundContainerSetContentPacket { container_id, state_id, items, carried_item } = packet_data;
+    // why can chests carry items what even is a container entity aaa fix your protocol minecraft
+    let ClientboundContainerSetContentPacket { container_id, state_id, items, carried_item: _ } = packet_data;
     // TODO do stuff with mc_client to map the ID to a position, then send ClientboundContainerSetContentPacket
 }
