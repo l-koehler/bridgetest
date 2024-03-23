@@ -556,7 +556,9 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
             let mut reader = BitReader::new(packed);
             let x = reader.read_u8(4).unwrap();
             let z = reader.read_u8(4).unwrap();
-            mt_server_state.container_id_pos_map.insert(id as u64, (x as i32 * chunk_x_pos, block_entity.y.into(), z as i32 * chunk_z_pos));
+            if mt_server_state.container_id_pos_map.insert(id as u64, (x as i32 * chunk_x_pos, block_entity.y.into(), z as i32 * chunk_z_pos)) != None {
+                utils::logger(&format!("[Minecraft] Overwriting previous block entity with ID {}", id), 2)
+            };
         }
     }
 }
