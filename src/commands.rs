@@ -40,7 +40,7 @@ pub async fn mt_auto(command: ToServerCommand, mt_conn: &mut MinetestConnection,
         ToServerCommand::TSModchannelMsg(_) => utils::logger("[Minetest] Client sent TSModchannelMsg, this does not exist in MC", 2),
         ToServerCommand::Playerpos(specbox) => serverbound_translator::playerpos(mc_client, specbox, mt_server_state).await,
         ToServerCommand::TSChatMessage(specbox) => serverbound_translator::send_message(mc_client, specbox),
-        ToServerCommand::Interact(specbox) => serverbound_translator::interact_generic(mc_client, specbox).await,
+        ToServerCommand::Interact(specbox) => serverbound_translator::interact_generic(mc_client, specbox, mt_server_state).await,
         ToServerCommand::Playeritem(specbox) => serverbound_translator::set_mainhand(mc_client, specbox),
         // Breaks yaw/pitch somehow, no clue why
         //ToServerCommand::Gotblocks(specbox) => serverbound_translator::gotblocks(mc_client, specbox, mt_conn, mt_server_state.current_dimension).await,
@@ -81,6 +81,7 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
             ClientboundGamePacket::SetEntityData(data_packet) => clientbound_translator::set_entity_data(&data_packet, mt_conn, mt_server_state).await,
             
             ClientboundGamePacket::ContainerSetContent(content_packet) => clientbound_translator::set_container_content(&content_packet, mt_conn, mt_server_state).await,
+            ClientboundGamePacket::BlockEntityData(data_packet) => clientbound_translator::block_entity_data(&data_packet, mt_conn, mt_server_state).await,
             
             ClientboundGamePacket::BlockUpdate(blockupdate_packet) => clientbound_translator::blockupdate(&blockupdate_packet, mt_conn, mt_server_state).await,
             _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),

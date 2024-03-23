@@ -5,8 +5,6 @@
 
 extern crate alloc;
 
-use bitreader::BitReader;
-
 use crate::mt_definitions::EntityResendableData;
 use crate::settings;
 use crate::utils;
@@ -52,6 +50,7 @@ use azalea_protocol::packets::game::{ClientboundGamePacket,
     clientbound_set_entity_data_packet::ClientboundSetEntityDataPacket,
     clientbound_block_destruction_packet::ClientboundBlockDestructionPacket,
     clientbound_container_set_content_packet::ClientboundContainerSetContentPacket,
+    clientbound_block_entity_data_packet::ClientboundBlockEntityDataPacket,
 };
 
 use azalea_protocol::packets::common::CommonPlayerSpawnInfo;
@@ -329,7 +328,6 @@ pub async fn update_inventory(conn: &mut MinetestConnection, to_change: Vec<(&st
         for index in 0..field_items.len() {
             sorted_items[index] = field_items[(index+27)%36].clone();
         }
-        println!("{:?}",sorted_items);
         entries.push(InventoryEntry::Update {
             0: InventoryList {
                 name: String::from(field.0),
@@ -536,7 +534,7 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
 
     let mut chunk_y_pos = y_bounds.0/16;
     for section in sections { // foreach possible section height (-4 .. 20)
-        // for each block in the 16^3 chunk
+        // for each block in the 16^3 chunke
         for z in 0..16 {
             for y in 0..16 {
                 for x in 0..16 {
@@ -550,15 +548,13 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
         chunk_y_pos += 1;
     }
     for block_entity in block_entities {
-        if block_entity.data.is_some() {
-            let id = block_entity.data.clone().unwrap().get("id").unwrap().int().unwrap();
-            let packed = &[block_entity.packed_xz];
-            let mut reader = BitReader::new(packed);
-            let x = reader.read_u8(4).unwrap();
-            let z = reader.read_u8(4).unwrap();
-            if mt_server_state.container_id_pos_map.insert(id as u64, (x as i32 * chunk_x_pos, block_entity.y.into(), z as i32 * chunk_z_pos)) != None {
-                utils::logger(&format!("[Minecraft] Overwriting previous block entity with ID {}", id), 2)
-            };
+        let pos: (i32, i32, i32) = (
+            (block_entity.packed_xz >> 4).into(),
+            block_entity.y.into(),
+            (block_entity.packed_xz & 15).into()
+        );
+        if mt_server_state.container_map.insert(pos, block_entity.kind) != None {
+            utils::logger(&format!("[Minecraft] Overwriting Block Entity at {:?}", pos), 2);
         }
     }
 }
@@ -1104,6 +1100,21 @@ pub async fn destruction_overlay(packet_data: &ClientboundBlockDestructionPacket
 // container stuff
 pub async fn set_container_content(packet_data: &ClientboundContainerSetContentPacket, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
     // why can chests carry items what even is a container entity aaa fix your protocol minecraft
-    let ClientboundContainerSetContentPacket { container_id, state_id, items, carried_item: _ } = packet_data;
-    // TODO do stuff with mc_client to map the ID to a position, then send ClientboundContainerSetContentPacket
+}
+
+pub async fn block_entity_data(packet_data: &ClientboundBlockEntityDataPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+    let ClientboundBlockEntityDataPacket { pos, block_entity_type, tag: _ } = packet_data;
+    if mt_server_state.container_map.insert((pos.x, pos.y, pos.z), *block_entity_type) != None {
+        utils::logger(&format!("[Minecraft] Overwriting Block Entity at {:?}", pos), 2);
+    }
+}
+
+pub async fn send_container_form(conn: &mut MinetestConnection, container: &BlockEntityKind, pos: (i32, i32, i32)) {
+    let formspec_command = ToClientCommand::ShowFormspec(
+        Box::new(wire::command::ShowFormspecSpec {
+            form_spec: mt_definitions::get_container_formspec(container),
+            form_name: format!("container-{:?}", pos).replace(" ", "_")
+        })
+    );
+    let _ = conn.send(formspec_command).await;
 }

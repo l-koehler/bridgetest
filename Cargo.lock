@@ -765,15 +765,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bitreader"
-version = "0.3.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bdd859c9d97f7c468252795b35aeccc412bdbb1e90ee6969c4fa6328272eaeff"
-dependencies = [
- "cfg-if",
-]
-
-[[package]]
 name = "block-buffer"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -796,7 +787,6 @@ dependencies = [
  "azalea-registry",
  "azalea-world",
  "base64",
- "bitreader",
  "chrono",
  "config",
  "dirs",

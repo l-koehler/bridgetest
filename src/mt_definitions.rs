@@ -2,7 +2,6 @@
 // the functions are actually more like consts but
 // the "String" type cant be a constant so :shrug:
 
-use chrono::round;
 use minetest_protocol::wire::command::{MediaSpec, ToClientCommand};
 use minetest_protocol::wire::command;
 use minetest_protocol::wire::types::{ v2f, v3f, v2s32, AlignStyle, BlockPos, ContentFeatures, DrawType, Inventory, ItemAlias, ItemDef, ItemType, ItemdefList, MediaAnnouncement, MediaFileData, NodeBox, NodeDefManager, NodeMetadata, Option16, SColor, SimpleSoundSpec, TileAnimationParams, TileDef, InventoryEntry, InventoryList, ItemStackUpdate}; // AAAAAA
@@ -21,7 +20,7 @@ use sha1::{Sha1, Digest};
 use base64::{Engine as _, engine::general_purpose};
 use serde_json;
 
-use azalea_registry::{self, Block, EntityKind};
+use azalea_registry::{self, Block, EntityKind, BlockEntityKind};
 
 // the only way to change an entitys pos/rot/vel in minetest is by updating *all* the values
 // but minecraft will send packets only updating one of these values, so the server_state needs to keep the values to resend.
@@ -78,6 +77,13 @@ pub const fn get_y_bounds(dimension: &Dimensions) -> (i16, i16) {
         Dimensions::Overworld => (-64, 320),
         Dimensions::Custom => (-64, 320)
     }
+}
+
+pub fn get_container_formspec(container: &BlockEntityKind) -> String {
+    String::from(match container {
+        BlockEntityKind::Chest => "list[test2;0,0;9,4;]",
+        _ => ""
+    })
 }
 
 pub fn set_hotbar_size() ->ToClientCommand {

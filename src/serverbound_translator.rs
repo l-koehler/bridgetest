@@ -9,11 +9,14 @@ use azalea_core::position::{ChunkPos, ChunkBlockPos};
 use azalea_block::BlockState;
 
 use alloc::boxed::Box;
+use std::collections::HashMap;
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::wire::command::{TSChatMessageSpec, PlayerposSpec, InteractSpec, GotblocksSpec, PlayeritemSpec};
 use minetest_protocol::wire::types::{PlayerPos, v3f, v3s16, PointedThing};
 use minetest_protocol::wire::types;
 use crate::MTServerState;
+
+use azalea_registry::BlockEntityKind;
 
 pub fn send_message(mc_client: &Client, specbox: Box<TSChatMessageSpec>) {
     utils::logger("[Minetest] C->S Forwarding Message sent by client", 1);
@@ -85,11 +88,11 @@ pub fn set_mainhand(mc_client: &mut Client, specbox: Box<PlayeritemSpec>) {
 }
 
 // This function only validates the interaction, then splits by node/object
-pub async fn interact_generic(mc_client: &mut Client, specbox: Box<InteractSpec>) {
+pub async fn interact_generic(mc_client: &mut Client, specbox: Box<InteractSpec>, mt_server_state: &mut MTServerState) {
     let InteractSpec { action, item_index: _, pointed_thing, player_pos: _ } = *specbox;
     match pointed_thing {
         PointedThing::Nothing => (), // TODO might still be relevant in some cases (eating), check that
-        PointedThing::Node { under_surface, above_surface } => interact_node(action, under_surface, above_surface, mc_client).await,
+        PointedThing::Node { under_surface, above_surface } => interact_node(action, under_surface, above_surface, mc_client, mt_server_state).await,
         PointedThing::Object { object_id } => interact_object(action, object_id, mc_client).await,
     }
 }
@@ -108,12 +111,16 @@ fn stop_digging(mc_client: &mut Client) {
     mc_client.start_mining(azalea::BlockPos { x: 0, y: 1000, z: 0 })
 }
 
-fn interact_mainhand(mc_client: &mut Client, position: azalea::BlockPos) {
-    // assumes the main hand is properly set
-    mc_client.block_interact(position)
+fn node_rightclick(mc_client: &mut Client, under: azalea::BlockPos, above: azalea::BlockPos, container_map: &HashMap<(i32, i32, i32), BlockEntityKind>) {
+    let under_key: (i32, i32, i32) = (under.x, under.y, under.z);
+    if container_map.contains_key(&under_key) {
+        mc_client.block_interact(under);
+    } else {
+        mc_client.block_interact(above)
+    }
 }
 
-async fn interact_node(action: types::InteractAction, under_surface: v3s16, above_surface: v3s16,mc_client: &mut Client) {
+async fn interact_node(action: types::InteractAction, under_surface: v3s16, above_surface: v3s16, mc_client: &mut Client, mt_server_state: &mut MTServerState) {
     let under_blockpos = azalea::BlockPos { x: under_surface.x.into(), y: under_surface.y.into(), z: under_surface.z.into() };
     let above_blockpos = azalea::BlockPos { x: above_surface.x.into(), y: above_surface.y.into(), z: above_surface.z.into() };
     println!("{:?}", action);
@@ -121,8 +128,7 @@ async fn interact_node(action: types::InteractAction, under_surface: v3s16, abov
         types::InteractAction::StartDigging => mc_client.start_mining(under_blockpos),
         types::InteractAction::StopDigging  => stop_digging(mc_client),
         // using a node needs the position of the node that was clicked
-        types::InteractAction::Use          => interact_mainhand(mc_client, under_blockpos),
-        types::InteractAction::Place        => interact_mainhand(mc_client, under_blockpos),
+        types::InteractAction::Place        => node_rightclick(mc_client, under_blockpos, above_blockpos, &mt_server_state.container_map),
         _ => utils::logger(&format!("[Minetest] Client sent unsupported node interaction: {:?}", action), 2)
     }
 }
