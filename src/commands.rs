@@ -40,7 +40,7 @@ pub async fn mt_auto(command: ToServerCommand, mt_conn: &mut MinetestConnection,
         ToServerCommand::TSModchannelMsg(_) => utils::logger("[Minetest] Client sent TSModchannelMsg, this does not exist in MC", 2),
         ToServerCommand::Playerpos(specbox) => serverbound_translator::playerpos(mc_client, specbox, mt_server_state).await,
         ToServerCommand::TSChatMessage(specbox) => serverbound_translator::send_message(mc_client, specbox),
-        ToServerCommand::Interact(specbox) => serverbound_translator::interact_generic(mc_client, specbox, mt_server_state).await,
+        ToServerCommand::Interact(specbox) => serverbound_translator::interact_generic(mt_conn, mc_client, specbox, mt_server_state).await,
         ToServerCommand::Playeritem(specbox) => serverbound_translator::set_mainhand(mc_client, specbox),
         // Breaks yaw/pitch somehow, no clue why
         //ToServerCommand::Gotblocks(specbox) => serverbound_translator::gotblocks(mc_client, specbox, mt_conn, mt_server_state.current_dimension).await,

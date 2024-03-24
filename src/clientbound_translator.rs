@@ -519,8 +519,8 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
     let mut nodearr: [BlockState; 4096] = [BlockState{id:125};4096];
     // for each y level (mc chunks go from top to bottom, while mt chunks are 16 nodes high)
     let mut chunk_data_cursor = Cursor::new(chunk_data.as_slice());
-    let dimension_height = i16::abs_diff(y_bounds.0, y_bounds.1).into();
-    let mc_chunk: chunk_storage::Chunk = chunk_storage::Chunk::read_with_dimension_height(&mut chunk_data_cursor, dimension_height, y_bounds.0.into(), chunk_heightmaps)
+    let dimension_height: u16 = i16::abs_diff(y_bounds.0, y_bounds.1);
+    let mc_chunk: chunk_storage::Chunk = chunk_storage::Chunk::read_with_dimension_height(&mut chunk_data_cursor, dimension_height.into(), y_bounds.0.into(), chunk_heightmaps)
     .expect("Failed to parse chunk!");
     let chunk_storage::Chunk { sections, heightmaps: _ } = &mc_chunk; // heightmaps get ignored, these are just chunk_heightmaps
     
@@ -549,10 +549,11 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
     }
     for block_entity in block_entities {
         let pos: (i32, i32, i32) = (
-            (block_entity.packed_xz >> 4).into(),
-            block_entity.y.into(),
-            (block_entity.packed_xz & 15).into()
+            (block_entity.packed_xz >> 4) as i32 + ((chunk_y_pos * 16) as i32),
+            (block_entity.y % dimension_height).into(), // TODO breaks with neg y
+            (block_entity.packed_xz & 15) as i32 + ((chunk_y_pos * 16) as i32)
         );
+        println!("Registring {:?}", pos);
         if mt_server_state.container_map.insert(pos, block_entity.kind) != None {
             utils::logger(&format!("[Minecraft] Overwriting Block Entity at {:?}", pos), 2);
         }
@@ -1109,11 +1110,12 @@ pub async fn block_entity_data(packet_data: &ClientboundBlockEntityDataPacket, c
     }
 }
 
-pub async fn send_container_form(conn: &mut MinetestConnection, container: &BlockEntityKind, pos: (i32, i32, i32)) {
+pub async fn send_container_form(conn: &mut MinetestConnection, container: &BlockEntityKind) {
+    println!("pushing formspec!");
     let formspec_command = ToClientCommand::ShowFormspec(
         Box::new(wire::command::ShowFormspecSpec {
             form_spec: mt_definitions::get_container_formspec(container),
-            form_name: format!("container-{:?}", pos).replace(" ", "_")
+            form_name: String::from("current-container-form")
         })
     );
     let _ = conn.send(formspec_command).await;
