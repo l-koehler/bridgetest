@@ -549,11 +549,11 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
     }
     for block_entity in block_entities {
         let pos: (i32, i32, i32) = (
-            (block_entity.packed_xz >> 4) as i32 + ((chunk_y_pos * 16) as i32),
+            (block_entity.packed_xz >> 4) as i32 + ((chunk_x_pos*16) as i32),
             (block_entity.y % dimension_height).into(), // TODO breaks with neg y
-            (block_entity.packed_xz & 15) as i32 + ((chunk_y_pos * 16) as i32)
+            (block_entity.packed_xz & 15) as i32 + ((chunk_z_pos*16) as i32)
         );
-        println!("Registring {:?}", pos);
+        //println!("Registring {:?} (raw: {}/{}/{} in {}/{})", pos, block_entity.packed_xz >> 4, block_entity.y, block_entity.packed_xz & 15, chunk_x_pos, chunk_z_pos);
         if mt_server_state.container_map.insert(pos, block_entity.kind) != None {
             utils::logger(&format!("[Minecraft] Overwriting Block Entity at {:?}", pos), 2);
         }
