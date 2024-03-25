@@ -89,7 +89,7 @@ pub fn get_container_formspec(container: &(BlockEntityKind, bool)) -> String {
         return String::from("size[9,6]list[current_player;main;0,0;9,3;]list[current_player;main;0,3;9,3;]")
     }
     String::from(match container.0 {
-        // chest-like (4*9 grid)
+        // chest-like (9*3 grid)
         BlockEntityKind::Chest        => "size[9,3]list[current_player;main;0,0;9,3;]",
         BlockEntityKind::TrappedChest => "size[9,3]list[current_player;main;0,0;9,3;]",
         BlockEntityKind::Barrel       => "size[9,3]list[current_player;main;0,0;9,3;]",

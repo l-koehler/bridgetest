@@ -80,9 +80,6 @@ list[current_player;craftpreview;8,1;1,1;]
 ";
 pub const HOTBAR_SIZE: i32 = 9;
 
-// chest/trapped chest
-pub const HAS_DOUBLE_VARIANT: [&str; 2] = ["minecraft:chest", "minecraft:trapped_chest"];
-
 /*
  * 0: Display every recieved packet
  * 1: Display some extra status messages (and every SENT packet lol i suck at this)

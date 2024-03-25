@@ -559,8 +559,6 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
             chunk_pos.y,
             chunk_pos.z as i32 + ((chunk_z_pos*16) as i32)
         );
-        //println!("Registring {:?} (raw: {}/{}/{} in {}/{})", pos, block_entity.packed_xz >> 4, block_entity.y, block_entity.packed_xz & 15, chunk_x_pos, chunk_z_pos);
-        println!("{:?}", block_entity.data);
         let is_double_chest: bool;
         if mc_chunk.get(&chunk_pos, y_bounds.0.into()).is_some() {
             let node_state_id = mc_chunk.get(&chunk_pos, y_bounds.0.into()).unwrap();
