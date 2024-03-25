@@ -81,7 +81,7 @@ pub const fn get_y_bounds(dimension: &Dimensions) -> (i16, i16) {
 
 pub fn get_container_formspec(container: &BlockEntityKind) -> String {
     String::from(match container {
-        BlockEntityKind::Chest => "list[test2;0,0;9,4;]",
+        BlockEntityKind::Chest => "size[9,3]list[current_player;main;0,0;9,3;]",
         _ => ""
     })
 }

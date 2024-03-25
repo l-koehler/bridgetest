@@ -1100,7 +1100,11 @@ pub async fn destruction_overlay(packet_data: &ClientboundBlockDestructionPacket
 
 // container stuff
 pub async fn set_container_content(packet_data: &ClientboundContainerSetContentPacket, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
-    // why can chests carry items what even is a container entity aaa fix your protocol minecraft
+    // https://wiki.vg/Protocol#Set_Container_Content
+    let ClientboundContainerSetContentPacket { container_id, state_id: _, items, carried_item } = packet_data;
+    // container_id: 0 for inventory, anything else for
+    // FIXME: assumption the "current-container-form"
+    
 }
 
 pub async fn block_entity_data(packet_data: &ClientboundBlockEntityDataPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
@@ -1108,10 +1112,11 @@ pub async fn block_entity_data(packet_data: &ClientboundBlockEntityDataPacket, c
     if mt_server_state.container_map.insert((pos.x, pos.y, pos.z), *block_entity_type) != None {
         utils::logger(&format!("[Minecraft] Overwriting Block Entity at {:?}", pos), 2);
     }
+    // TODO: Add the tag to the block metadata if it is relevant to the client
 }
 
 pub async fn send_container_form(conn: &mut MinetestConnection, container: &BlockEntityKind) {
-    println!("pushing formspec!");
+    utils::logger("[Minetest] Showing Formspec for opened container", 1);
     let formspec_command = ToClientCommand::ShowFormspec(
         Box::new(wire::command::ShowFormspecSpec {
             form_spec: mt_definitions::get_container_formspec(container),
