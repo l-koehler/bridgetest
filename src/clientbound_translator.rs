@@ -13,6 +13,7 @@ use crate::commands;
 use crate::MTServerState;
 use azalea::BlockPos;
 use azalea_core::delta::PositionDelta8;
+use azalea_core::position::ChunkBlockPos;
 use azalea_entity::{EntityDataValue, EntityDataItem};
 use minetest_protocol::wire::types::ItemStackMetadata;
 use minetest_protocol::wire::types::ObjectProperties;
@@ -24,7 +25,7 @@ use minetest_protocol::wire::command::ToClientCommand;
 use minetest_protocol::wire::types::HudStat;
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::wire;
-use minetest_protocol::wire::types::{v3s16, v3f, v2f, MapNodesBulk, MapNode, MapBlock, NodeMetadataList, AddedObject, GenericInitData, ActiveObjectCommand, SColor, aabb3f, v2s16, InventoryEntry, InventoryList, ItemStackUpdate, ItemStack, AbsNodeMetadataList, AbsBlockPos, NodeMetadata };
+use minetest_protocol::wire::types::{v3s16, v3f, v2f, MapNodesBulk, MapNode, MapBlock, NodeMetadataList, AddedObject, GenericInitData, ActiveObjectCommand, SColor, aabb3f, v2s16, InventoryEntry, InventoryList, ItemStackUpdate, ItemStack };
 
 use azalea_client::{PlayerInfo, Client, inventory};
 use azalea_client::chat::ChatPacket;
@@ -548,13 +549,27 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
         chunk_y_pos += 1;
     }
     for block_entity in block_entities {
+        let chunk_pos = ChunkBlockPos {
+            x: block_entity.packed_xz >> 4,
+            y: (block_entity.y % dimension_height) as i32, // TODO breaks with neg y
+            z: block_entity.packed_xz & 15
+        };
         let pos: (i32, i32, i32) = (
-            (block_entity.packed_xz >> 4) as i32 + ((chunk_x_pos*16) as i32),
-            (block_entity.y % dimension_height).into(), // TODO breaks with neg y
-            (block_entity.packed_xz & 15) as i32 + ((chunk_z_pos*16) as i32)
+            chunk_pos.x as i32 + ((chunk_x_pos*16) as i32),
+            chunk_pos.y,
+            chunk_pos.z as i32 + ((chunk_z_pos*16) as i32)
         );
         //println!("Registring {:?} (raw: {}/{}/{} in {}/{})", pos, block_entity.packed_xz >> 4, block_entity.y, block_entity.packed_xz & 15, chunk_x_pos, chunk_z_pos);
-        if mt_server_state.container_map.insert(pos, block_entity.kind) != None {
+        println!("{:?}", block_entity.data);
+        let is_double_chest: bool;
+        if mc_chunk.get(&chunk_pos, y_bounds.0.into()).is_some() {
+            let node_state_id = mc_chunk.get(&chunk_pos, y_bounds.0.into()).unwrap();
+            is_double_chest = mt_server_state.double_chest_state_ids.contains(&node_state_id)
+        } else {
+            is_double_chest = false
+        }
+        utils::logger(&format!("[Minecraft] Registring Block Entity at {:?}. Is double chest: {}", pos, is_double_chest), 1);
+        if mt_server_state.container_map.insert(pos, (block_entity.kind, is_double_chest)) != None {
             utils::logger(&format!("[Minecraft] Overwriting Block Entity at {:?}", pos), 2);
         }
     }
@@ -1108,14 +1123,15 @@ pub async fn set_container_content(packet_data: &ClientboundContainerSetContentP
 }
 
 pub async fn block_entity_data(packet_data: &ClientboundBlockEntityDataPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
-    let ClientboundBlockEntityDataPacket { pos, block_entity_type, tag: _ } = packet_data;
-    if mt_server_state.container_map.insert((pos.x, pos.y, pos.z), *block_entity_type) != None {
+    let ClientboundBlockEntityDataPacket { pos, block_entity_type, tag } = packet_data;
+    println!("{:?}", tag);
+    if mt_server_state.container_map.insert((pos.x, pos.y, pos.z), (*block_entity_type, false)) != None {
         utils::logger(&format!("[Minecraft] Overwriting Block Entity at {:?}", pos), 2);
     }
     // TODO: Add the tag to the block metadata if it is relevant to the client
 }
 
-pub async fn send_container_form(conn: &mut MinetestConnection, container: &BlockEntityKind) {
+pub async fn send_container_form(conn: &mut MinetestConnection, container: &(BlockEntityKind, bool)) {
     utils::logger("[Minetest] Showing Formspec for opened container", 1);
     let formspec_command = ToClientCommand::ShowFormspec(
         Box::new(wire::command::ShowFormspecSpec {

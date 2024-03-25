@@ -19,8 +19,10 @@ use crate::settings;
 use sha1::{Sha1, Digest};
 use base64::{Engine as _, engine::general_purpose};
 use serde_json;
+use serde_json::json;
 
 use azalea_registry::{self, Block, EntityKind, BlockEntityKind};
+use azalea_block::BlockState;
 
 // the only way to change an entitys pos/rot/vel in minetest is by updating *all* the values
 // but minecraft will send packets only updating one of these values, so the server_state needs to keep the values to resend.
@@ -79,10 +81,23 @@ pub const fn get_y_bounds(dimension: &Dimensions) -> (i16, i16) {
     }
 }
 
-pub fn get_container_formspec(container: &BlockEntityKind) -> String {
-    String::from(match container {
-        BlockEntityKind::Chest => "size[9,3]list[current_player;main;0,0;9,3;]",
-        _ => ""
+pub fn get_container_formspec(container: &(BlockEntityKind, bool)) -> String {
+    // double-chest formspec handled separately
+    // they have BlockEntityKind::Chest instead of something unique idk
+    if container.1 {
+        // use two lists because minetest refuses to display bigger than 9*4 for some reason
+        return String::from("size[9,6]list[current_player;main;0,0;9,3;]list[current_player;main;0,3;9,3;]")
+    }
+    String::from(match container.0 {
+        // chest-like (4*9 grid)
+        BlockEntityKind::Chest        => "size[9,3]list[current_player;main;0,0;9,3;]",
+        BlockEntityKind::TrappedChest => "size[9,3]list[current_player;main;0,0;9,3;]",
+        BlockEntityKind::Barrel       => "size[9,3]list[current_player;main;0,0;9,3;]",
+        // furnace-like (2*1 + 1*1 grids)
+        BlockEntityKind::Furnace      => "size[3,2]list[current_player;main;0,0;1,2;]list[current_player;main;2,0.5;1,1;]",
+        BlockEntityKind::Smoker       => "size[3,2]list[current_player;main;0,0;1,2;]list[current_player;main;2,0.5;1,1;]",
+        BlockEntityKind::BlastFurnace => "size[3,2]list[current_player;main;0,0;1,2;]list[current_player;main;2,0.5;1,1;]",
+        _ => "size[5,1]label[0,0;Error!\nBlockEntityKind has no formspec,\nUI cannot be shown!]"
     })
 }
 
@@ -576,7 +591,7 @@ pub fn generate_itemdef(name: &str, item: serde_json::Value, inventory_image: &s
 
 // node def stuff
 
-pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
+pub async fn get_node_def_command(settings: &Config, mt_server_state: &mut MTServerState) -> ToClientCommand {
     // ensure arcticdata_blocks exists
     let data_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/");
     if !Path::new(data_folder.join("arcticdata_blocks.json").as_path()).exists() {
@@ -607,7 +622,7 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
         // everything else must adjust for this offset.
         let texture_pack_res: u16 = settings.get_int("texture_pack_res").expect("Failed to read config!")
         .try_into().expect("Texture pack resolutions above u16 are not supported. What are you even doing?");
-        content_feature = generate_contentfeature(id, &mc_name, block.1, texture_base_name, texture_pack_res);
+        content_feature = generate_contentfeature(id, &mc_name, block.1, texture_base_name, texture_pack_res, mt_server_state);
         content_features.push((id+128, content_feature));
     }
     
@@ -701,7 +716,7 @@ pub async fn get_node_def_command(settings: &Config) -> ToClientCommand {
     )
 }
 
-pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mut texture_base_name: String, texture_pack_res: u16) -> ContentFeatures {
+pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mut texture_base_name: String, texture_pack_res: u16, mt_server_state: &mut MTServerState) -> ContentFeatures {
     // If *every* possible state is solid, then walkable=true
     // for light stuff, use the "brightest" state
     // for everything else, do other stuff idk look at the code
@@ -713,7 +728,7 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
     let mut liquid_viscosity = 0;
     let mut liquid_renewable = true;
     let mut animation = TileAnimationParams::None;
-    for state in block.get("states").unwrap().as_array().unwrap() {
+    for state in block.get("states").unwrap().as_array().unwrap() {        
         if !state.get("solid").unwrap().as_bool().unwrap() {
             walkable = false;
         };
@@ -724,6 +739,18 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
             sunlight_propagates = 15;
         }
     }
+    // add all double chest state IDs to a vector, we need that for UI stuff later
+    if block.get("properties").unwrap().as_array().unwrap().contains(&json!("CHEST_TYPE")) {
+        // block has the option to be a double chest
+        for state in block.get("states").unwrap().as_array().unwrap() {
+            if state.get("properties").unwrap().as_object().unwrap().get("type").unwrap().as_str().unwrap() != "SINGLE" {
+                let state_id = state.get("stateId").unwrap().as_u64().unwrap() as u32;
+                assert!(BlockState::is_valid_state(state_id), "Azalea cannot parse BlockState of chest, check supplied arcticdata_blocks.json version! BlockState: {}", state_id);
+                mt_server_state.double_chest_state_ids.push(BlockState::try_from(state_id).unwrap());
+            }
+        }
+    }
+    
     // liquid stuff
     if this_block == Block::Water {
         liquid_renewable = true;

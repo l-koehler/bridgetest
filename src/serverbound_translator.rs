@@ -111,10 +111,8 @@ fn stop_digging(mc_client: &mut Client) {
     mc_client.start_mining(azalea::BlockPos { x: 0, y: 1000, z: 0 })
 }
 
-async fn node_rightclick(conn: &mut MinetestConnection, mc_client: &mut Client, under: azalea::BlockPos, above: azalea::BlockPos, container_map: &HashMap<(i32, i32, i32), BlockEntityKind>) {
+async fn node_rightclick(conn: &mut MinetestConnection, mc_client: &mut Client, under: azalea::BlockPos, above: azalea::BlockPos, container_map: &HashMap<(i32, i32, i32), (BlockEntityKind, bool)>) {
     let under_key: (i32, i32, i32) = (under.x, under.y, under.z);
-    println!("{:?}", container_map);
-    println!("User clicked {:?}", under_key);
     if container_map.contains_key(&under_key) {
         mc_client.block_interact(under);
         clientbound_translator::send_container_form(conn, container_map.get(&under_key).unwrap()).await;
@@ -126,7 +124,6 @@ async fn node_rightclick(conn: &mut MinetestConnection, mc_client: &mut Client, 
 async fn interact_node(conn: &mut MinetestConnection, action: types::InteractAction, under_surface: v3s16, above_surface: v3s16, mc_client: &mut Client, mt_server_state: &mut MTServerState) {
     let under_blockpos = azalea::BlockPos { x: under_surface.x.into(), y: under_surface.y.into(), z: under_surface.z.into() };
     let above_blockpos = azalea::BlockPos { x: above_surface.x.into(), y: above_surface.y.into(), z: above_surface.z.into() };
-    println!("{:?}", action);
     match action {
         types::InteractAction::StartDigging => mc_client.start_mining(under_blockpos),
         types::InteractAction::StopDigging  => stop_digging(mc_client),
