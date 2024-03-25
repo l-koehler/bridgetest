@@ -137,7 +137,7 @@ pub async fn gotblocks(mc_client: &mut Client, specbox: Box<GotblocksSpec>, mt_c
     let partial_world = mc_client.partial_world();
     let world_data = partial_world.read();
     for to_send in specbox.blocks {
-        let fullheight = world_data.chunks.limited_get(&ChunkPos::new(to_send.x.into(), to_send.y.into()));
+        let fullheight = world_data.chunks.limited_get(&ChunkPos::new(to_send.x.into(), to_send.z.into()));
         match fullheight {
             Some(chunk_data) => {
                 // copying some stuff from clientbound_translator::send_level_chunk
