@@ -82,11 +82,11 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
 
 pub fn set_mainhand(mc_client: &mut Client, specbox: Box<PlayeritemSpec>) {
     // hotbar_index: 0..8, first..last slot of hotbar
-    let PlayeritemSpec { item: hotbar_index } = *specbox;
-    let mut ecs = mc_client.ecs.lock();
-    let mut inventory = mc_client.query::<&mut InventoryComponent>(&mut ecs);
-    inventory.selected_hotbar_slot = hotbar_index as u8;
-    drop(ecs);
+    // let PlayeritemSpec { item: hotbar_index } = *specbox;
+    // let mut ecs = mc_client.ecs.lock();
+    // let mut inventory = mc_client.query::<&mut InventoryComponent>(&mut ecs);
+    // inventory.selected_hotbar_slot = hotbar_index as u8;
+    // drop(ecs);
 }
 
 // This function only validates the interaction, then splits by node/object
@@ -113,15 +113,18 @@ fn stop_digging(mc_client: &mut Client) {
     mc_client.start_mining(azalea::BlockPos { x: 0, y: 1000, z: 0 })
 }
 
-async fn node_rightclick(conn: &mut MinetestConnection, mc_client: &mut Client, under: azalea::BlockPos, above: azalea::BlockPos, container_map: &HashMap<(i32, i32, i32), (BlockEntityKind, bool)>) {
+async fn node_rightclick(conn: &mut MinetestConnection, mc_client: &mut Client, under: azalea::BlockPos, above: azalea::BlockPos, mt_server_state: &mut MTServerState) {
     let under_key: (i32, i32, i32) = (under.x, under.y, under.z);
-    if container_map.contains_key(&under_key) {
+    if mt_server_state.container_map.contains_key(&under_key) {
         
-        clientbound_translator::send_container_form(conn, container_map.get(&under_key).unwrap()).await;
-
-        println!("--- START ---");
-        mc_client.open_container_at(under).await; // FIXME doesnt work, is broken. i hate this thing why cant it just do its job instead of getting stuck for all eternity
-        println!("---  END  ---"); // will not be reached as per the rant above
+        clientbound_translator::send_container_form(conn, mt_server_state.container_map.get(&under_key).unwrap()).await;
+        println!("dropping ECS lock [UB/unsafe!]");
+        unsafe {
+            mc_client.ecs.force_unlock()
+        }
+        println!("open_container_at({})", under);
+        mc_client.open_container_at(under).await; // <-- gets stuck forever for no good reason
+        panic!("unreachable")
 
     } else {
         mc_client.block_interact(above)
@@ -135,7 +138,7 @@ async fn interact_node(conn: &mut MinetestConnection, action: types::InteractAct
         types::InteractAction::StartDigging => mc_client.start_mining(under_blockpos),
         types::InteractAction::StopDigging  => stop_digging(mc_client),
         // using a node needs the position of the node that was clicked
-        types::InteractAction::Place        => node_rightclick(conn, mc_client, under_blockpos, above_blockpos, &mt_server_state.container_map).await,
+        types::InteractAction::Place        => node_rightclick(conn, mc_client, under_blockpos, above_blockpos, mt_server_state).await,
         _ => utils::logger(&format!("[Minetest] Client sent unsupported node interaction: {:?}", action), 2)
     }
 }

@@ -1112,9 +1112,11 @@ pub async fn destruction_overlay(packet_data: &ClientboundBlockDestructionPacket
 }
 
 // container stuff
-pub async fn set_container_content(packet_data: &ClientboundContainerSetContentPacket, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
+pub async fn set_container_content(packet_data: &ClientboundContainerSetContentPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
     // https://wiki.vg/Protocol#Set_Container_Content
     let ClientboundContainerSetContentPacket { container_id, state_id: _, items, carried_item } = packet_data;
+    println!("{:?}", container_id);
+    if *container_id !=0{panic!()}
     // container_id: 0 for inventory, anything else for
     // FIXME: assumption the "current-container-form"
     

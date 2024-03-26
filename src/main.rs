@@ -16,6 +16,9 @@ use azalea_client::inventory;
 use azalea_registry::BlockEntityKind;
 use azalea_block::BlockState;
 
+use parking_lot::deadlock;
+use std::thread;
+use std::time::Duration;
 use intmap::IntMap;
 use alloc::vec::Vec;
 use std::collections::HashMap;
@@ -30,6 +33,24 @@ use dirs;
 async fn main() {
     let settings: Config = load_config();
     mt_definitions::validate_texture_pack(&settings).await;
+
+    // Create a background thread which checks for deadlocks every 10s
+    thread::spawn(move || loop {
+        thread::sleep(Duration::from_secs(10));
+        let deadlocks = deadlock::check_deadlock();
+        if deadlocks.is_empty() {
+            continue;
+        }
+        println!("{} deadlocks detected", deadlocks.len());
+        for (i, threads) in deadlocks.iter().enumerate() {
+            println!("Deadlock #{i}");
+            for t in threads {
+                println!("Thread Id {:#?}", t.thread_id());
+                println!("{:#?}", t.backtrace());
+            }
+        }
+    });
+    
     start_client_handler(settings).await;
 }
 

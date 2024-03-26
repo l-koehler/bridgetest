@@ -792,6 +792,7 @@ dependencies = [
  "dirs",
  "intmap",
  "minetest-protocol",
+ "parking_lot",
  "rand",
  "reqwest",
  "serde_json",
