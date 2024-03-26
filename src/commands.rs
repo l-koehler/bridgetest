@@ -80,7 +80,7 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
             ClientboundGamePacket::EntityEvent(event_packet) => clientbound_translator::entity_event(&event_packet, mt_conn, mt_server_state).await,
             ClientboundGamePacket::SetEntityData(data_packet) => clientbound_translator::set_entity_data(&data_packet, mt_conn, mt_server_state).await,
             
-            ClientboundGamePacket::ContainerSetContent(content_packet) => clientbound_translator::set_container_content(&content_packet, mt_conn, mt_server_state).await,
+            //ClientboundGamePacket::ContainerSetContent(content_packet) => clientbound_translator::set_container_content(&content_packet, mt_conn, mt_server_state).await,
             ClientboundGamePacket::BlockEntityData(data_packet) => clientbound_translator::block_entity_data(&data_packet, mt_conn, mt_server_state).await,
             
             ClientboundGamePacket::BlockUpdate(blockupdate_packet) => clientbound_translator::blockupdate(&blockupdate_packet, mt_conn, mt_server_state).await,
@@ -91,6 +91,8 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
 }
 
 pub async fn on_minecraft_tick(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_server_state: &mut MTServerState) {
+    println!("{:?}", mc_client.menu());
+    println!("{:?}", mc_client.ecs.lock().get::<azalea::container::WaitingForInventoryOpen>(mc_client.entity));
     // update the MT clients position once every {settings::POS_FORCE_AFTER} ticks
     if mt_server_state.ticks_since_sync >= settings::POS_FORCE_AFTER {
         let new_position = utils::vec3_to_v3f(&mc_client.position(), 0.1);

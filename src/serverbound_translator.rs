@@ -3,6 +3,8 @@ use crate::mt_definitions::Dimensions;
 // and send it to the MC server.
 use crate::{clientbound_translator, mt_definitions, utils};
 
+use azalea::container::ContainerClientExt;
+use azalea::{BotClientExt, Vec3};
 use azalea_client::Client;
 use azalea_client::inventory::InventoryComponent;
 use azalea_core::position::{ChunkPos, ChunkBlockPos};
@@ -114,8 +116,13 @@ fn stop_digging(mc_client: &mut Client) {
 async fn node_rightclick(conn: &mut MinetestConnection, mc_client: &mut Client, under: azalea::BlockPos, above: azalea::BlockPos, container_map: &HashMap<(i32, i32, i32), (BlockEntityKind, bool)>) {
     let under_key: (i32, i32, i32) = (under.x, under.y, under.z);
     if container_map.contains_key(&under_key) {
-        mc_client.block_interact(under);
+        
         clientbound_translator::send_container_form(conn, container_map.get(&under_key).unwrap()).await;
+
+        println!("--- START ---");
+        mc_client.open_container_at(under).await; // FIXME doesnt work, is broken. i hate this thing why cant it just do its job instead of getting stuck for all eternity
+        println!("---  END  ---"); // will not be reached as per the rant above
+
     } else {
         mc_client.block_interact(above)
     }
