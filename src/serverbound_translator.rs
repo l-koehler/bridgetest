@@ -123,6 +123,13 @@ async fn node_rightclick(conn: &mut MinetestConnection, mc_client: &mut Client, 
             mc_client.ecs.force_unlock()
         }
         println!("open_container_at({})", under);
+        // proof the block pos isnt somehow broken
+        //let chest_block = mc_client
+        //    .world()
+        //    .read()
+        //    .find_block(under, &azalea::registry::Block::Chest.into()).unwrap();
+        //println!("nearest chest at: {}", chest_block);
+        
         mc_client.open_container_at(under).await; // <-- gets stuck forever for no good reason
         panic!("unreachable")
 
