@@ -4,21 +4,17 @@ use crate::mt_definitions::Dimensions;
 use crate::{clientbound_translator, mt_definitions, utils};
 
 use azalea::container::ContainerClientExt;
-use azalea::{BotClientExt, Vec3};
 use azalea_client::Client;
-use azalea_client::inventory::InventoryComponent;
 use azalea_core::position::{ChunkPos, ChunkBlockPos};
 use azalea_block::BlockState;
 
 use alloc::boxed::Box;
-use std::collections::HashMap;
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::wire::command::{TSChatMessageSpec, PlayerposSpec, InteractSpec, GotblocksSpec, PlayeritemSpec};
 use minetest_protocol::wire::types::{PlayerPos, v3f, v3s16, PointedThing};
 use minetest_protocol::wire::types;
 use crate::MTServerState;
 
-use azalea_registry::BlockEntityKind;
 
 pub fn send_message(mc_client: &Client, specbox: Box<TSChatMessageSpec>) {
     utils::logger("[Minetest] C->S Forwarding Message sent by client", 1);
@@ -116,23 +112,8 @@ fn stop_digging(mc_client: &mut Client) {
 async fn node_rightclick(conn: &mut MinetestConnection, mc_client: &mut Client, under: azalea::BlockPos, above: azalea::BlockPos, mt_server_state: &mut MTServerState) {
     let under_key: (i32, i32, i32) = (under.x, under.y, under.z);
     if mt_server_state.container_map.contains_key(&under_key) {
-        
         clientbound_translator::send_container_form(conn, mt_server_state.container_map.get(&under_key).unwrap()).await;
-        println!("dropping ECS lock [UB/unsafe!]");
-        unsafe {
-            mc_client.ecs.force_unlock()
-        }
-        println!("open_container_at({})", under);
-        // proof the block pos isnt somehow broken
-        //let chest_block = mc_client
-        //    .world()
-        //    .read()
-        //    .find_block(under, &azalea::registry::Block::Chest.into()).unwrap();
-        //println!("nearest chest at: {}", chest_block);
-        
-        mc_client.open_container_at(under).await; // <-- gets stuck forever for no good reason
-        panic!("unreachable")
-
+        mc_client.open_container_at(under).await;
     } else {
         mc_client.block_interact(above)
     }
