@@ -101,10 +101,26 @@ pub fn get_container_formspec(container: &(BlockEntityKind, bool)) -> String {
     })
 }
 
-pub fn set_hotbar_size() ->ToClientCommand {
+pub fn set_hotbar_size() -> ToClientCommand {
     ToClientCommand::HudSetParam(
         Box::new(command::HudSetParamSpec {
             value: types::HudSetParam::SetHotBarItemCount(settings::HOTBAR_SIZE)
+        })
+    )
+}
+
+pub fn set_hotbar_texture() -> ToClientCommand {
+    ToClientCommand::HudSetParam(
+        Box::new(command::HudSetParamSpec {
+            value: types::HudSetParam::SetHotBarImage(String::from("hud-hotbar.png"))
+        })
+    )
+}
+
+pub fn set_hotbar_selected() -> ToClientCommand {
+    ToClientCommand::HudSetParam(
+        Box::new(command::HudSetParamSpec {
+            value: types::HudSetParam::SetHotBarSelectedImage(String::from("hud-hotbar_selection.png"))
         })
     )
 }

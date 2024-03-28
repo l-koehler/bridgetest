@@ -99,6 +99,8 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     
     utils::logger("[Minetest] S->C Hotbar Definition", 1);
     let _ = mt_conn.send(mt_definitions::set_hotbar_size()).await;
+    let _ = mt_conn.send(mt_definitions::set_hotbar_texture()).await;
+    let _ = mt_conn.send(mt_definitions::set_hotbar_selected()).await;
     
     utils::logger("[Minetest] S->C Inventory", 1);
     let _ = mt_conn.send(mt_definitions::empty_inventory()).await;
