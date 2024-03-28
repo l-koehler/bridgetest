@@ -1193,6 +1193,7 @@ pub async fn get_texture_media_commands(settings: &Config, mt_server_state: &mut
     texture_vec_iterator(&mut item_texture_vec, textures_folder.join("item/"), "item", false);
     
     texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("environment/"), "misc", false);
+    texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("gui/container/"), "container", false);
     texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("gui/sprites/hud/"), "hud", false);
     texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("gui/sprites/hud/heart/"), "heart", false);
     texture_vec_iterator(&mut misc_texture_vec, models_folder, "entitymodel", false);
