@@ -554,12 +554,19 @@ pub fn generate_itemdef(name: &str, item: serde_json::Value, inventory_image: &s
     let block_id: String = item.get("blockId").unwrap().to_string();
     let max_durability: i64 = item.get("maxDamage").unwrap().as_i64().unwrap_or(0);
     let is_edible: bool = item.get("edible").unwrap().as_bool().unwrap_or(false);
+    let mut groups: Vec<(String, i16)> = Vec::new();
 
     let mut item_type: ItemType = ItemType::Craft;
     if block_id != "minecraft:air" {
         item_type = ItemType::Node;
     } else if max_durability != 0 {
         item_type = ItemType::Tool;
+    }
+    
+    if item_type == ItemType::Node {
+        groups.push(
+               (String::from("building_block"), 1)
+        )
     }
     
     let simplesound_placeholder: SimpleSoundSpec = SimpleSoundSpec {
@@ -584,7 +591,7 @@ pub fn generate_itemdef(name: &str, item: serde_json::Value, inventory_image: &s
         usable: (item_type == ItemType::Node || item_type == ItemType::Tool || is_edible),
         liquids_pointable: false,
         tool_capabilities: Option16::None,
-        groups: Vec::new(),
+        groups,
         node_placement_prediction: String::from(""),
         sound_place: simplesound_placeholder.clone(),
         sound_place_failed: simplesound_placeholder,

@@ -27,6 +27,14 @@ and pasting them into `~/.local/share/bridgetest/models/` (on linux).
 * Attacking/usable combat in general  
 * burn the entire movement thing down and do the same mistakes again  
 
+#### TODO:
+
+* Rotated Blocks  
+* Climbable Blocks  
+* Containers (waiting on upstream)  
+* Sneaking (waiting on upstream)  
+* Crafting recipes (sort-of waiting on Containers)  
+
 #### Limitations:
 
 Note:
