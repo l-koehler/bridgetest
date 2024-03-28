@@ -326,7 +326,6 @@ pub async fn update_inventory(conn: &mut MinetestConnection, to_change: Vec<(&st
         // minetest fills rows top-to-down consistently because the hotbar
         // pulls from the top inv row and i cant figure out how to change that
         let mut sorted_items: Vec<ItemStackUpdate> = vec![ItemStackUpdate::Empty; 36];
-        //FIXME once again broken QwQ
         for index in 0..field_items.len() {
             sorted_items[index] = field_items[(index+27)%36].clone();
         }
@@ -334,7 +333,7 @@ pub async fn update_inventory(conn: &mut MinetestConnection, to_change: Vec<(&st
             0: InventoryList {
                 name: String::from(field.0),
                 width: 0, // idk what this does
-                items: field_items
+                items: sorted_items
             }
         });
     }

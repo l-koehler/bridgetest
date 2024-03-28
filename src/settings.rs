@@ -69,18 +69,17 @@ pub const FORMSPEC_PREPEND: &str = "\
 
 // list[current_player; _NAME_ ; x,y ; size_x,size_y;]
 pub const ALL_INV_FIELDS: [&str; 5] = ["main", "armor", "offhand", "craft", "craftpreview"];
-//listcolors[#0000;#0002]
 pub const PLAYER_INV_FORMSPEC: &str = "\
 formspec_version[7]
 size[12,11.3]
 background[0,0;17.45,17.45;container-inventory.png]
-style_type[list;spacing=0.125,0.125;size=1.09,1.09;border=false]
-listcolors[green;red]
-list[current_player;armor;0.55,0.6;1,4]
+style_type[list;spacing=0.135,0.135;size=1.09,1.09;border=false]
+listcolors[#0000;#0002]
+list[current_player;armor;0.55,0.575;1,4]
 list[current_player;craft;6.7,1.26;2,2]
 list[current_player;craftpreview;10.5,1.9;1,1]
 list[current_player;offhand;5.29,4.25;1,1]
-list[current_player;main;0.55,9.75;9,1]
+list[current_player;main;0.55,9.7;9,1]
 list[current_player;main;0.55,5.75;9,3;9]
 ";
 pub const HOTBAR_SIZE: i32 = 9;
