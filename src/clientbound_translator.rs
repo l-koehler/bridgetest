@@ -1215,7 +1215,7 @@ pub fn update_recipes(packet_data: &ClientboundUpdateRecipesPacket, mt_server_st
                 let mut input: Vec<(String, i8)> = vec![];
                 for item in &ingredient.allowed {
                     match item {
-                        ItemSlot::Empty => input.push((String::from(""), 0)),
+                        ItemSlot::Empty => (),
                         ItemSlot::Present(item) => input.push((item.kind.to_string(), item.count)),
                     }
                 }
