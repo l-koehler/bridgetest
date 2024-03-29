@@ -17,7 +17,7 @@ use azalea::BlockPos;
 use azalea_core::delta::PositionDelta8;
 use azalea_core::position::ChunkBlockPos;
 use azalea_entity::{EntityDataValue, EntityDataItem};
-use azalea_protocol::packets::game::clientbound_update_recipes_packet::{Recipe, RecipeData, ShapelessRecipe};
+use azalea_protocol::packets::game::clientbound_update_recipes_packet::{Recipe, RecipeData, ShapelessRecipe, ShapedRecipe};
 use minetest_protocol::wire::types::ItemStackMetadata;
 use minetest_protocol::wire::types::ObjectProperties;
 use mt_definitions::{HeartDisplay, FoodDisplay, Dimensions};
@@ -1146,31 +1146,64 @@ pub fn update_recipes(packet_data: &ClientboundUpdateRecipesPacket, mt_server_st
                 if matches!(result, ItemSlot::Empty) {
                     continue
                 }
+                // Always allow crafting in a table, it there are 4 or less ingredients allow the inventory
                 let mut stations = vec![mt_definitions::CraftingStations::CraftingTable];
                 if ingredients.len() <= 4 {
                     stations.push(mt_definitions::CraftingStations::Inventory)
                 }
                 let output: (String, i8);
                 match result {
-                    ItemSlot::Empty => output = (String::from("minecraft:air"), 0),
+                    ItemSlot::Empty => output = (String::from(""), 0),
                     ItemSlot::Present(item) => output = (item.kind.to_string(), item.count)
                 }
-                let mut inputs: Vec<(String, i8)> = vec![];
+                let mut inputs: Vec<Vec<(String, i8)>> = vec![];
                 for slot in ingredients {
+                    let mut allowed: Vec<(String, i8)> = vec![];
                     for thing in &slot.allowed {
                         match thing {
                             ItemSlot::Empty => (),
-                            ItemSlot::Present(item) => inputs.push((item.kind.to_string(), item.count)),
+                            ItemSlot::Present(item) => allowed.push((item.kind.to_string(), item.count)),
                         }
                     }
+                    inputs.push(allowed)
                 }
                 mt_server_state.recipes.push(mt_definitions::ServerRecipe {
                     stations,
                     ingredients: inputs,
                     result: output,
-                    shaped: false
+                    shaped: None
                 });
                 println!("{:?}", mt_server_state.recipes);
+            },
+            RecipeData::CraftingShaped(shaped) => {
+                let ShapedRecipe { group: _, category: _, pattern, result, show_notification: _ } = shaped;
+                // Always allow crafting in a table, if the pattern fits also allow the inventory
+                let mut stations = vec![mt_definitions::CraftingStations::CraftingTable];
+                if pattern.width <= 2 && pattern.height <= 2 {
+                    stations.push(mt_definitions::CraftingStations::Inventory)
+                }
+                let output: (String, i8);
+                match result {
+                    ItemSlot::Empty => output = (String::from(""), 0),
+                    ItemSlot::Present(item) => output = (item.kind.to_string(), item.count)
+                }
+                let mut inputs: Vec<Vec<(String, i8)>> = vec![];
+                for slot in &pattern.ingredients {
+                    let mut allowed: Vec<(String, i8)> = vec![];
+                    for thing in &slot.allowed {
+                        match thing {
+                            ItemSlot::Empty => allowed.push((String::from(""), 0)),
+                            ItemSlot::Present(item) => allowed.push((item.kind.to_string(), item.count)),
+                        }
+                    }
+                    inputs.push(allowed)
+                }
+                mt_server_state.recipes.push(mt_definitions::ServerRecipe {
+                    stations,
+                    ingredients: inputs,
+                    result: output,
+                    shaped: Some((pattern.width as u8, pattern.height as u8))
+                })
             }
             _ => utils::logger("[Minecraft] Not registring unsupported special crafting recipe!", 2)
         }

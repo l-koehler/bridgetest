@@ -41,9 +41,10 @@ pub enum CraftingStations {
 #[derive(Clone, Debug)]
 pub struct ServerRecipe {
     pub stations: Vec<CraftingStations>,
-    pub ingredients: Vec<(String, i8)>,
+    // list of slots, each slot may have several allowed items
+    pub ingredients: Vec<Vec<(String, i8)>>, // if shaped, must be the entire grid, padded with `vec![(String::from(""), 0)]`
     pub result: (String, i8),
-    pub shaped: bool // use false for single-input stations
+    pub shaped: Option<(u8, u8)> // grid x/y if some, else shapeless creature
 }
 
 // the only way to change an entitys pos/rot/vel in minetest is by updating *all* the values
