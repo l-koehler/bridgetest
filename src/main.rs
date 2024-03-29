@@ -77,7 +77,8 @@ pub struct MTServerState {
     // only contains positions that have some block entity
     container_map: HashMap<(i32, i32, i32), (BlockEntityKind, bool)>,
     ticks_since_sync: u32,
-    sent_media: Vec<String> // all the media things we sent, by names like "item-fish.png"
+    sent_media: Vec<String>, // all the media things we sent, by names like "item-fish.png"
+    recipes: Vec<mt_definitions::ServerRecipe>
 }
 
 async fn start_client_handler(settings: Config) {
@@ -108,7 +109,8 @@ async fn start_client_handler(settings: Config) {
         double_chest_state_ids: Vec::new(),
         container_map: HashMap::new(),
         ticks_since_sync: 0,
-        sent_media: Vec::new()
+        sent_media: Vec::new(),
+        recipes: Vec::new()
     };
 
     // Wait for a client to join

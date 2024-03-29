@@ -24,6 +24,23 @@ use serde_json::json;
 use azalea_registry::{self, Block, EntityKind, BlockEntityKind};
 use azalea_block::BlockState;
 
+// all crafting stations (where a clickable preview is shown)
+#[derive(Clone, Debug)]
+pub enum CraftingStations {
+    CraftingTable,
+    Inventory,
+    Stonecutter,
+}
+
+// representation of a recipe
+#[derive(Clone, Debug)]
+pub struct ServerRecipe {
+    pub stations: Vec<CraftingStations>,
+    pub ingredients: Vec<(String, i8)>,
+    pub result: (String, i8),
+    pub shaped: bool // use false for single-input stations
+}
+
 // the only way to change an entitys pos/rot/vel in minetest is by updating *all* the values
 // but minecraft will send packets only updating one of these values, so the server_state needs to keep the values to resend.
 // IntMap<EntityResendableData> mapping MT-adjusted entity IDs to these values

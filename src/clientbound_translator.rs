@@ -11,10 +11,13 @@ use crate::utils;
 use crate::mt_definitions;
 use crate::commands;
 use crate::MTServerState;
+use azalea::inventory::ItemSlot;
+use azalea::inventory::ItemSlotData;
 use azalea::BlockPos;
 use azalea_core::delta::PositionDelta8;
 use azalea_core::position::ChunkBlockPos;
 use azalea_entity::{EntityDataValue, EntityDataItem};
+use azalea_protocol::packets::game::clientbound_update_recipes_packet::{Recipe, RecipeData, ShapelessRecipe};
 use minetest_protocol::wire::types::ItemStackMetadata;
 use minetest_protocol::wire::types::ObjectProperties;
 use mt_definitions::{HeartDisplay, FoodDisplay, Dimensions};
@@ -30,6 +33,7 @@ use minetest_protocol::wire::types::{v3s16, v3f, v2f, MapNodesBulk, MapNode, Map
 use azalea_client::{PlayerInfo, Client, inventory};
 use azalea_client::chat::ChatPacket;
 
+use parking_lot::MappedFairMutexGuard;
 use tokio::sync::mpsc::UnboundedReceiver;
 use azalea_client::Event;
 use azalea_protocol::packets::game::{ClientboundGamePacket,
@@ -52,6 +56,8 @@ use azalea_protocol::packets::game::{ClientboundGamePacket,
     clientbound_block_destruction_packet::ClientboundBlockDestructionPacket,
     clientbound_container_set_content_packet::ClientboundContainerSetContentPacket,
     clientbound_block_entity_data_packet::ClientboundBlockEntityDataPacket,
+    clientbound_set_carried_item_packet::ClientboundSetCarriedItemPacket,
+    clientbound_update_recipes_packet::ClientboundUpdateRecipesPacket,
 };
 
 use azalea_protocol::packets::common::CommonPlayerSpawnInfo;
@@ -1112,7 +1118,6 @@ pub async fn set_container_content(packet_data: &ClientboundContainerSetContentP
 
 pub async fn block_entity_data(packet_data: &ClientboundBlockEntityDataPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
     let ClientboundBlockEntityDataPacket { pos, block_entity_type, tag } = packet_data;
-    println!("{:?}", tag);
     if mt_server_state.container_map.insert((pos.x, pos.y, pos.z), (*block_entity_type, false)) != None {
         utils::logger(&format!("[Minecraft] Overwriting Block Entity at {:?}", pos), 2);
     }
@@ -1128,4 +1133,46 @@ pub async fn send_container_form(conn: &mut MinetestConnection, container: &(Blo
         })
     );
     let _ = conn.send(formspec_command).await;
+}
+
+// recipe stuff (recipes are handled purely on the server side)
+pub fn update_recipes(packet_data: &ClientboundUpdateRecipesPacket, mt_server_state: &mut MTServerState) {
+    let ClientboundUpdateRecipesPacket { recipes } = packet_data;
+    for recipe in recipes {
+        let Recipe { identifier: _, data } = recipe;
+        match data {
+            RecipeData::CraftingShapeless(shapeless) => {
+                let ShapelessRecipe { group: _, category: _, ingredients, result } = shapeless;
+                if matches!(result, ItemSlot::Empty) {
+                    continue
+                }
+                let mut stations = vec![mt_definitions::CraftingStations::CraftingTable];
+                if ingredients.len() <= 4 {
+                    stations.push(mt_definitions::CraftingStations::Inventory)
+                }
+                let output: (String, i8);
+                match result {
+                    ItemSlot::Empty => output = (String::from("minecraft:air"), 0),
+                    ItemSlot::Present(item) => output = (item.kind.to_string(), item.count)
+                }
+                let mut inputs: Vec<(String, i8)> = vec![];
+                for slot in ingredients {
+                    for thing in &slot.allowed {
+                        match thing {
+                            ItemSlot::Empty => (),
+                            ItemSlot::Present(item) => inputs.push((item.kind.to_string(), item.count)),
+                        }
+                    }
+                }
+                mt_server_state.recipes.push(mt_definitions::ServerRecipe {
+                    stations,
+                    ingredients: inputs,
+                    result: output,
+                    shaped: false
+                });
+                println!("{:?}", mt_server_state.recipes);
+            }
+            _ => utils::logger("[Minecraft] Not registring unsupported special crafting recipe!", 2)
+        }
+    }
 }
