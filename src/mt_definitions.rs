@@ -30,6 +30,11 @@ pub enum CraftingStations {
     CraftingTable,
     Inventory,
     Stonecutter,
+    Furnace,
+    BlastFurnace,
+    Smoker,
+    Campfire,
+    SmithingTable
 }
 
 // representation of a recipe
