@@ -26,7 +26,7 @@ use azalea_block::BlockState;
 
 // all crafting stations (where a clickable preview is shown)
 #[derive(Clone, Debug)]
-pub enum CraftingStations {
+pub enum CraftingStation {
     CraftingTable,
     Inventory,
     StoneCutter,
@@ -37,14 +37,23 @@ pub enum CraftingStations {
     SmithingTable
 }
 
+#[derive(Clone, Debug)]
+pub enum RecipeShape {
+    Shapeless,        // shapeless   e.g. colored wool)
+    Shaped((u8, u8)), // shaped      e.g. tnt, chests)
+    FixedLayout(u8),  // fixed(size) (size)-slot inputs (e.g. 1 for stonecutter/furnace, 2 for smithing table)
+}
+
 // representation of a recipe
 #[derive(Clone, Debug)]
 pub struct ServerRecipe {
-    pub stations: Vec<CraftingStations>,
+    pub stations: Vec<CraftingStation>,
     // list of slots, each slot may have several allowed items
-    pub ingredients: Vec<Vec<(String, i8)>>, // if shaped, must be the entire grid, padded with `vec![(String::from(""), 0)]`
+    // if shaped, must be the entire grid, padded with `vec![(String::from(""), 0)]`
+    // if fixed, follows some arbitrary nonsense i made up, look at clientbound_translator::update_recipes
+    pub ingredients: Vec<Vec<(String, i8)>>,
     pub result: (String, i8),
-    pub shaped: Option<(u8, u8)> // grid x/y if some, else shapeless creature
+    pub shaped: RecipeShape // grid x/y if some, else shapeless creature
 }
 
 // the only way to change an entitys pos/rot/vel in minetest is by updating *all* the values
