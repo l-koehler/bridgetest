@@ -29,7 +29,7 @@ use azalea_block::BlockState;
 pub enum CraftingStations {
     CraftingTable,
     Inventory,
-    Stonecutter,
+    StoneCutter,
     Furnace,
     BlastFurnace,
     Smoker,

@@ -17,7 +17,7 @@ use azalea::BlockPos;
 use azalea_core::delta::PositionDelta8;
 use azalea_core::position::ChunkBlockPos;
 use azalea_entity::{EntityDataValue, EntityDataItem};
-use azalea_protocol::packets::game::clientbound_update_recipes_packet::{Recipe, RecipeData, ShapelessRecipe, ShapedRecipe};
+use azalea_protocol::packets::game::clientbound_update_recipes_packet::{Recipe, RecipeData, ShapelessRecipe, ShapedRecipe, StoneCutterRecipe};
 use minetest_protocol::wire::types::ItemStackMetadata;
 use minetest_protocol::wire::types::ObjectProperties;
 use mt_definitions::{HeartDisplay, FoodDisplay, Dimensions};
@@ -1203,6 +1203,27 @@ pub fn update_recipes(packet_data: &ClientboundUpdateRecipesPacket, mt_server_st
                     ingredients: inputs,
                     result: output,
                     shaped: Some((pattern.width as u8, pattern.height as u8))
+                })
+            },
+            RecipeData::Stonecutting(recipe) => {
+                let StoneCutterRecipe { group: _, ingredient, result } = recipe;
+                let output: (String, i8);
+                match result {
+                    ItemSlot::Empty => output = (String::from(""), 0),
+                    ItemSlot::Present(item) => output = (item.kind.to_string(), item.count)
+                }
+                let mut input: Vec<(String, i8)> = vec![];
+                for item in &ingredient.allowed {
+                    match item {
+                        ItemSlot::Empty => input.push((String::from(""), 0)),
+                        ItemSlot::Present(item) => input.push((item.kind.to_string(), item.count)),
+                    }
+                }
+                mt_server_state.recipes.push(mt_definitions::ServerRecipe {
+                    stations: vec![mt_definitions::CraftingStations::StoneCutter],
+                    ingredients: vec![input], // single-slot input
+                    result: output,
+                    shaped: None
                 })
             }
             _ => utils::logger("[Minecraft] Not registring unsupported special crafting recipe!", 2)
