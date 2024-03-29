@@ -12,12 +12,11 @@ use crate::mt_definitions;
 use crate::commands;
 use crate::MTServerState;
 use azalea::inventory::ItemSlot;
-use azalea::inventory::ItemSlotData;
 use azalea::BlockPos;
 use azalea_core::delta::PositionDelta8;
 use azalea_core::position::ChunkBlockPos;
 use azalea_entity::{EntityDataValue, EntityDataItem};
-use azalea_protocol::packets::game::clientbound_update_recipes_packet::{Recipe, RecipeData, ShapelessRecipe, ShapedRecipe, StoneCutterRecipe};
+use azalea_protocol::packets::game::clientbound_update_recipes_packet::{Recipe, RecipeData, ShapelessRecipe, ShapedRecipe, StoneCutterRecipe, CookingRecipe};
 use minetest_protocol::wire::types::ItemStackMetadata;
 use minetest_protocol::wire::types::ObjectProperties;
 use mt_definitions::{HeartDisplay, FoodDisplay, Dimensions};
@@ -33,7 +32,6 @@ use minetest_protocol::wire::types::{v3s16, v3f, v2f, MapNodesBulk, MapNode, Map
 use azalea_client::{PlayerInfo, Client, inventory};
 use azalea_client::chat::ChatPacket;
 
-use parking_lot::MappedFairMutexGuard;
 use tokio::sync::mpsc::UnboundedReceiver;
 use azalea_client::Event;
 use azalea_protocol::packets::game::{ClientboundGamePacket,
@@ -1225,8 +1223,46 @@ pub fn update_recipes(packet_data: &ClientboundUpdateRecipesPacket, mt_server_st
                     result: output,
                     shaped: None
                 })
+            },
+            RecipeData::Smelting(recipe) => {
+                let stations = vec![mt_definitions::CraftingStations::Furnace];
+                add_cooking_recipe(stations, recipe, mt_server_state);
+            },
+            RecipeData::Blasting(recipe) => {
+                let stations = vec![mt_definitions::CraftingStations::BlastFurnace];
+                add_cooking_recipe(stations, recipe, mt_server_state);
+            }
+            RecipeData::Smoking(recipe) => {
+                let stations = vec![mt_definitions::CraftingStations::Smoker];
+                add_cooking_recipe(stations, recipe, mt_server_state);
+            }
+            RecipeData::CampfireCooking(recipe) => {
+                let stations = vec![mt_definitions::CraftingStations::Campfire];
+                add_cooking_recipe(stations, recipe, mt_server_state);
             }
             _ => utils::logger("[Minecraft] Not registring unsupported special crafting recipe!", 2)
         }
     }
+}
+
+fn add_cooking_recipe(stations: Vec<mt_definitions::CraftingStations>, recipe: &CookingRecipe, mt_server_state: &mut MTServerState) {
+    let CookingRecipe { group: _, category: _, ingredient, result, experience: _, cooking_time: _} = recipe;
+    let output: (String, i8);
+    match result {
+        ItemSlot::Empty => output = (String::from(""), 0),
+        ItemSlot::Present(item) => output = (item.kind.to_string(), item.count)
+    }
+    let mut input: Vec<(String, i8)> = vec![];
+    for item in &ingredient.allowed {
+        match item {
+            ItemSlot::Empty => (),
+            ItemSlot::Present(item) => input.push((item.kind.to_string(), item.count)),
+        }
+    }
+    mt_server_state.recipes.push(mt_definitions::ServerRecipe {
+        stations,
+        ingredients: vec![input], // single-slot input
+        result: output,
+        shaped: None
+    })
 }
