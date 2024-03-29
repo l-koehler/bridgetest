@@ -193,6 +193,7 @@ pub async fn edit_foodbar(mode: FoodDisplay, num: u32, conn: &MinetestConnection
 pub async fn edit_airbar(num: u32, conn: &MinetestConnection) {
     // num 0..20, bar invisible if air is full.
     let mut bubble_count: u32 = num;
+    // if the bar is full, don't display it
     if num > 19 {
         bubble_count = 0;
     }
@@ -321,19 +322,11 @@ pub async fn update_inventory(conn: &mut MinetestConnection, to_change: Vec<(&st
                 }
             }
         };
-        // swap some rows to prevent the minetest hotbar from breaking
-        // minecraft fills bottom row first, then top-down
-        // minetest fills rows top-to-down consistently because the hotbar
-        // pulls from the top inv row and i cant figure out how to change that
-        let mut sorted_items: Vec<ItemStackUpdate> = vec![ItemStackUpdate::Empty; 36];
-        for index in 0..field_items.len() {
-            sorted_items[index] = field_items[(index+27)%36].clone();
-        }
         entries.push(InventoryEntry::Update {
             0: InventoryList {
                 name: String::from(field.0),
                 width: 0, // idk what this does
-                items: sorted_items
+                items: field_items
             }
         });
     }
@@ -452,11 +445,6 @@ pub async fn add_player(player_data: PlayerInfo, conn: &mut MinetestConnection, 
 
 pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut UnboundedReceiver<Event>, mt_server_state: &mut MTServerState, mc_client: &mut Client) {
     utils::logger("[Minetest] Forwarding ChunkBatch...", 1);
-    // called by a ChunkBatchStart
-    // first let azalea do everything until ChunkBatchFinished,
-    // then move the azalea world over to the client
-    let y_bounds = mt_definitions::get_y_bounds(&mt_server_state.current_dimension);
-    let is_nether = matches!(mt_server_state.current_dimension, Dimensions::Nether);
     loop {
         tokio::select! {
             t = mc_conn.recv() => {

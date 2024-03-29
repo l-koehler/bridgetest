@@ -79,8 +79,8 @@ list[current_player;armor;0.55,0.575;1,4]
 list[current_player;craft;6.7,1.26;2,2]
 list[current_player;craftpreview;10.5,1.9;1,1]
 list[current_player;offhand;5.29,4.25;1,1]
-list[current_player;main;0.55,9.7;9,1]
-list[current_player;main;0.55,5.75;9,3;9]
+list[current_player;main;0.55,9.7;9,1;27]
+list[current_player;main;0.55,5.75;9,3]
 ";
 pub const HOTBAR_SIZE: i32 = 9;
 
