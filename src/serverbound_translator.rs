@@ -4,14 +4,16 @@ use crate::mt_definitions::Dimensions;
 use crate::{clientbound_translator, mt_definitions, utils};
 
 use azalea::container::ContainerClientExt;
+use azalea::inventory::operations::ClickOperation;
 use azalea_client::Client;
+use azalea_client::inventory::InventoryComponent;
 use azalea_core::position::{ChunkPos, ChunkBlockPos};
 use azalea_block::BlockState;
 
 use alloc::boxed::Box;
 use minetest_protocol::MinetestConnection;
-use minetest_protocol::wire::command::{TSChatMessageSpec, PlayerposSpec, InteractSpec, GotblocksSpec, PlayeritemSpec};
-use minetest_protocol::wire::types::{PlayerPos, v3f, v3s16, PointedThing};
+use minetest_protocol::wire::command::{TSChatMessageSpec, PlayerposSpec, InteractSpec, GotblocksSpec, PlayeritemSpec, InventoryActionSpec};
+use minetest_protocol::wire::types::{v3f, v3s16, InventoryAction, PlayerPos, PointedThing, InventoryLocation};
 use minetest_protocol::wire::types;
 use crate::MTServerState;
 
@@ -78,11 +80,11 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
 
 pub fn set_mainhand(mc_client: &mut Client, specbox: Box<PlayeritemSpec>) {
     // hotbar_index: 0..8, first..last slot of hotbar
-    // let PlayeritemSpec { item: hotbar_index } = *specbox;
-    // let mut ecs = mc_client.ecs.lock();
-    // let mut inventory = mc_client.query::<&mut InventoryComponent>(&mut ecs);
-    // inventory.selected_hotbar_slot = hotbar_index as u8;
-    // drop(ecs);
+    let PlayeritemSpec { item: hotbar_index } = *specbox;
+    let mut ecs = mc_client.ecs.lock();
+    let mut inventory = mc_client.query::<&mut InventoryComponent>(&mut ecs);
+    inventory.selected_hotbar_slot = hotbar_index as u8;
+    drop(ecs);
 }
 
 // This function only validates the interaction, then splits by node/object
@@ -104,8 +106,8 @@ async fn interact_object(action: types::InteractAction, object_id: u16, mc_clien
 
 fn stop_digging(mc_client: &mut Client) {
     // HACK: azalea does not seem to have a proper way to do this.
-    // mining a block that is out-of-range should cancel any current mining (and trigger
-    // anticheats)
+    // mining a block that is out-of-range should cancel any current mining
+    // (and trigger anticheats)
     mc_client.start_mining(azalea::BlockPos { x: 0, y: 1000, z: 0 })
 }
 
@@ -163,4 +165,31 @@ pub async fn gotblocks(mc_client: &mut Client, specbox: Box<GotblocksSpec>, mt_c
             None => utils::logger(&format!("[Minetest] Client requested {:?}, but the ECS is not aware of this chunk.", to_send), 2),
         }
     }
+}
+
+// inventory actions and crafting
+pub async fn inventory_generic(conn: &mut MinetestConnection, mc_client: &mut Client, specbox: Box<InventoryActionSpec>, mt_server_state: &mut MTServerState) {
+    let InventoryActionSpec { action } = *specbox;
+    match action {
+        InventoryAction::Drop { count, from_inv, from_list, from_i } => drop_item(count, from_inv, from_list, from_i, mc_client),
+        _ => utils::logger("[Minetest] Client attempted unsupported inventory action", 2),
+    }
+}
+
+pub fn drop_item(count: u16, from_inv: InventoryLocation, from_list: String, from_i: i16, mc_client: &mut Client) {
+    match from_inv {
+        InventoryLocation::NodeMeta { pos } => utils::logger("[Minetest] Attempting to drop items from a chest, not implemented!", 2),
+        InventoryLocation::CurrentPlayer => {
+            for _ in 0..count {
+                println!("drop");
+                let mut ecs = mc_client.ecs.lock();
+                let mut inventory = mc_client.query::<&mut InventoryComponent>(&mut ecs);
+                ClickOperation::Throw(azalea::inventory::operations::ThrowClick::Single {
+                    slot: from_i as u16
+                });
+            }
+        }
+        _ => utils::logger(&format!("[Minetest] Cannot drop from inventory: {:?}", from_inv), 2)
+    }
+
 }
