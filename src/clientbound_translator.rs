@@ -1085,7 +1085,7 @@ pub async fn blockupdate(packet_data: &ClientboundBlockUpdatePacket, conn: &mut 
 
 // block destruction overlay stuff
 pub async fn destruction_overlay(packet_data: &ClientboundBlockDestructionPacket, conn: &mut MinetestConnection) {
-    return; // TODO finish this thing as soon as i figure out how to send overlays
+    // TODO finish this thing as soon as i figure out how to send overlays
     let ClientboundBlockDestructionPacket { id: _, pos, progress } = packet_data;
     let new_overlay = match progress {
         0 => "block-destroy_stage_0.png",

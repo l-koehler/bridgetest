@@ -23,7 +23,7 @@ and pasting them into `~/.local/share/bridgetest/models/` (on linux).
 
 #### Things that are still missing:
 
-* Crafting  
+* Crafting (Recipes are already implemented, waiting for containers)  
 * Attacking/usable combat in general  
 * burn the entire movement thing down and do the same mistakes again  
 
