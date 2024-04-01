@@ -104,6 +104,13 @@ async fn interact_object(action: types::InteractAction, object_id: u16, mc_clien
     }
 }
 
+fn interact_air(action: types::InteractAction, mc_client: &mut Client) {
+    match action {
+        types::InteractAction::Use => mc_client.block_interact(mc_client.position().into()),
+        _ => () // cant place with PointedThing::Nothing
+    }
+}
+
 fn stop_digging(mc_client: &mut Client) {
     // HACK: azalea does not seem to have a proper way to do this.
     // mining a block that is out-of-range should cancel any current mining
