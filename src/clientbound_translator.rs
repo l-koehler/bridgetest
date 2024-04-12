@@ -11,6 +11,7 @@ use crate::utils;
 use crate::mt_definitions;
 use crate::commands;
 use crate::MTServerState;
+use azalea::accept_resource_packs::AcceptResourcePacksPlugin;
 use azalea::inventory::ItemSlot;
 use azalea::BlockPos;
 use azalea_core::delta::PositionDelta8;
@@ -810,7 +811,7 @@ pub async fn entity_setpos(packet_data: &ClientboundMoveEntityPosPacket, conn: &
         position,
         rotation,
         velocity: _,
-        acceleration,
+        acceleration: old_accel,
         entity_kind
     } = entitydata.clone();
 
@@ -820,6 +821,11 @@ pub async fn entity_setpos(packet_data: &ClientboundMoveEntityPosPacket, conn: &
         x: (delta_x / 4096) as f32,
         y: (delta_y / 4096) as f32,
         z: (delta_z / 4096) as f32
+    };
+    let acceleration = v3f {
+        x: velocity.x - old_accel.x,
+        y: velocity.y - old_accel.y,
+        z: velocity.z - old_accel.z
     };
     *entitydata = EntityResendableData {
         position, rotation,
@@ -866,7 +872,7 @@ pub async fn entity_setposrot(packet_data: &ClientboundMoveEntityPosRotPacket, c
         position,
         rotation: old_rotation,
         velocity: _,
-        acceleration,
+        acceleration: old_accel,
         entity_kind,
     } = entitydata.clone();
     let v3f { x: _, y: _, z: old_z_rot } = old_rotation;
@@ -875,11 +881,17 @@ pub async fn entity_setposrot(packet_data: &ClientboundMoveEntityPosRotPacket, c
         y: (delta_y / 4096) as f32,
         z: (delta_z / 4096) as f32
     };
+    let acceleration = v3f {
+        x: velocity.x - old_accel.x,
+        y: velocity.y - old_accel.y,
+        z: velocity.z - old_accel.z
+    };
     *entitydata = EntityResendableData {
         position,
         rotation: v3f { x: *x_rot as f32, y: *y_rot as f32, z: old_z_rot },
         velocity,
-        acceleration, entity_kind
+        acceleration,
+        entity_kind
     };
     send_entity_data(adjusted_id, entitydata, conn).await;
 }
