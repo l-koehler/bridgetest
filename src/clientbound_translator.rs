@@ -17,7 +17,8 @@ use azalea::BlockPos;
 use azalea_core::delta::PositionDelta8;
 use azalea_core::position::ChunkBlockPos;
 use azalea_entity::{EntityDataValue, EntityDataItem};
-use azalea_protocol::packets::game::clientbound_update_recipes_packet::{Recipe, RecipeData, ShapelessRecipe, ShapedRecipe, StoneCutterRecipe, CookingRecipe, SmithingTrimRecipe, SmithingTransformRecipe};
+use azalea_protocol::packets::game::clientbound_update_recipes_packet::{RecipeData, ShapelessRecipe, ShapedRecipe, StoneCutterRecipe, CookingRecipe, SmithingTrimRecipe, SmithingTransformRecipe};
+use azalea_protocol::packets::game::ClientboundGamePacket::Recipe;
 use minetest_protocol::wire::types::ItemStackMetadata;
 use minetest_protocol::wire::types::ObjectProperties;
 use mt_definitions::{HeartDisplay, FoodDisplay, Dimensions};
@@ -1159,7 +1160,7 @@ pub async fn send_container_form(conn: &mut MinetestConnection, container: &(Blo
 pub fn update_recipes(packet_data: &ClientboundUpdateRecipesPacket, mt_server_state: &mut MTServerState) {
     let ClientboundUpdateRecipesPacket { recipes } = packet_data;
     for recipe in recipes {
-        let Recipe { identifier: _, data } = recipe;
+        let data = &recipe.data;
         match data {
             RecipeData::CraftingShapeless(shapeless) => {
                 let ShapelessRecipe { group: _, category: _, ingredients, result } = shapeless;
@@ -1171,14 +1172,14 @@ pub fn update_recipes(packet_data: &ClientboundUpdateRecipesPacket, mt_server_st
                 if ingredients.len() <= 4 {
                     stations.push(CraftingStation::Inventory)
                 }
-                let output: (String, i8);
+                let output: (String, i32);
                 match result {
                     ItemSlot::Empty => output = (String::from(""), 0),
                     ItemSlot::Present(item) => output = (item.kind.to_string(), item.count)
                 }
-                let mut inputs: Vec<Vec<(String, i8)>> = vec![];
+                let mut inputs: Vec<Vec<(String, i32)>> = vec![];
                 for slot in ingredients {
-                    let mut allowed: Vec<(String, i8)> = vec![];
+                    let mut allowed: Vec<(String, i32)> = vec![];
                     for thing in &slot.allowed {
                         match thing {
                             ItemSlot::Empty => (),
@@ -1202,14 +1203,14 @@ pub fn update_recipes(packet_data: &ClientboundUpdateRecipesPacket, mt_server_st
                 if pattern.width <= 2 && pattern.height <= 2 {
                     stations.push(CraftingStation::Inventory)
                 }
-                let output: (String, i8);
+                let output: (String, i32);
                 match result {
                     ItemSlot::Empty => output = (String::from(""), 0),
                     ItemSlot::Present(item) => output = (item.kind.to_string(), item.count)
                 }
-                let mut inputs: Vec<Vec<(String, i8)>> = vec![];
+                let mut inputs: Vec<Vec<(String, i32)>> = vec![];
                 for slot in &pattern.ingredients {
-                    let mut allowed: Vec<(String, i8)> = vec![];
+                    let mut allowed: Vec<(String, i32)> = vec![];
                     for thing in &slot.allowed {
                         match thing {
                             ItemSlot::Empty => allowed.push((String::from(""), 0)),
@@ -1228,12 +1229,12 @@ pub fn update_recipes(packet_data: &ClientboundUpdateRecipesPacket, mt_server_st
             },
             RecipeData::Stonecutting(recipe) => {
                 let StoneCutterRecipe { group: _, ingredient, result } = recipe;
-                let output: (String, i8);
+                let output: (String, i32);
                 match result {
                     ItemSlot::Empty => output = (String::from(""), 0),
                     ItemSlot::Present(item) => output = (item.kind.to_string(), item.count)
                 }
-                let mut input: Vec<(String, i8)> = vec![];
+                let mut input: Vec<(String, i32)> = vec![];
                 for item in &ingredient.allowed {
                     match item {
                         ItemSlot::Empty => (),
@@ -1249,29 +1250,29 @@ pub fn update_recipes(packet_data: &ClientboundUpdateRecipesPacket, mt_server_st
             },
             RecipeData::Smelting(recipe) => {
                 let stations = vec![CraftingStation::Furnace];
-                add_cooking_recipe(stations, recipe, mt_server_state);
+                add_cooking_recipe(stations, &recipe, mt_server_state);
             },
             RecipeData::Blasting(recipe) => {
                 let stations = vec![CraftingStation::BlastFurnace];
-                add_cooking_recipe(stations, recipe, mt_server_state);
+                add_cooking_recipe(stations, &recipe, mt_server_state);
             },
             RecipeData::Smoking(recipe) => {
                 let stations = vec![CraftingStation::Smoker];
-                add_cooking_recipe(stations, recipe, mt_server_state);
+                add_cooking_recipe(stations, &recipe, mt_server_state);
             },
             RecipeData::CampfireCooking(recipe) => {
                 let stations = vec![CraftingStation::Campfire];
-                add_cooking_recipe(stations, recipe, mt_server_state);
+                add_cooking_recipe(stations, &recipe, mt_server_state);
             },
             RecipeData::SmithingTransform(recipe) => {
                 let SmithingTransformRecipe { template, base, addition, result } = recipe;
-                let output: (String, i8);
+                let output: (String, i32);
                 match result {
                     ItemSlot::Empty => output = (String::from(""), 0),
                     ItemSlot::Present(item) => output = (item.kind.to_string(), item.count)
                 }
-                let mut inputs: Vec<Vec<(String, i8)>> = vec![];
-                let mut sub_input: Vec<(String, i8)> = vec![]; // temp value for constructing 3-input list
+                let mut inputs: Vec<Vec<(String, i32)>> = vec![];
+                let mut sub_input: Vec<(String, i32)> = vec![]; // temp value for constructing 3-input list
                 // Input Slot 1: Base
                 for slot in &base.allowed {
                     match slot {
@@ -1312,12 +1313,12 @@ pub fn update_recipes(packet_data: &ClientboundUpdateRecipesPacket, mt_server_st
 
 fn add_cooking_recipe(stations: Vec<CraftingStation>, recipe: &CookingRecipe, mt_server_state: &mut MTServerState) {
     let CookingRecipe { group: _, category: _, ingredient, result, experience: _, cooking_time: _} = recipe;
-    let output: (String, i8);
+    let output: (String, i32);
     match result {
         ItemSlot::Empty => output = (String::from(""), 0),
         ItemSlot::Present(item) => output = (item.kind.to_string(), item.count)
     }
-    let mut input: Vec<(String, i8)> = vec![];
+    let mut input: Vec<(String, i32)> = vec![];
     for item in &ingredient.allowed {
         match item {
             ItemSlot::Empty => (),

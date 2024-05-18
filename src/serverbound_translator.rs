@@ -5,12 +5,15 @@ use crate::{clientbound_translator, mt_definitions, utils};
 
 use azalea::container::ContainerClientExt;
 use azalea::inventory::operations::ClickOperation;
+use azalea::Vec3;
 use azalea_client::Client;
 use azalea_client::inventory::InventoryComponent;
+use azalea_core::direction::Direction;
 use azalea_core::position::{ChunkPos, ChunkBlockPos};
 use azalea_block::BlockState;
 
 use alloc::boxed::Box;
+use azalea_protocol::packets::game::serverbound_use_item_on_packet::BlockHit;
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::wire::command::{TSChatMessageSpec, PlayerposSpec, InteractSpec, GotblocksSpec, PlayeritemSpec, InventoryActionSpec};
 use minetest_protocol::wire::types::{v3f, v3s16, InventoryAction, PlayerPos, PointedThing, InventoryLocation};
@@ -122,7 +125,18 @@ async fn node_rightclick(conn: &mut MinetestConnection, mc_client: &mut Client, 
     let under_key: (i32, i32, i32) = (under.x, under.y, under.z);
     if mt_server_state.container_map.contains_key(&under_key) {
         clientbound_translator::send_container_form(conn, mt_server_state.container_map.get(&under_key).unwrap()).await;
-        mc_client.open_container_at(under).await;
+        println!("open_container_at()");
+        let thingy =mc_client.write_packet(azalea_protocol::packets::game::ServerboundGamePacket::UseItemOn(azalea_protocol::packets::game::serverbound_use_item_on_packet::ServerboundUseItemOnPacket {
+            hand: azalea_protocol::packets::game::serverbound_interact_packet::InteractionHand::MainHand,
+            block_hit: BlockHit {
+                block_pos: under,
+                direction: Direction::Up,
+                location: Vec3::new(-449.5, 72.5, 381.5),
+                inside: false
+            },
+            sequence: 0
+        }));
+        println!("done!! (woah) ({:?})", thingy);
     } else {
         mc_client.block_interact(above)
     }
@@ -198,5 +212,4 @@ pub fn drop_item(count: u16, from_inv: InventoryLocation, from_list: String, fro
         }
         _ => utils::logger(&format!("[Minetest] Cannot drop from inventory: {:?}", from_inv), 2)
     }
-
 }

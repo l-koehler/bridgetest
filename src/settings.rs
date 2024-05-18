@@ -94,4 +94,4 @@ pub const HOTBAR_SIZE: i32 = 9;
  * This is not in the config file yet, mostly due to concerns on
  * how to implement that without performance drop.
  */
-pub const DROP_LOG_BELOW: i8 = 2;
+pub const DROP_LOG_BELOW: i8 = 1;

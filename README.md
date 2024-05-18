@@ -4,7 +4,7 @@
 
 This program is supposed to let a unmodified [Minetest](https://github.com/minetest/minetest) client connect to  
 another (mostly) unmodified Minecraft (Java Edition) server.  
-The Java server must support the 1.20.2 network protocol.  
+The Java Server version is whatever the latest git commit to [azalea](https://github.com/azalea-rs/azalea/commits/main/) needs.  
 It compiles to a standalone executable, which will listen on 127.0.0.1:30000  
 for minetest and then proxy to a minecraft server specified in CONF_DIR/config.txt  
 

@@ -51,8 +51,8 @@ pub struct ServerRecipe {
     // list of slots, each slot may have several allowed items
     // if shaped, must be the entire grid, padded with `vec![(String::from(""), 0)]`
     // if fixed, follows some arbitrary nonsense i made up, look at clientbound_translator::update_recipes
-    pub ingredients: Vec<Vec<(String, i8)>>,
-    pub result: (String, i8),
+    pub ingredients: Vec<Vec<(String, i32)>>,
+    pub result: (String, i32),
     pub shaped: RecipeShape // grid x/y if some, else shapeless creature
 }
 
