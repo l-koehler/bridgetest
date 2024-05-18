@@ -125,18 +125,14 @@ async fn node_rightclick(conn: &mut MinetestConnection, mc_client: &mut Client, 
     let under_key: (i32, i32, i32) = (under.x, under.y, under.z);
     if mt_server_state.container_map.contains_key(&under_key) {
         clientbound_translator::send_container_form(conn, mt_server_state.container_map.get(&under_key).unwrap()).await;
-        println!("open_container_at()");
-        let thingy =mc_client.write_packet(azalea_protocol::packets::game::ServerboundGamePacket::UseItemOn(azalea_protocol::packets::game::serverbound_use_item_on_packet::ServerboundUseItemOnPacket {
-            hand: azalea_protocol::packets::game::serverbound_interact_packet::InteractionHand::MainHand,
-            block_hit: BlockHit {
-                block_pos: under,
-                direction: Direction::Up,
-                location: Vec3::new(-449.5, 72.5, 381.5),
-                inside: false
-            },
-            sequence: 0
-        }));
-        println!("done!! (woah) ({:?})", thingy);
+        let diff =
+            ((under.x as f64) - mc_client.position().x).abs() +
+            ((under.y as f64) - mc_client.position().y).abs() +
+            ((under.z as f64) - mc_client.position().z).abs();
+        println!("Difference between client and block: {}", diff);
+        println!("Calling client.open_container_at()");
+        mc_client.open_container_at(under).await;
+        panic!("done?");
     } else {
         mc_client.block_interact(above)
     }
