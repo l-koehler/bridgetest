@@ -118,7 +118,11 @@ pub async fn on_minecraft_tick(mt_conn: &mut MinetestConnection, mc_client: &Cli
                 to_update.push(("armor", serverside_inventory.armor.to_vec()))
             }
             if serverside_inventory.inventory.as_slice() != mt_server_state.mt_clientside_player_inv.inventory.as_slice() {
-                to_update.push(("main", serverside_inventory.inventory.to_vec()))
+                // we need to shift the inventory that is sent to the client
+                // because the hotbar for some reason isnt the first (or even last!) row in the sent data
+                let mut sent_data = serverside_inventory.inventory.to_vec();
+                sent_data.rotate_right(9);
+                to_update.push(("main", sent_data));
             }
             if serverside_inventory.offhand != mt_server_state.mt_clientside_player_inv.offhand {
                 to_update.push(("offhand", vec![serverside_inventory.offhand.clone()]))
