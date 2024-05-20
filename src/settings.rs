@@ -63,12 +63,8 @@ pub const HS_NAMES: [&str; 26] = [
 "John_Crocker",
 "Jade_English"];
 
-// formspecs (basically UI definitions)
-pub const FORMSPEC_PREPEND: &str = "\
-";
-
 // list[current_player; _NAME_ ; x,y ; size_x,size_y;]
-pub const ALL_INV_FIELDS: [&str; 5] = ["main", "armor", "offhand", "craft", "craftpreview"];
+pub const ALL_INV_FIELDS: [&str; 6] = ["main", "armor", "offhand", "craft", "craftpreview", "container"]; // container is dynamic in size
 pub const PLAYER_INV_FORMSPEC: &str = "\
 formspec_version[7]
 size[12,11.3]
@@ -81,6 +77,7 @@ list[current_player;craftpreview;10.5,1.9;1,1]
 list[current_player;offhand;5.29,4.25;1,1]
 list[current_player;main;0.55,9.7;9,1]
 list[current_player;main;0.55,5.75;9,3;9]
+list[current_player;container;0,0;0,0]
 ";
 pub const HOTBAR_SIZE: i32 = 9;
 

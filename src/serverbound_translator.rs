@@ -5,7 +5,7 @@ use crate::{clientbound_translator, mt_definitions, utils};
 
 use azalea::container::ContainerClientExt;
 use azalea::inventory::operations::ClickOperation;
-use azalea::Vec3;
+use azalea::{BlockPos, Vec3};
 use azalea_client::Client;
 use azalea_client::inventory::InventoryComponent;
 use azalea_core::direction::Direction;
@@ -13,7 +13,6 @@ use azalea_core::position::{ChunkPos, ChunkBlockPos};
 use azalea_block::BlockState;
 
 use alloc::boxed::Box;
-use azalea_protocol::packets::game::serverbound_use_item_on_packet::BlockHit;
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::wire::command::{TSChatMessageSpec, PlayerposSpec, InteractSpec, GotblocksSpec, PlayeritemSpec, InventoryActionSpec};
 use minetest_protocol::wire::types::{v3f, v3s16, InventoryAction, PlayerPos, PointedThing, InventoryLocation};
@@ -124,15 +123,12 @@ fn stop_digging(mc_client: &mut Client) {
 async fn node_rightclick(conn: &mut MinetestConnection, mc_client: &mut Client, under: azalea::BlockPos, above: azalea::BlockPos, mt_server_state: &mut MTServerState) {
     let under_key: (i32, i32, i32) = (under.x, under.y, under.z);
     if mt_server_state.container_map.contains_key(&under_key) {
-        clientbound_translator::send_container_form(conn, mt_server_state.container_map.get(&under_key).unwrap()).await;
         let diff =
             ((under.x as f64) - mc_client.position().x).abs() +
             ((under.y as f64) - mc_client.position().y).abs() +
             ((under.z as f64) - mc_client.position().z).abs();
-        println!("Difference between client and block: {}", diff);
-        println!("Calling client.open_container_at()");
-        mc_client.open_container_at(under).await;
-        panic!("done?");
+        utils::logger(&format!("[Minetest] Attempting to open Chest at {}, Client is {} blocks away.", under, diff), 1);
+        mc_client.block_interact(under)
     } else {
         mc_client.block_interact(above)
     }

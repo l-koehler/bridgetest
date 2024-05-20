@@ -11,20 +11,18 @@ use crate::utils;
 use crate::mt_definitions;
 use crate::commands;
 use crate::MTServerState;
-use azalea::accept_resource_packs::AcceptResourcePacksPlugin;
 use azalea::inventory::ItemSlot;
 use azalea::BlockPos;
 use azalea_core::delta::PositionDelta8;
 use azalea_core::position::ChunkBlockPos;
 use azalea_entity::{EntityDataValue, EntityDataItem};
 use azalea_protocol::packets::game::clientbound_update_recipes_packet::{RecipeData, ShapelessRecipe, ShapedRecipe, StoneCutterRecipe, CookingRecipe, SmithingTrimRecipe, SmithingTransformRecipe};
-use azalea_protocol::packets::game::ClientboundGamePacket::Recipe;
 use minetest_protocol::wire::types::ItemStackMetadata;
 use minetest_protocol::wire::types::ObjectProperties;
 use mt_definitions::{HeartDisplay, FoodDisplay, Dimensions};
 use minetest_protocol::peer::peer::PeerError;
 
-use azalea_registry::{EntityKind, BlockEntityKind};
+use azalea_registry::{EntityKind, MenuKind};
 use minetest_protocol::wire::command::ToClientCommand;
 use minetest_protocol::wire::types::HudStat;
 use minetest_protocol::MinetestConnection;
@@ -57,6 +55,7 @@ use azalea_protocol::packets::game::{ClientboundGamePacket,
     clientbound_container_set_content_packet::ClientboundContainerSetContentPacket,
     clientbound_block_entity_data_packet::ClientboundBlockEntityDataPacket,
     clientbound_update_recipes_packet::ClientboundUpdateRecipesPacket,
+    clientbound_open_screen_packet::ClientboundOpenScreenPacket,
 };
 
 use azalea_protocol::packets::common::CommonPlayerSpawnInfo;
@@ -552,15 +551,8 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
             chunk_pos.y,
             chunk_pos.z as i32 + ((chunk_z_pos*16) as i32)
         );
-        let is_double_chest: bool;
-        if mc_chunk.get(&chunk_pos, y_bounds.0.into()).is_some() {
-            let node_state_id = mc_chunk.get(&chunk_pos, y_bounds.0.into()).unwrap();
-            is_double_chest = mt_server_state.double_chest_state_ids.contains(&node_state_id)
-        } else {
-            is_double_chest = false
-        }
-        utils::logger(&format!("[Minecraft] Registring Block Entity at {:?}. Is double chest: {}", pos, is_double_chest), 1);
-        if mt_server_state.container_map.insert(pos, (block_entity.kind, is_double_chest)) != None {
+        utils::logger(&format!("[Minecraft] Registring Block Entity at {:?}", pos), 1);
+        if mt_server_state.container_map.insert(pos, block_entity.kind) != None {
             utils::logger(&format!("[Minecraft] Overwriting Block Entity at {:?}", pos), 2);
         }
     }
@@ -1129,31 +1121,30 @@ pub async fn destruction_overlay(packet_data: &ClientboundBlockDestructionPacket
 // container stuff
 pub async fn set_container_content(packet_data: &ClientboundContainerSetContentPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
     // https://wiki.vg/Protocol#Set_Container_Content
-    let ClientboundContainerSetContentPacket { container_id, state_id: _, items, carried_item } = packet_data;
-    println!("{:?}", container_id);
-    if *container_id !=0{panic!()}
-    // container_id: 0 for inventory, anything else for
-    // FIXME: assumption the "current-container-form"
-    
+    let ClientboundContainerSetContentPacket { container_id: _, state_id: _, items, carried_item } = packet_data;
+    // TODO
 }
 
-pub async fn block_entity_data(packet_data: &ClientboundBlockEntityDataPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
-    let ClientboundBlockEntityDataPacket { pos, block_entity_type, tag } = packet_data;
-    if mt_server_state.container_map.insert((pos.x, pos.y, pos.z), (*block_entity_type, false)) != None {
-        utils::logger(&format!("[Minecraft] Overwriting Block Entity at {:?}", pos), 2);
-    }
-    // TODO: Add the tag to the block metadata if it is relevant to the client
-}
-
-pub async fn send_container_form(conn: &mut MinetestConnection, container: &(BlockEntityKind, bool)) {
+pub async fn open_screen(packet_data: &ClientboundOpenScreenPacket, conn: &mut MinetestConnection) {
+    let ClientboundOpenScreenPacket { container_id: _, menu_type, title } = packet_data;
+    let form_spec = mt_definitions::get_container_formspec(menu_type, &title.to_string());
     utils::logger("[Minetest] Showing Formspec for opened container", 1);
     let formspec_command = ToClientCommand::ShowFormspec(
         Box::new(wire::command::ShowFormspecSpec {
-            form_spec: mt_definitions::get_container_formspec(container),
+            form_spec,
             form_name: String::from("current-container-form")
         })
     );
     let _ = conn.send(formspec_command).await;
+}
+
+
+pub async fn block_entity_data(packet_data: &ClientboundBlockEntityDataPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+    let ClientboundBlockEntityDataPacket { pos, block_entity_type, tag: _ } = packet_data;
+    if mt_server_state.container_map.insert((pos.x, pos.y, pos.z), *block_entity_type) != None {
+        utils::logger(&format!("[Minecraft] Overwriting Block Entity at {:?}", pos), 2);
+    }
+    // TODO: Add the tag to the block metadata if it is relevant to the client
 }
 
 // recipe stuff (recipes are handled purely on the server side)

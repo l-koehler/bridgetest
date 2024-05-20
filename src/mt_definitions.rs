@@ -2,6 +2,7 @@
 // the functions are actually more like consts but
 // the "String" type cant be a constant so :shrug:
 
+use azalea::inventory::Generic3x3MenuLocation;
 use minetest_protocol::wire::command::{MediaSpec, ToClientCommand};
 use minetest_protocol::wire::command;
 use minetest_protocol::wire::types::{ v2f, v3f, v2s32, AlignStyle, BlockPos, ContentFeatures, DrawType, Inventory, ItemAlias, ItemDef, ItemType, ItemdefList, MediaAnnouncement, MediaFileData, NodeBox, NodeDefManager, NodeMetadata, Option16, SColor, SimpleSoundSpec, TileAnimationParams, TileDef, InventoryEntry, InventoryList, ItemStackUpdate}; // AAAAAA
@@ -19,10 +20,8 @@ use crate::settings;
 use sha1::{Sha1, Digest};
 use base64::{Engine as _, engine::general_purpose};
 use serde_json;
-use serde_json::json;
 
-use azalea_registry::{self, Block, EntityKind, BlockEntityKind};
-use azalea_block::BlockState;
+use azalea_registry::{self, Block, EntityKind, BlockEntityKind, MenuKind};
 
 // all crafting stations (where a clickable preview is shown)
 #[derive(Clone, Debug)]
@@ -113,24 +112,40 @@ pub const fn get_y_bounds(dimension: &Dimensions) -> (i16, i16) {
     }
 }
 
-pub fn get_container_formspec(container: &(BlockEntityKind, bool)) -> String {
-    // double-chest formspec handled separately
-    // they have BlockEntityKind::Chest instead of something unique idk
-    if container.1 {
-        // use two lists because minetest refuses to display bigger than 9*4 for some reason
-        return String::from("size[9,6]list[current_player;main;0,0;9,3;]list[current_player;main;0,3;9,3;]")
+pub fn get_container_formspec(container: &MenuKind, title: &str) -> String {
+    // TODO: Sanitize the title, currently someone could name a chest "hi]list[...]" to break a lot of stuff.
+    match container {
+        MenuKind::Generic9x3 => format!(
+"size[12,11.3]\
+background[0,0;17.45,17.45;container-shulker_box.png]
+label[0,0;{}]\
+style_type[list;spacing=0.135,0.135;size=1.09,1.09;border=false]\
+listcolors[red;green]\
+list[current_player;container;0,0;9,3]\
+list[current_player;main;0.55,9.7;9,1]\
+list[current_player;main;0.55,5.75;9,3;9]",
+            title),
+        MenuKind::Generic9x6 => format!(
+"size[9,6]\
+label[0,0;{}]\
+list[current_player;main;0,0;9,6;]",
+            title),
+        MenuKind::Generic3x3 => format!(
+"size[3,3]\
+label[0,0;{}]\
+list[current_player;main;0,0;3,3;]",
+            title),
+        MenuKind::Crafter3x3 => format!(
+"size[4.5,3]\
+label[0,0;{}]\
+list[current_player;main;0,0;3,3;]\
+list[current_player;main;3.5,1;1,1;]",
+            title),
+        MenuKind::BlastFurnace => format!("size[3,2]label[0,0;{}]list[current_player;main;0,0;1,2;]list[current_player;main;2,0.5;1,1;]", title),
+        MenuKind::Furnace => format!("size[3,2]label[0,0;{}]list[current_player;main;0,0;1,2;]list[current_player;main;2,0.5;1,1;]", title),
+        MenuKind::Smoker => format!("size[3,2]label[0,0;{}]list[current_player;main;0,0;1,2;]list[current_player;main;2,0.5;1,1;]", title),
+        _ => format!("size[5,1]label[0,0;Error!\nAs-of-now unsupported MenuKind,\nUI cannot be shown!\nMenu Title: {}]", title),
     }
-    String::from(match container.0 {
-        // chest-like (9*3 grid)
-        BlockEntityKind::Chest        => "size[9,3]list[current_player;main;0,0;9,3;]",
-        BlockEntityKind::TrappedChest => "size[9,3]list[current_player;main;0,0;9,3;]",
-        BlockEntityKind::Barrel       => "size[9,3]list[current_player;main;0,0;9,3;]",
-        // furnace-like (2*1 + 1*1 grids)
-        BlockEntityKind::Furnace      => "size[3,2]list[current_player;main;0,0;1,2;]list[current_player;main;2,0.5;1,1;]",
-        BlockEntityKind::Smoker       => "size[3,2]list[current_player;main;0,0;1,2;]list[current_player;main;2,0.5;1,1;]",
-        BlockEntityKind::BlastFurnace => "size[3,2]list[current_player;main;0,0;1,2;]list[current_player;main;2,0.5;1,1;]",
-        _ => "size[5,1]label[0,0;Error!\nBlockEntityKind has no formspec,\nUI cannot be shown!]"
-    })
 }
 
 pub fn set_hotbar_size() -> ToClientCommand {
@@ -792,17 +807,6 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
         }
         if state.get("propagatesSkylightDown").unwrap().as_bool().unwrap() {
             sunlight_propagates = 15;
-        }
-    }
-    // add all double chest state IDs to a vector, we need that for UI stuff later
-    if block.get("properties").unwrap().as_array().unwrap().contains(&json!("CHEST_TYPE")) {
-        // block has the option to be a double chest
-        for state in block.get("states").unwrap().as_array().unwrap() {
-            if state.get("properties").unwrap().as_object().unwrap().get("type").unwrap().as_str().unwrap() != "SINGLE" {
-                let state_id = state.get("stateId").unwrap().as_u64().unwrap() as u32;
-                assert!(BlockState::is_valid_state(state_id), "Azalea cannot parse BlockState of chest, check supplied arcticdata_blocks.json version! BlockState: {}", state_id);
-                mt_server_state.double_chest_state_ids.push(BlockState::try_from(state_id).unwrap());
-            }
         }
     }
     
