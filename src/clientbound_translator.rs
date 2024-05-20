@@ -1125,7 +1125,7 @@ pub async fn set_container_content(packet_data: &ClientboundContainerSetContentP
     // TODO
 }
 
-pub async fn open_screen(packet_data: &ClientboundOpenScreenPacket, conn: &mut MinetestConnection) {
+pub async fn open_screen(packet_data: &ClientboundOpenScreenPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
     let ClientboundOpenScreenPacket { container_id: _, menu_type, title } = packet_data;
     let form_spec = mt_definitions::get_container_formspec(menu_type, &title.to_string());
     utils::logger("[Minetest] Showing Formspec for opened container", 1);
@@ -1136,6 +1136,34 @@ pub async fn open_screen(packet_data: &ClientboundOpenScreenPacket, conn: &mut M
         })
     );
     let _ = conn.send(formspec_command).await;
+    // Update container size
+    mt_server_state.container_size = match menu_type {
+        MenuKind::Generic9x1 => 9,
+        MenuKind::Generic9x2 => 18,
+        MenuKind::Generic9x3 => 27,
+        MenuKind::Generic9x4 => 36,
+        MenuKind::Generic9x5 => 45,
+        MenuKind::Generic9x6 => 54,
+        MenuKind::Generic3x3 => 9,
+        MenuKind::Crafter3x3 => 10,
+        MenuKind::Anvil => 3,
+        MenuKind::Beacon => 1,
+        MenuKind::BlastFurnace => 3,
+        MenuKind::BrewingStand => 5,
+        MenuKind::Crafting => 10,
+        MenuKind::Enchantment => 2,
+        MenuKind::Furnace => 3,
+        MenuKind::Grindstone => 2,
+        MenuKind::Hopper => 5,
+        MenuKind::Lectern => 1,
+        MenuKind::Loom => 4,
+        MenuKind::Merchant => 3,
+        MenuKind::ShulkerBox => 36,
+        MenuKind::Smithing => 4,
+        MenuKind::Smoker => 3,
+        MenuKind::CartographyTable => 3,
+        MenuKind::Stonecutter => 2
+    }
 }
 
 

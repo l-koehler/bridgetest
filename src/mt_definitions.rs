@@ -121,7 +121,7 @@ background[0,0;17.45,17.45;container-shulker_box.png]
 label[0,0;{}]\
 style_type[list;spacing=0.135,0.135;size=1.09,1.09;border=false]\
 listcolors[red;green]\
-list[current_player;container;0,0;9,3]\
+list[current_player;container;0.55,1;9,3]\
 list[current_player;main;0.55,9.7;9,1]\
 list[current_player;main;0.55,5.75;9,3;9]",
             title),

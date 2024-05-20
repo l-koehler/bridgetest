@@ -74,6 +74,7 @@ pub struct MTServerState {
     // used for looking up wheter a block should open a right-click menu on click.
     // only contains positions that have some block entity
     container_map: HashMap<(i32, i32, i32), BlockEntityKind>,
+    container_size: u16,
     
     ticks_since_sync: u32,
     sent_media: Vec<String>, // all the media things we sent, by names like "item-fish.png"
@@ -106,6 +107,7 @@ async fn start_client_handler(settings: Config) {
         mt_clientside_rot: (0.0, 0.0),
         entity_id_pos_map: IntMap::new(),
         container_map: HashMap::new(),
+        container_size: 0,
         ticks_since_sync: 0,
         sent_media: Vec::new(),
         recipes: Vec::new()
