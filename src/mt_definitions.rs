@@ -116,14 +116,16 @@ pub fn get_container_formspec(container: &MenuKind, title: &str) -> String {
     // TODO: Sanitize the title, currently someone could name a chest "hi]list[...]" to break a lot of stuff.
     match container {
         MenuKind::Generic9x3 => format!(
-"size[12,11.3]\
-background[0,0;17.45,17.45;container-shulker_box.png]
-label[0,0;{}]\
+"formspec_version[7]\
+size[11.5,11]\
+background[0,0;17.5,17.5;container-shulker_box.png]\
 style_type[list;spacing=0.135,0.135;size=1.09,1.09;border=false]\
-listcolors[red;green]\
-list[current_player;container;0.55,1;9,3]\
+listcolors[#0000;#0002]\
+list[current_player;container;0.55,1.3;9,3]\
 list[current_player;main;0.55,9.7;9,1]\
-list[current_player;main;0.55,5.75;9,3;9]",
+list[current_player;main;0.55,5.75;9,3;9]\
+label[0.55,0.5;{}]\
+",
             title),
         MenuKind::Generic9x6 => format!(
 "size[9,6]\

@@ -103,6 +103,7 @@ pub async fn on_minecraft_tick(mt_conn: &mut MinetestConnection, mc_client: &Cli
         mt_server_state.ticks_since_sync += 1;
     };
     // update the MT clients inventory if it changed
+    // for stupid reasons, we don't use packets for this
     let mut to_update: Vec<(&str,Vec<inventory::ItemSlot>)> = vec![];
     match mc_client.menu() {
         inventory::Menu::Player(serverside_inventory) => {
@@ -122,16 +123,48 @@ pub async fn on_minecraft_tick(mt_conn: &mut MinetestConnection, mc_client: &Cli
             if serverside_inventory.offhand != mt_server_state.mt_clientside_player_inv.offhand {
                 to_update.push(("offhand", vec![serverside_inventory.offhand.clone()]))
             }
-            if !to_update.is_empty() {
-                clientbound_translator::update_inventory(mt_conn, to_update).await;
-                mt_server_state.mt_clientside_player_inv = serverside_inventory;
-            }
+            mt_server_state.mt_clientside_player_inv = serverside_inventory;
+        },
+        // contents: SlotList<n>
+        // different n per menu type, so incompatible types
+        inventory::Menu::Generic9x1 { contents, player } => {
+            to_update.push(("container", contents.to_vec()));
+            to_update.push(("main", player.to_vec()))
+        },
+        inventory::Menu::Generic9x2 { contents, player } => {
+            to_update.push(("container", contents.to_vec()));
+            to_update.push(("main", player.to_vec()))
+        },
+        inventory::Menu::Generic9x3 { contents, player } => {
+            to_update.push(("container", contents.to_vec()));
+            to_update.push(("main", player.to_vec()))
+        },
+        inventory::Menu::Generic9x4 { contents, player } => {
+            to_update.push(("container", contents.to_vec()));
+            to_update.push(("main", player.to_vec()))
+        },
+        inventory::Menu::Generic9x5 { contents, player } => {
+            to_update.push(("container", contents.to_vec()));
+            to_update.push(("main", player.to_vec()))
+        },
+        inventory::Menu::Generic9x6 { contents, player } => {
+            to_update.push(("container", contents.to_vec()));
+            to_update.push(("main", player.to_vec()))
+        },
+        inventory::Menu::Generic3x3 { contents, player } => {
+            to_update.push(("container", contents.to_vec()));
+            to_update.push(("main", player.to_vec()))
+        },
+        inventory::Menu::Crafter3x3 { contents, player } => {
+            to_update.push(("container", contents.to_vec()));
+            to_update.push(("main", player.to_vec()))
         },
         _ => {
             to_update.push(("container", vec![inventory::ItemSlot::Empty; mt_server_state.container_size.into()]));
-            clientbound_translator::update_inventory(mt_conn, to_update).await;
         }
-        //_ => utils::logger(&format!("[Minecraft] Cannot sync inventory: other inventory blocking ({:?})", mc_client.menu()), 2) // some menu is open, TODO update that
+    }
+    if !to_update.is_empty() {
+        clientbound_translator::update_inventory(mt_conn, to_update).await;
     }
 }
 
