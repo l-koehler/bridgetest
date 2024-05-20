@@ -127,6 +127,7 @@ pub async fn on_minecraft_tick(mt_conn: &mut MinetestConnection, mc_client: &Cli
         },
         // contents: SlotList<n>
         // different n per menu type, so incompatible types
+        // my apologies to anyone having to read this
         inventory::Menu::Generic9x1 { contents, player } => {
             to_update.push(("container", contents.to_vec()));
             to_update.push(("main", player.to_vec()))
@@ -159,8 +160,76 @@ pub async fn on_minecraft_tick(mt_conn: &mut MinetestConnection, mc_client: &Cli
             to_update.push(("container", contents.to_vec()));
             to_update.push(("main", player.to_vec()))
         },
-        _ => {
-            to_update.push(("container", vec![inventory::ItemSlot::Empty; mt_server_state.container_size.into()]));
+        inventory::Menu::Anvil { first, second, result, player } => {
+            to_update.push(("container", vec![first, second, result]));
+            to_update.push(("main", player.to_vec()))
+        },
+        inventory::Menu::Beacon { payment, player } => {
+            to_update.push(("container", vec![payment]));
+            to_update.push(("main", player.to_vec()))
+        },
+        inventory::Menu::BlastFurnace { ingredient, fuel, result, player } => {
+            to_update.push(("container", vec![ingredient, fuel, result]));
+            to_update.push(("main", player.to_vec()))
+        },
+        inventory::Menu::BrewingStand { bottles, ingredient, fuel, player } => {
+            let item_vec = [bottles.to_vec(), vec![ingredient, fuel]].concat();
+            to_update.push(("container", item_vec));
+            to_update.push(("main", player.to_vec()))
+        },
+        inventory::Menu::Crafting { result, grid, player } => {
+            let item_vec = [grid.to_vec(), vec![result]].concat();
+            to_update.push(("container", item_vec));
+            to_update.push(("main", player.to_vec()))
+        },
+        inventory::Menu::Enchantment { item, lapis, player } => {
+            to_update.push(("container", vec![item, lapis]));
+            to_update.push(("main", player.to_vec()))
+        },
+        inventory::Menu::Grindstone { input, additional, result, player } => {
+            to_update.push(("container", vec![input, additional, result]));
+            to_update.push(("main", player.to_vec()))
+        },
+        inventory::Menu::Hopper { contents, player } => {
+            to_update.push(("container", contents.to_vec()));
+            to_update.push(("main", player.to_vec()))
+        },
+        inventory::Menu::Lectern { book, player } => {
+            to_update.push(("container", vec![book]));
+            to_update.push(("main", player.to_vec()))
+        },
+        inventory::Menu::Loom { banner, dye, pattern, result, player } => {
+            to_update.push(("container", vec![banner, dye, pattern, result]));
+            to_update.push(("main", player.to_vec()))
+        },
+        inventory::Menu::Merchant { payments, result, player } => {
+            let item_vec = [payments.to_vec(), vec![result]].concat();
+            to_update.push(("container", item_vec));
+            to_update.push(("main", player.to_vec()))
+        },
+        inventory::Menu::ShulkerBox { contents, player } => {
+            to_update.push(("container", contents.to_vec()));
+            to_update.push(("main", player.to_vec()))
+        },
+        inventory::Menu::Smithing { template, base, additional, result, player } => {
+            to_update.push(("container", vec![template, base, additional, result]));
+            to_update.push(("main", player.to_vec()))
+        },
+        inventory::Menu::Smoker { ingredient, fuel, result, player } => {
+            to_update.push(("container", vec![ingredient, fuel, result]));
+            to_update.push(("main", player.to_vec()))
+        },
+        inventory::Menu::CartographyTable { map, additional, result, player } => {
+            to_update.push(("container", vec![map, additional, result]));
+            to_update.push(("main", player.to_vec()))
+        },
+        inventory::Menu::Stonecutter { input, result, player } => {
+            to_update.push(("container", vec![input, result]));
+            to_update.push(("main", player.to_vec()))
+        },
+        inventory::Menu::Furnace { ingredient, fuel, result, player } => {
+            to_update.push(("container", vec![ingredient, fuel, result]));
+            to_update.push(("main", player.to_vec()))
         }
     }
     if !to_update.is_empty() {
