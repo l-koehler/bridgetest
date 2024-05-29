@@ -3,14 +3,12 @@ use crate::mt_definitions::Dimensions;
 // and send it to the MC server.
 use crate::{clientbound_translator, mt_definitions, utils};
 
-use azalea::container::ContainerClientExt;
-use azalea::inventory::operations::ClickOperation;
-use azalea::{BlockPos, Vec3};
+use azalea::inventory::operations::{ClickOperation, ThrowClick};
 use azalea_client::Client;
 use azalea_client::inventory::InventoryComponent;
-use azalea_core::direction::Direction;
 use azalea_core::position::{ChunkPos, ChunkBlockPos};
 use azalea_block::BlockState;
+use azalea::container::ContainerClientExt;
 
 use alloc::boxed::Box;
 use minetest_protocol::MinetestConnection;
@@ -185,34 +183,76 @@ pub async fn inventory_generic(conn: &mut MinetestConnection, mc_client: &mut Cl
     let InventoryActionSpec { action } = *specbox;
     match action {
         InventoryAction::Drop { count, from_inv, from_list, from_i }
-            => drop_item(count, from_inv, from_list, from_i, mc_client),
+            => drop_item(count, from_list, from_i, mc_client),
         InventoryAction::Move { count, from_inv, from_list, from_i, to_inv, to_list, to_i } if matches!(from_inv, InventoryLocation::CurrentPlayer)
             => move_item(count, from_inv, from_list, from_i, to_inv, to_list, to_i, mc_client),
         _ => utils::logger(&format!("[Minetest] Client attempted unsupported inventory action: {:?}", action), 2),
     }
 }
 
-pub fn drop_item(count: u16, from_inv: InventoryLocation, from_list: String, from_i: i16, mc_client: &mut Client) {
-    match from_inv {
-        InventoryLocation::NodeMeta { pos } => utils::logger("[Minetest] Attempting to drop items from a chest, not implemented!", 2),
-        InventoryLocation::CurrentPlayer => {
-            let mut ecs = mc_client.ecs.lock();
-            let mut inventory = mc_client.query::<&mut InventoryComponent>(&mut ecs);
-            while count >= 64 {
-                ClickOperation::Throw(azalea::inventory::operations::ThrowClick::All {
-                    slot: from_i as u16
-                });
+pub fn drop_item(count: u16, from_list: String, from_i: i16, mc_client: &mut Client) {
+    match from_list.as_str() {
+        "container" => {
+            let maybe_handle = mc_client.get_open_container();
+            if maybe_handle.is_none() {
+                utils::logger("[Minetest] Client attempted to drop items from a container while no container was opened", 2);
+                return;
             }
-            while count > 0 {
-                ClickOperation::Throw(azalea::inventory::operations::ThrowClick::Single {
-                    slot: from_i as u16
-                });
+            let handle = maybe_handle.unwrap();
+            if handle.contents().is_none() {
+                utils::logger("[Minetest] Client attempted to drop items from a container without contents", 2);
+                return;
             }
+            if handle.contents().unwrap()[from_i as usize].count() <= count.into() {
+                handle.click(ClickOperation::Throw(ThrowClick::All { slot: from_i as u16 }))
+            } else {
+                while handle.contents().unwrap()[from_i as usize].count() > 0 {
+                    handle.click(ClickOperation::Throw(ThrowClick::Single { slot: from_i as u16 }))
+                }
+            }
+        },
+        "main" | "armor" | "offhand" | "craft" | "craftpreview" => {
+            let maybe_handle = mc_client.open_inventory();
+            if maybe_handle.is_none() {
+                utils::logger("[Minetest] Client attempted to drop items from the inventory while a container was opened", 2);
+                return;
+            }
+            let handle = maybe_handle.unwrap();
+            // see https://wiki.vg/File:Inventory-slots.png for full indexing of the player inv
+            let u_from_i = from_i as u16;
+            let slot_index = match from_list.as_str() {
+                "armor" => u_from_i + 5,
+                "crafting" => u_from_i + 1,
+                "craftpreview" => 0,
+                "offhand" => 45,
+                "main" => {
+                    match u_from_i {
+                        0..=8   => (u_from_i-9 % 36) + 36,
+                        9..=17  => (u_from_i-9 % 36) + 18,
+                        18..=26 => u_from_i-9 % 36,
+                        27..    => (u_from_i-9 % 36) - 17,
+                    }
+                }
+                _ => unreachable!()
+            };
+            if handle.contents().unwrap()[slot_index as usize].count() <= count.into() {
+                handle.click(ClickOperation::Throw(ThrowClick::All { slot: slot_index }))
+            } else {
+                while handle.contents().unwrap()[slot_index as usize].count() > 0 {
+                    handle.click(ClickOperation::Throw(ThrowClick::Single { slot: slot_index }))
+                }
+            }
+
         }
-        _ => utils::logger(&format!("[Minetest] Cannot drop from inventory: {:?}", from_inv), 2)
+        _ => unreachable!()
     }
 }
 
 pub fn move_item(count: u16, from_inv: InventoryLocation, from_list: String, from_i: i16, to_inv: InventoryLocation, to_list: String, to_i: Option<i16>, mc_client: &mut Client) {
-
+    let mut ecs = mc_client.ecs.lock();
+    let mut inventory = mc_client.query::<&mut InventoryComponent>(&mut ecs);
+    let mut menu = inventory.menu_mut();
+    match (from_list.as_str(), to_list.as_str()) {
+        _ => (),
+    }
 }

@@ -121,6 +121,8 @@ pub async fn on_minecraft_tick(mt_conn: &mut MinetestConnection, mc_client: &Cli
                 // we need to shift the inventory that is sent to the client
                 // because the hotbar for some reason isnt the first (or even last!) row in the sent data
                 let mut sent_data = serverside_inventory.inventory.to_vec();
+                // if we ever use indexes on "main" that were sent by the minetest client,
+                // we first need to fix these: serverside = (clientside - 9) % 36
                 sent_data.rotate_right(9);
                 to_update.push(("main", sent_data));
             }

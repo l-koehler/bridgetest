@@ -2,7 +2,6 @@
 // the functions are actually more like consts but
 // the "String" type cant be a constant so :shrug:
 
-use azalea::inventory::Generic3x3MenuLocation;
 use minetest_protocol::wire::command::{MediaSpec, ToClientCommand};
 use minetest_protocol::wire::command;
 use minetest_protocol::wire::types::{ v2f, v3f, v2s32, AlignStyle, BlockPos, ContentFeatures, DrawType, Inventory, ItemAlias, ItemDef, ItemType, ItemdefList, MediaAnnouncement, MediaFileData, NodeBox, NodeDefManager, NodeMetadata, Option16, SColor, SimpleSoundSpec, TileAnimationParams, TileDef, InventoryEntry, InventoryList, ItemStackUpdate}; // AAAAAA
@@ -21,7 +20,7 @@ use sha1::{Sha1, Digest};
 use base64::{Engine as _, engine::general_purpose};
 use serde_json;
 
-use azalea_registry::{self, Block, EntityKind, BlockEntityKind, MenuKind};
+use azalea_registry::{self, Block, EntityKind, MenuKind};
 
 // all crafting stations (where a clickable preview is shown)
 #[derive(Clone, Debug)]

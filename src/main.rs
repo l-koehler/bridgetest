@@ -10,11 +10,11 @@ mod clientbound_translator;
 mod serverbound_translator;
 mod mt_definitions;
 
+use azalea::container::ContainerHandle;
 use minetest_protocol::MinetestServer;
 use mt_definitions::Dimensions;
 use azalea_client::inventory;
 use azalea_registry::BlockEntityKind;
-use azalea_block::BlockState;
 
 use parking_lot::deadlock;
 use std::thread;
@@ -73,8 +73,10 @@ pub struct MTServerState {
     entity_id_pos_map: IntMap<mt_definitions::EntityResendableData>,
     // used for looking up wheter a block should open a right-click menu on click.
     // only contains positions that have some block entity
+    // to be exact, when the user clicks on a block _face_ (touching two _blocks_), we need to send the server
+    // _block_ coordinates somehow. TODO: maybe send the coordinates of the non-air block instead,
+    // falling back to sending these of the block closer to the player if needed.
     container_map: HashMap<(i32, i32, i32), BlockEntityKind>,
-    container_size: u16,
     
     ticks_since_sync: u32,
     sent_media: Vec<String>, // all the media things we sent, by names like "item-fish.png"
@@ -107,7 +109,6 @@ async fn start_client_handler(settings: Config) {
         mt_clientside_rot: (0.0, 0.0),
         entity_id_pos_map: IntMap::new(),
         container_map: HashMap::new(),
-        container_size: 0,
         ticks_since_sync: 0,
         sent_media: Vec::new(),
         recipes: Vec::new()
@@ -118,8 +119,9 @@ async fn start_client_handler(settings: Config) {
         conn = mt_server.accept() => {
             utils::logger(&format!("[Minetest] Client connected from {:?}", conn.remote_addr()), 1);
             translator::client_handler(mt_server, conn, mt_server_state, settings).await;
-            // The infinite loop of the client handler has returned
-            // presumably due to a disconnect
+            // The infinite loop of the client handler has returned, presumably due to a disconnect.
+            // exit after this.
+            utils::logger("Client Handler returned, exiting.", 1)
         }
     }
 }
