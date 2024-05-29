@@ -184,8 +184,11 @@ pub async fn gotblocks(mc_client: &mut Client, specbox: Box<GotblocksSpec>, mt_c
 pub async fn inventory_generic(conn: &mut MinetestConnection, mc_client: &mut Client, specbox: Box<InventoryActionSpec>, mt_server_state: &mut MTServerState) {
     let InventoryActionSpec { action } = *specbox;
     match action {
-        InventoryAction::Drop { count, from_inv, from_list, from_i } => drop_item(count, from_inv, from_list, from_i, mc_client),
-        _ => utils::logger("[Minetest] Client attempted unsupported inventory action", 2),
+        InventoryAction::Drop { count, from_inv, from_list, from_i }
+            => drop_item(count, from_inv, from_list, from_i, mc_client),
+        InventoryAction::Move { count, from_inv, from_list, from_i, to_inv, to_list, to_i } if matches!(from_inv, InventoryLocation::CurrentPlayer)
+            => move_item(count, from_inv, from_list, from_i, to_inv, to_list, to_i, mc_client),
+        _ => utils::logger(&format!("[Minetest] Client attempted unsupported inventory action: {:?}", action), 2),
     }
 }
 
@@ -193,10 +196,14 @@ pub fn drop_item(count: u16, from_inv: InventoryLocation, from_list: String, fro
     match from_inv {
         InventoryLocation::NodeMeta { pos } => utils::logger("[Minetest] Attempting to drop items from a chest, not implemented!", 2),
         InventoryLocation::CurrentPlayer => {
-            for _ in 0..count {
-                println!("drop");
-                let mut ecs = mc_client.ecs.lock();
-                let mut inventory = mc_client.query::<&mut InventoryComponent>(&mut ecs);
+            let mut ecs = mc_client.ecs.lock();
+            let mut inventory = mc_client.query::<&mut InventoryComponent>(&mut ecs);
+            while count >= 64 {
+                ClickOperation::Throw(azalea::inventory::operations::ThrowClick::All {
+                    slot: from_i as u16
+                });
+            }
+            while count > 0 {
                 ClickOperation::Throw(azalea::inventory::operations::ThrowClick::Single {
                     slot: from_i as u16
                 });
@@ -204,4 +211,8 @@ pub fn drop_item(count: u16, from_inv: InventoryLocation, from_list: String, fro
         }
         _ => utils::logger(&format!("[Minetest] Cannot drop from inventory: {:?}", from_inv), 2)
     }
+}
+
+pub fn move_item(count: u16, from_inv: InventoryLocation, from_list: String, from_i: i16, to_inv: InventoryLocation, to_list: String, to_i: Option<i16>, mc_client: &mut Client) {
+
 }
