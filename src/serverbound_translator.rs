@@ -8,7 +8,7 @@ use azalea_client::Client;
 use azalea_client::inventory::InventoryComponent;
 use azalea_core::position::{ChunkPos, ChunkBlockPos};
 use azalea_block::BlockState;
-use azalea::container::ContainerClientExt;
+use azalea::container::{ContainerClientExt, ContainerHandleRef};
 
 use alloc::boxed::Box;
 use minetest_protocol::MinetestConnection;
@@ -190,6 +190,25 @@ pub async fn inventory_generic(conn: &mut MinetestConnection, mc_client: &mut Cl
     }
 }
 
+// see https://wiki.vg/File:Inventory-slots.png for full indexing of the player inv
+fn get_adjusted_index(mt_index: u16, mt_list: &str) -> u16 {
+    match mt_list {
+        "armor" => mt_index + 5,
+        "crafting" => mt_index + 1,
+        "craftpreview" => 0,
+        "offhand" => 45,
+        "main" => {
+            match mt_index {
+                0..=8   => (mt_index-9 % 36) + 36,
+                9..=17  => (mt_index-9 % 36) + 18,
+                18..=26 =>  mt_index-9 % 36,
+                27..    => (mt_index-9 % 36) - 17,
+            }
+        }
+        _ => unreachable!()
+    }
+}
+
 pub fn drop_item(count: u16, from_list: String, from_i: i16, mc_client: &mut Client) {
     match from_list.as_str() {
         "container" => {
@@ -218,23 +237,7 @@ pub fn drop_item(count: u16, from_list: String, from_i: i16, mc_client: &mut Cli
                 return;
             }
             let handle = maybe_handle.unwrap();
-            // see https://wiki.vg/File:Inventory-slots.png for full indexing of the player inv
-            let u_from_i = from_i as u16;
-            let slot_index = match from_list.as_str() {
-                "armor" => u_from_i + 5,
-                "crafting" => u_from_i + 1,
-                "craftpreview" => 0,
-                "offhand" => 45,
-                "main" => {
-                    match u_from_i {
-                        0..=8   => (u_from_i-9 % 36) + 36,
-                        9..=17  => (u_from_i-9 % 36) + 18,
-                        18..=26 => u_from_i-9 % 36,
-                        27..    => (u_from_i-9 % 36) - 17,
-                    }
-                }
-                _ => unreachable!()
-            };
+            let slot_index = get_adjusted_index(from_i as u16, from_list.as_str());
             if handle.contents().unwrap()[slot_index as usize].count() <= count.into() {
                 handle.click(ClickOperation::Throw(ThrowClick::All { slot: slot_index }))
             } else {
@@ -248,11 +251,92 @@ pub fn drop_item(count: u16, from_list: String, from_i: i16, mc_client: &mut Cli
     }
 }
 
+
 pub fn move_item(count: u16, from_inv: InventoryLocation, from_list: String, from_i: i16, to_inv: InventoryLocation, to_list: String, to_i: Option<i16>, mc_client: &mut Client) {
-    let mut ecs = mc_client.ecs.lock();
-    let mut inventory = mc_client.query::<&mut InventoryComponent>(&mut ecs);
-    let mut menu = inventory.menu_mut();
     match (from_list.as_str(), to_list.as_str()) {
-        _ => (),
+        ("container", "container") => {
+            let maybe_handle = mc_client.get_open_container();
+            if maybe_handle.is_none() {
+                utils::logger("[Minetest] Client attempted to take items from a container while no container was opened", 2);
+                return;
+            }
+            let handle = maybe_handle.unwrap();
+            if handle.contents().is_none() {
+                utils::logger("[Minetest] Client attempted to take items from a container without contents", 2);
+                return;
+            }
+            handle.click(ClickOperation::Pickup(azalea::inventory::operations::PickupClick::Left {
+                slot: Some(from_i as u16)
+            }));
+            handle.click(ClickOperation::Pickup(azalea::inventory::operations::PickupClick::Left {
+                slot: Some(to_i.unwrap() as u16)
+            }))
+        }
+        ("container", _) => {
+            let maybe_handle = mc_client.get_open_container();
+            if maybe_handle.is_none() {
+                utils::logger("[Minetest] Client attempted to take items from a container while no container was opened", 2);
+                return;
+            }
+            let handle = maybe_handle.unwrap();
+            if handle.contents().is_none() {
+                utils::logger("[Minetest] Client attempted to take items from a container without contents", 2);
+                return;
+            }
+            handle.click(ClickOperation::Pickup(azalea::inventory::operations::PickupClick::Left {
+                slot: Some(from_i as u16)
+            }));
+            let maybe_handle = mc_client.open_inventory();
+            if maybe_handle.is_none() {
+                utils::logger("[Minetest] Client attempted to put items into the inventory while a container was opened", 2);
+                return;
+            }
+            let handle = maybe_handle.unwrap();
+            let slot_index = get_adjusted_index(from_i as u16, to_list.as_str());
+            handle.click(ClickOperation::Pickup(azalea::inventory::operations::PickupClick::Left {
+                slot: Some(slot_index)
+            }))
+        }
+        (_, "container") => {
+            let maybe_handle = mc_client.open_inventory();
+            if maybe_handle.is_none() {
+                utils::logger("[Minetest] Client attempted to put items into the inventory while a container was opened", 2);
+                return;
+            }
+            let handle = maybe_handle.unwrap();
+            let slot_index = get_adjusted_index(from_i as u16, from_list.as_str());
+            handle.click(ClickOperation::Pickup(azalea::inventory::operations::PickupClick::Left {
+                slot: Some(slot_index)
+            }));
+            let maybe_handle = mc_client.get_open_container();
+            if maybe_handle.is_none() {
+                utils::logger("[Minetest] Client attempted to put items into a container while no container was opened", 2);
+                return;
+            }
+            let handle = maybe_handle.unwrap();
+            if handle.contents().is_none() {
+                utils::logger("[Minetest] Client attempted to put items into a container without contents", 2);
+                return;
+            }
+            handle.click(ClickOperation::Pickup(azalea::inventory::operations::PickupClick::Left {
+                slot: Some(to_i.unwrap() as u16)
+            }));
+        }
+        _ => {
+            let maybe_handle = mc_client.open_inventory();
+            if maybe_handle.is_none() {
+                utils::logger("[Minetest] Client attempted to put items into the inventory while a container was opened", 2);
+                return;
+            }
+            let handle = maybe_handle.unwrap();
+            let slot_index = get_adjusted_index(from_i as u16, from_list.as_str());
+            handle.click(ClickOperation::Pickup(azalea::inventory::operations::PickupClick::Left {
+                slot: Some(slot_index)
+            }));
+            let slot_index = get_adjusted_index(to_i.unwrap() as u16, to_list.as_str());
+            handle.click(ClickOperation::Pickup(azalea::inventory::operations::PickupClick::Left {
+                slot: Some(slot_index)
+            }));
+        },
     }
 }
