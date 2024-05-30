@@ -22,38 +22,6 @@ use serde_json;
 
 use azalea_registry::{self, Block, EntityKind, MenuKind};
 
-// all crafting stations (where a clickable preview is shown)
-#[derive(Clone, Debug)]
-pub enum CraftingStation {
-    CraftingTable,
-    Inventory,
-    StoneCutter,
-    Furnace,
-    BlastFurnace,
-    Smoker,
-    Campfire,
-    SmithingTable
-}
-
-#[derive(Clone, Debug)]
-pub enum RecipeShape {
-    Shapeless,        // shapeless   e.g. colored wool)
-    Shaped((u8, u8)), // shaped      e.g. tnt, chests)
-    FixedLayout(u8),  // fixed(size) (size)-slot inputs (e.g. 1 for stonecutter/furnace, 2 for smithing table)
-}
-
-// representation of a recipe
-#[derive(Clone, Debug)]
-pub struct ServerRecipe {
-    pub stations: Vec<CraftingStation>,
-    // list of slots, each slot may have several allowed items
-    // if shaped, must be the entire grid, padded with `vec![(String::from(""), 0)]`
-    // if fixed, follows some arbitrary nonsense i made up, look at clientbound_translator::update_recipes
-    pub ingredients: Vec<Vec<(String, i32)>>,
-    pub result: (String, i32),
-    pub shaped: RecipeShape // grid x/y if some, else shapeless creature
-}
-
 // the only way to change an entitys pos/rot/vel in minetest is by updating *all* the values
 // but minecraft will send packets only updating one of these values, so the server_state needs to keep the values to resend.
 // IntMap<EntityResendableData> mapping MT-adjusted entity IDs to these values
@@ -63,7 +31,7 @@ pub struct EntityResendableData {
     pub rotation: v3f,
     pub velocity: v3f,
     pub acceleration: v3f,
-     // Not really resendable data, but we need a way to map entity IDs to entity kinds
+    // Not really resendable data, but we need a way to map entity IDs to entity kinds
     // without sending requests to the azalea ECS
     pub entity_kind: EntityKind
 }

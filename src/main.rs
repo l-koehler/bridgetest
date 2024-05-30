@@ -19,12 +19,12 @@ use azalea_registry::BlockEntityKind;
 use parking_lot::deadlock;
 use std::thread;
 use std::time::Duration;
+use std::sync::Arc;
 use intmap::IntMap;
 use alloc::vec::Vec;
 use std::collections::HashMap;
 use config::Config;
-use std::path::PathBuf;
-use std::path::Path;
+use std::path::{PathBuf, Path};
 use std::fs::File;
 use std::io::Write;
 use dirs;
@@ -77,10 +77,10 @@ pub struct MTServerState {
     // _block_ coordinates somehow. TODO: maybe send the coordinates of the non-air block instead,
     // falling back to sending these of the block closer to the player if needed.
     container_map: HashMap<(i32, i32, i32), BlockEntityKind>,
+    inventory_handle: Option<Arc<ContainerHandle>>, // never read, only used to not drop the handle
     
     ticks_since_sync: u32,
     sent_media: Vec<String>, // all the media things we sent, by names like "item-fish.png"
-    recipes: Vec<mt_definitions::ServerRecipe>
 }
 
 async fn start_client_handler(settings: Config) {
@@ -109,9 +109,9 @@ async fn start_client_handler(settings: Config) {
         mt_clientside_rot: (0.0, 0.0),
         entity_id_pos_map: IntMap::new(),
         container_map: HashMap::new(),
+        inventory_handle: None,
         ticks_since_sync: 0,
         sent_media: Vec::new(),
-        recipes: Vec::new()
     };
 
     // Wait for a client to join

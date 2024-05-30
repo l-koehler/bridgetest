@@ -5,24 +5,22 @@
 
 extern crate alloc;
 
-use crate::mt_definitions::{EntityResendableData, RecipeShape, CraftingStation, ServerRecipe};
+use crate::mt_definitions::EntityResendableData;
 use crate::settings;
 use crate::utils;
 use crate::mt_definitions;
 use crate::commands;
 use crate::MTServerState;
-use azalea::inventory::ItemSlot;
 use azalea::BlockPos;
 use azalea_core::delta::PositionDelta8;
 use azalea_core::position::ChunkBlockPos;
 use azalea_entity::{EntityDataValue, EntityDataItem};
-use azalea_protocol::packets::game::clientbound_update_recipes_packet::{RecipeData, ShapelessRecipe, ShapedRecipe, StoneCutterRecipe, CookingRecipe, SmithingTrimRecipe, SmithingTransformRecipe};
 use minetest_protocol::wire::types::ItemStackMetadata;
 use minetest_protocol::wire::types::ObjectProperties;
 use mt_definitions::{HeartDisplay, FoodDisplay, Dimensions};
 use minetest_protocol::peer::peer::PeerError;
 
-use azalea_registry::{EntityKind, MenuKind};
+use azalea_registry::EntityKind;
 use minetest_protocol::wire::command::ToClientCommand;
 use minetest_protocol::wire::types::HudStat;
 use minetest_protocol::MinetestConnection;
@@ -53,7 +51,6 @@ use azalea_protocol::packets::game::{ClientboundGamePacket,
     clientbound_set_entity_data_packet::ClientboundSetEntityDataPacket,
     clientbound_block_destruction_packet::ClientboundBlockDestructionPacket,
     clientbound_block_entity_data_packet::ClientboundBlockEntityDataPacket,
-    clientbound_update_recipes_packet::ClientboundUpdateRecipesPacket,
     clientbound_open_screen_packet::ClientboundOpenScreenPacket,
 };
 
@@ -1165,180 +1162,4 @@ pub async fn block_entity_data(packet_data: &ClientboundBlockEntityDataPacket, c
         utils::logger(&format!("[Minecraft] Overwriting Block Entity at {:?}", pos), 2);
     }
     // TODO: Add the tag to the block metadata if it is relevant to the client
-}
-
-// recipe stuff (recipes are handled purely on the server side)
-pub fn update_recipes(packet_data: &ClientboundUpdateRecipesPacket, mt_server_state: &mut MTServerState) {
-    let ClientboundUpdateRecipesPacket { recipes } = packet_data;
-    for recipe in recipes {
-        let data = &recipe.data;
-        match data {
-            RecipeData::CraftingShapeless(shapeless) => {
-                let ShapelessRecipe { group: _, category: _, ingredients, result } = shapeless;
-                if matches!(result, ItemSlot::Empty) {
-                    continue
-                }
-                // Always allow crafting in a table, it there are 4 or less ingredients allow the inventory
-                let mut stations = vec![CraftingStation::CraftingTable];
-                if ingredients.len() <= 4 {
-                    stations.push(CraftingStation::Inventory)
-                }
-                let output: (String, i32);
-                match result {
-                    ItemSlot::Empty => output = (String::from(""), 0),
-                    ItemSlot::Present(item) => output = (item.kind.to_string(), item.count)
-                }
-                let mut inputs: Vec<Vec<(String, i32)>> = vec![];
-                for slot in ingredients {
-                    let mut allowed: Vec<(String, i32)> = vec![];
-                    for thing in &slot.allowed {
-                        match thing {
-                            ItemSlot::Empty => (),
-                            ItemSlot::Present(item) => allowed.push((item.kind.to_string(), item.count)),
-                        }
-                    }
-                    inputs.push(allowed)
-                }
-                mt_server_state.recipes.push(ServerRecipe {
-                    stations,
-                    ingredients: inputs,
-                    result: output,
-                    shaped: RecipeShape::Shapeless,
-                });
-            },
-            RecipeData::CraftingShaped(shaped) => {
-                let ShapedRecipe { group: _, category: _, pattern, result, show_notification: _ } = shaped;
-                // Always allow crafting in a table, if the pattern fits also allow the inventory
-                let mut stations = vec![CraftingStation::CraftingTable];
-                if pattern.width <= 2 && pattern.height <= 2 {
-                    stations.push(CraftingStation::Inventory)
-                }
-                let output: (String, i32);
-                match result {
-                    ItemSlot::Empty => output = (String::from(""), 0),
-                    ItemSlot::Present(item) => output = (item.kind.to_string(), item.count)
-                }
-                let mut inputs: Vec<Vec<(String, i32)>> = vec![];
-                for slot in &pattern.ingredients {
-                    let mut allowed: Vec<(String, i32)> = vec![];
-                    for thing in &slot.allowed {
-                        match thing {
-                            ItemSlot::Empty => allowed.push((String::from(""), 0)),
-                            ItemSlot::Present(item) => allowed.push((item.kind.to_string(), item.count)),
-                        }
-                    }
-                    inputs.push(allowed)
-                }
-                let recipe_size = (pattern.width as u8, pattern.height as u8);
-                mt_server_state.recipes.push(ServerRecipe {
-                    stations,
-                    ingredients: inputs,
-                    result: output,
-                    shaped: RecipeShape::Shaped(recipe_size)
-                })
-            },
-            RecipeData::Stonecutting(recipe) => {
-                let StoneCutterRecipe { group: _, ingredient, result } = recipe;
-                let output: (String, i32);
-                match result {
-                    ItemSlot::Empty => output = (String::from(""), 0),
-                    ItemSlot::Present(item) => output = (item.kind.to_string(), item.count)
-                }
-                let mut input: Vec<(String, i32)> = vec![];
-                for item in &ingredient.allowed {
-                    match item {
-                        ItemSlot::Empty => (),
-                        ItemSlot::Present(item) => input.push((item.kind.to_string(), item.count)),
-                    }
-                }
-                mt_server_state.recipes.push(ServerRecipe {
-                    stations: vec![CraftingStation::StoneCutter],
-                    ingredients: vec![input], // single-slot input
-                    result: output,
-                    shaped: RecipeShape::Shapeless
-                })
-            },
-            RecipeData::Smelting(recipe) => {
-                let stations = vec![CraftingStation::Furnace];
-                add_cooking_recipe(stations, &recipe, mt_server_state);
-            },
-            RecipeData::Blasting(recipe) => {
-                let stations = vec![CraftingStation::BlastFurnace];
-                add_cooking_recipe(stations, &recipe, mt_server_state);
-            },
-            RecipeData::Smoking(recipe) => {
-                let stations = vec![CraftingStation::Smoker];
-                add_cooking_recipe(stations, &recipe, mt_server_state);
-            },
-            RecipeData::CampfireCooking(recipe) => {
-                let stations = vec![CraftingStation::Campfire];
-                add_cooking_recipe(stations, &recipe, mt_server_state);
-            },
-            RecipeData::SmithingTransform(recipe) => {
-                let SmithingTransformRecipe { template, base, addition, result } = recipe;
-                let output: (String, i32);
-                match result {
-                    ItemSlot::Empty => output = (String::from(""), 0),
-                    ItemSlot::Present(item) => output = (item.kind.to_string(), item.count)
-                }
-                let mut inputs: Vec<Vec<(String, i32)>> = vec![];
-                let mut sub_input: Vec<(String, i32)> = vec![]; // temp value for constructing 3-input list
-                // Input Slot 1: Base
-                for slot in &base.allowed {
-                    match slot {
-                        ItemSlot::Empty => (),
-                        ItemSlot::Present(item) => sub_input.push((item.kind.to_string(), item.count)),
-                    }
-                }
-                inputs.push(sub_input);
-                sub_input = vec![];
-                // Input Slot 2: Template
-                for slot in &template.allowed {
-                    match slot {
-                        ItemSlot::Empty => (),
-                        ItemSlot::Present(item) => sub_input.push((item.kind.to_string(), item.count)),
-                    }
-                }
-                inputs.push(sub_input);
-                sub_input = vec![];
-                // Input Slot 3: Addition
-                for slot in &addition.allowed {
-                    match slot {
-                        ItemSlot::Empty => (),
-                        ItemSlot::Present(item) => sub_input.push((item.kind.to_string(), item.count)),
-                    }
-                }
-                inputs.push(sub_input);
-                mt_server_state.recipes.push(ServerRecipe {
-                    stations: vec![CraftingStation::SmithingTable],
-                    ingredients: inputs, // three-slot input (base, template, addition)
-                    result: output,
-                    shaped: RecipeShape::FixedLayout(3)
-                })
-            }
-            _ => utils::logger("[Minecraft] Not registring unsupported special crafting recipe!", 2)
-        }
-    }
-}
-
-fn add_cooking_recipe(stations: Vec<CraftingStation>, recipe: &CookingRecipe, mt_server_state: &mut MTServerState) {
-    let CookingRecipe { group: _, category: _, ingredient, result, experience: _, cooking_time: _} = recipe;
-    let output: (String, i32);
-    match result {
-        ItemSlot::Empty => output = (String::from(""), 0),
-        ItemSlot::Present(item) => output = (item.kind.to_string(), item.count)
-    }
-    let mut input: Vec<(String, i32)> = vec![];
-    for item in &ingredient.allowed {
-        match item {
-            ItemSlot::Empty => (),
-            ItemSlot::Present(item) => input.push((item.kind.to_string(), item.count)),
-        }
-    }
-    mt_server_state.recipes.push(ServerRecipe {
-        stations,
-        ingredients: vec![input], // single-slot input
-        result: output,
-        shaped: RecipeShape::FixedLayout(1)
-    })
 }

@@ -88,7 +88,6 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
             
             ClientboundGamePacket::BlockUpdate(blockupdate_packet) => clientbound_translator::blockupdate(&blockupdate_packet, mt_conn, mt_server_state).await,
             
-            ClientboundGamePacket::UpdateRecipes(recipe_packet) => clientbound_translator::update_recipes(&recipe_packet, mt_server_state),
             _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),
         }
         _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),

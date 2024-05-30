@@ -8,7 +8,7 @@ use azalea_client::Client;
 use azalea_client::inventory::InventoryComponent;
 use azalea_core::position::{ChunkPos, ChunkBlockPos};
 use azalea_block::BlockState;
-use azalea::container::{ContainerClientExt, ContainerHandleRef};
+use azalea::container::ContainerClientExt;
 
 use alloc::boxed::Box;
 use minetest_protocol::MinetestConnection;
@@ -17,6 +17,7 @@ use minetest_protocol::wire::types::{v3f, v3s16, InventoryAction, PlayerPos, Poi
 use minetest_protocol::wire::types;
 use crate::MTServerState;
 
+use std::sync::Arc;
 
 pub fn send_message(mc_client: &Client, specbox: Box<TSChatMessageSpec>) {
     utils::logger("[Minetest] C->S Forwarding Message sent by client", 1);
@@ -25,6 +26,9 @@ pub fn send_message(mc_client: &Client, specbox: Box<TSChatMessageSpec>) {
 }
 
 pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_server_state: &mut MTServerState) {
+    // the player moved, if a handle to the inventory is kept we may now drop it.
+    mt_server_state.inventory_handle = None;
+    
     let PlayerposSpec { player_pos } = *specbox;
     let PlayerPos { position, speed: _, pitch, yaw, keys_pressed, fov: _, wanted_range: _ } = player_pos;
     let v3f {x: mt_x, y: mt_y, z: mt_z } = position;
@@ -182,10 +186,10 @@ pub async fn gotblocks(mc_client: &mut Client, specbox: Box<GotblocksSpec>, mt_c
 pub async fn inventory_generic(conn: &mut MinetestConnection, mc_client: &mut Client, specbox: Box<InventoryActionSpec>, mt_server_state: &mut MTServerState) {
     let InventoryActionSpec { action } = *specbox;
     match action {
-        InventoryAction::Drop { count, from_inv, from_list, from_i }
+        InventoryAction::Drop { count, from_inv: _, from_list, from_i }
             => drop_item(count, from_list, from_i, mc_client),
-        InventoryAction::Move { count, from_inv, from_list, from_i, to_inv, to_list, to_i } if matches!(from_inv, InventoryLocation::CurrentPlayer)
-            => move_item(count, from_inv, from_list, from_i, to_inv, to_list, to_i, mc_client),
+        InventoryAction::Move { count: _, from_inv, from_list, from_i, to_inv: _, to_list, to_i } if matches!(from_inv, InventoryLocation::CurrentPlayer)
+            => move_item(from_list, from_i, to_list, to_i, mc_client, mt_server_state),
         _ => utils::logger(&format!("[Minetest] Client attempted unsupported inventory action: {:?}", action), 2),
     }
 }
@@ -252,7 +256,7 @@ pub fn drop_item(count: u16, from_list: String, from_i: i16, mc_client: &mut Cli
 }
 
 
-pub fn move_item(count: u16, from_inv: InventoryLocation, from_list: String, from_i: i16, to_inv: InventoryLocation, to_list: String, to_i: Option<i16>, mc_client: &mut Client) {
+pub fn move_item(from_list: String, from_i: i16, to_list: String, to_i: Option<i16>, mc_client: &mut Client, mt_server_state: &mut MTServerState) {
     match (from_list.as_str(), to_list.as_str()) {
         ("container", "container") => {
             let maybe_handle = mc_client.get_open_container();
@@ -295,7 +299,11 @@ pub fn move_item(count: u16, from_inv: InventoryLocation, from_list: String, fro
             let slot_index = get_adjusted_index(from_i as u16, to_list.as_str());
             handle.click(ClickOperation::Pickup(azalea::inventory::operations::PickupClick::Left {
                 slot: Some(slot_index)
-            }))
+            }));
+            // we moved a item into the crafting slots, keep the handle around so the inventory won't close
+            if (1..=5).contains(&slot_index) && mt_server_state.inventory_handle.is_none() {
+                mt_server_state.inventory_handle = Some(Arc::new(handle));
+            }
         }
         (_, "container") => {
             let maybe_handle = mc_client.open_inventory();
@@ -337,6 +345,11 @@ pub fn move_item(count: u16, from_inv: InventoryLocation, from_list: String, fro
             handle.click(ClickOperation::Pickup(azalea::inventory::operations::PickupClick::Left {
                 slot: Some(slot_index)
             }));
+            // we moved a item into the crafting slots, keep the handle around so the inventory won't close
+            // the handle will get dropped on movement as the MT client doesn't notify us of closing the inventory
+            if (1..=5).contains(&slot_index) && mt_server_state.inventory_handle.is_none() {
+                mt_server_state.inventory_handle = Some(Arc::new(handle));
+            }
         },
     }
 }
