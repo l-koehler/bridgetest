@@ -3,7 +3,7 @@ use crate::mt_definitions::Dimensions;
 // and send it to the MC server.
 use crate::{clientbound_translator, mt_definitions, utils};
 
-use azalea::inventory::operations::{ClickOperation, ThrowClick};
+use azalea::inventory::operations::{ClickOperation, PickupClick, ThrowClick};
 use azalea_client::Client;
 use azalea_client::inventory::InventoryComponent;
 use azalea_core::position::{ChunkPos, ChunkBlockPos};
@@ -13,11 +13,11 @@ use azalea::container::ContainerClientExt;
 use alloc::boxed::Box;
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::wire::command::{TSChatMessageSpec, PlayerposSpec, InteractSpec, GotblocksSpec, PlayeritemSpec, InventoryActionSpec};
-use minetest_protocol::wire::types::{v3f, v3s16, InventoryAction, PlayerPos, PointedThing, InventoryLocation};
+use minetest_protocol::wire::types::{v3f, v3s16, InventoryAction, PlayerPos, PointedThing};
 use minetest_protocol::wire::types;
 use crate::MTServerState;
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 pub fn send_message(mc_client: &Client, specbox: Box<TSChatMessageSpec>) {
     utils::logger("[Minetest] C->S Forwarding Message sent by client", 1);
@@ -183,14 +183,16 @@ pub async fn gotblocks(mc_client: &mut Client, specbox: Box<GotblocksSpec>, mt_c
 }
 
 // inventory actions and crafting
-pub async fn inventory_generic(conn: &mut MinetestConnection, mc_client: &mut Client, specbox: Box<InventoryActionSpec>, mt_server_state: &mut MTServerState) {
+pub async fn inventory_generic(mc_client: &mut Client, mt_conn: &mut MinetestConnection, specbox: Box<InventoryActionSpec>, mt_server_state: &mut MTServerState) {
     let InventoryActionSpec { action } = *specbox;
     match action {
         InventoryAction::Drop { count, from_inv: _, from_list, from_i }
             => drop_item(count, from_list, from_i, mc_client),
-        InventoryAction::Move { count: _, from_inv, from_list, from_i, to_inv: _, to_list, to_i } if matches!(from_inv, InventoryLocation::CurrentPlayer)
+        InventoryAction::Move { count: _, from_inv: _, from_list, from_i, to_inv: _, to_list, to_i }
             => move_item(from_list, from_i, to_list, to_i, mc_client, mt_server_state),
-        _ => utils::logger(&format!("[Minetest] Client attempted unsupported inventory action: {:?}", action), 2),
+        //TODO support workbenches etc
+        InventoryAction::Craft { count: _, craft_inv: _ }
+            => craft_item(mc_client, mt_conn, mt_server_state).await,
     }
 }
 
@@ -269,10 +271,10 @@ pub fn move_item(from_list: String, from_i: i16, to_list: String, to_i: Option<i
                 utils::logger("[Minetest] Client attempted to take items from a container without contents", 2);
                 return;
             }
-            handle.click(ClickOperation::Pickup(azalea::inventory::operations::PickupClick::Left {
+            handle.click(ClickOperation::Pickup(PickupClick::Left {
                 slot: Some(from_i as u16)
             }));
-            handle.click(ClickOperation::Pickup(azalea::inventory::operations::PickupClick::Left {
+            handle.click(ClickOperation::Pickup(PickupClick::Left {
                 slot: Some(to_i.unwrap() as u16)
             }))
         }
@@ -287,7 +289,7 @@ pub fn move_item(from_list: String, from_i: i16, to_list: String, to_i: Option<i
                 utils::logger("[Minetest] Client attempted to take items from a container without contents", 2);
                 return;
             }
-            handle.click(ClickOperation::Pickup(azalea::inventory::operations::PickupClick::Left {
+            handle.click(ClickOperation::Pickup(PickupClick::Left {
                 slot: Some(from_i as u16)
             }));
             let maybe_handle = mc_client.open_inventory();
@@ -297,12 +299,12 @@ pub fn move_item(from_list: String, from_i: i16, to_list: String, to_i: Option<i
             }
             let handle = maybe_handle.unwrap();
             let slot_index = get_adjusted_index(from_i as u16, to_list.as_str());
-            handle.click(ClickOperation::Pickup(azalea::inventory::operations::PickupClick::Left {
+            handle.click(ClickOperation::Pickup(PickupClick::Left {
                 slot: Some(slot_index)
             }));
             // we moved a item into the crafting slots, keep the handle around so the inventory won't close
             if (1..=5).contains(&slot_index) && mt_server_state.inventory_handle.is_none() {
-                mt_server_state.inventory_handle = Some(Arc::new(handle));
+                mt_server_state.inventory_handle = Some(Arc::new(Mutex::new(handle)));
             }
         }
         (_, "container") => {
@@ -313,7 +315,7 @@ pub fn move_item(from_list: String, from_i: i16, to_list: String, to_i: Option<i
             }
             let handle = maybe_handle.unwrap();
             let slot_index = get_adjusted_index(from_i as u16, from_list.as_str());
-            handle.click(ClickOperation::Pickup(azalea::inventory::operations::PickupClick::Left {
+            handle.click(ClickOperation::Pickup(PickupClick::Left {
                 slot: Some(slot_index)
             }));
             let maybe_handle = mc_client.get_open_container();
@@ -326,7 +328,7 @@ pub fn move_item(from_list: String, from_i: i16, to_list: String, to_i: Option<i
                 utils::logger("[Minetest] Client attempted to put items into a container without contents", 2);
                 return;
             }
-            handle.click(ClickOperation::Pickup(azalea::inventory::operations::PickupClick::Left {
+            handle.click(ClickOperation::Pickup(PickupClick::Left {
                 slot: Some(to_i.unwrap() as u16)
             }));
         }
@@ -338,18 +340,35 @@ pub fn move_item(from_list: String, from_i: i16, to_list: String, to_i: Option<i
             }
             let handle = maybe_handle.unwrap();
             let slot_index = get_adjusted_index(from_i as u16, from_list.as_str());
-            handle.click(ClickOperation::Pickup(azalea::inventory::operations::PickupClick::Left {
+            handle.click(ClickOperation::Pickup(PickupClick::Left {
                 slot: Some(slot_index)
             }));
             let slot_index = get_adjusted_index(to_i.unwrap() as u16, to_list.as_str());
-            handle.click(ClickOperation::Pickup(azalea::inventory::operations::PickupClick::Left {
+            handle.click(ClickOperation::Pickup(PickupClick::Left {
                 slot: Some(slot_index)
             }));
             // we moved a item into the crafting slots, keep the handle around so the inventory won't close
             // the handle will get dropped on movement as the MT client doesn't notify us of closing the inventory
             if (1..=5).contains(&slot_index) && mt_server_state.inventory_handle.is_none() {
-                mt_server_state.inventory_handle = Some(Arc::new(handle));
+                mt_server_state.inventory_handle = Some(Arc::new(Mutex::new(handle)));
             }
         },
     }
+}
+
+pub async fn craft_item(mc_client: &mut Client, mt_conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+    // we are not deleting the inventory handle, as the user might click craft repeatedly
+    match &mt_server_state.inventory_handle {
+        Some(arc_mtx_cht) => {
+            let guard = arc_mtx_cht.lock();
+            let handle = guard.unwrap();
+            handle.click(ClickOperation::Pickup(PickupClick::Left {
+                slot: Some(0)
+            }));
+        },
+        None => {
+            utils::logger("[Minetest] Client attempted to craft without a present inventory handle!", 2);
+        },
+    }
+    clientbound_translator::refresh_inv(mc_client, mt_conn, mt_server_state).await;
 }

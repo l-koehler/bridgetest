@@ -19,7 +19,7 @@ use azalea_registry::BlockEntityKind;
 use parking_lot::deadlock;
 use std::thread;
 use std::time::Duration;
-use std::sync::Arc;
+use std::sync::{Mutex, Arc};
 use intmap::IntMap;
 use alloc::vec::Vec;
 use std::collections::HashMap;
@@ -77,7 +77,7 @@ pub struct MTServerState {
     // _block_ coordinates somehow. TODO: maybe send the coordinates of the non-air block instead,
     // falling back to sending these of the block closer to the player if needed.
     container_map: HashMap<(i32, i32, i32), BlockEntityKind>,
-    inventory_handle: Option<Arc<ContainerHandle>>, // never read, only used to not drop the handle
+    inventory_handle: Option<Arc<Mutex<ContainerHandle>>>, // never read, only used to not drop the handle
     
     ticks_since_sync: u32,
     sent_media: Vec<String>, // all the media things we sent, by names like "item-fish.png"
