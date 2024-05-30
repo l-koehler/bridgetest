@@ -21,7 +21,6 @@ use azalea_client::Event;
 use config::Config;
 
 pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestConnection, mut mt_server_state: MTServerState, settings: Config) {
-    println!("[Debug] async translator::client_handler()");
     /*
      * The first few packets (handshake) are outside the main loop, because
      * at this point the minecraft client isn't initialized yet.

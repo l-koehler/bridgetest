@@ -194,18 +194,18 @@ pub async fn inventory_generic(conn: &mut MinetestConnection, mc_client: &mut Cl
 fn get_adjusted_index(mt_index: u16, mt_list: &str) -> u16 {
     match mt_list {
         "armor" => mt_index + 5,
-        "crafting" => mt_index + 1,
+        "craft" => mt_index + 1,
         "craftpreview" => 0,
         "offhand" => 45,
         "main" => {
             match mt_index {
-                0..=8   => (mt_index-9 % 36) + 36,
-                9..=17  => (mt_index-9 % 36) + 18,
-                18..=26 =>  mt_index-9 % 36,
-                27..    => (mt_index-9 % 36) - 17,
+                0..=8   => (mt_index % 36) + 36,
+                9..=17  => ((mt_index - 9) % 36) + 9,
+                18..=26 => mt_index % 36,
+                27..    => mt_index,
             }
         }
-        _ => unreachable!()
+        _ => panic!("Unknown Inventory List: {}", mt_list) // unreachable unless the mt client sends bad data
     }
 }
 

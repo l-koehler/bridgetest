@@ -69,6 +69,8 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
             ClientboundGamePacket::Respawn(respawn_packet) => clientbound_translator::update_dimension(&respawn_packet, mt_server_state).await,
 
             ClientboundGamePacket::KeepAlive(_) => utils::logger("[Minecraft] Got KeepAlive packet, ignoring it.", 0),
+            ClientboundGamePacket::ContainerSetContent(_) => utils::logger("[Minecraft] Got ContainerSetContent packet, syncing next tick.", 0),
+            
             ClientboundGamePacket::AddEntity(addentity_packet) => clientbound_translator::add_entity(Some(&addentity_packet), mt_conn, mt_server_state).await,
             ClientboundGamePacket::MoveEntityPos(entitypos_packet) => clientbound_translator::entity_setpos(&entitypos_packet, mt_conn, mt_server_state).await,
             ClientboundGamePacket::TeleportEntity(entitytp_packet) => clientbound_translator::entity_teleport(&entitytp_packet, mt_conn, mt_server_state).await,
@@ -82,7 +84,6 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
             ClientboundGamePacket::SetEntityData(data_packet) => clientbound_translator::set_entity_data(&data_packet, mt_conn, mt_server_state).await,
             
             ClientboundGamePacket::OpenScreen(screen_packet) => clientbound_translator::open_screen(&screen_packet, mt_conn, mt_server_state).await,
-            ClientboundGamePacket::ContainerSetContent(content_packet) => clientbound_translator::set_container_content(&content_packet, mt_conn, mt_server_state).await,
             ClientboundGamePacket::BlockEntityData(data_packet) => clientbound_translator::block_entity_data(&data_packet, mt_conn, mt_server_state).await,
             
             ClientboundGamePacket::BlockUpdate(blockupdate_packet) => clientbound_translator::blockupdate(&blockupdate_packet, mt_conn, mt_server_state).await,

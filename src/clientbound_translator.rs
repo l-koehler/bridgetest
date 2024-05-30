@@ -52,7 +52,6 @@ use azalea_protocol::packets::game::{ClientboundGamePacket,
     clientbound_entity_event_packet::ClientboundEntityEventPacket,
     clientbound_set_entity_data_packet::ClientboundSetEntityDataPacket,
     clientbound_block_destruction_packet::ClientboundBlockDestructionPacket,
-    clientbound_container_set_content_packet::ClientboundContainerSetContentPacket,
     clientbound_block_entity_data_packet::ClientboundBlockEntityDataPacket,
     clientbound_update_recipes_packet::ClientboundUpdateRecipesPacket,
     clientbound_open_screen_packet::ClientboundOpenScreenPacket,
@@ -1118,13 +1117,6 @@ pub async fn destruction_overlay(packet_data: &ClientboundBlockDestructionPacket
     };
 }
 
-// container stuff
-pub async fn set_container_content(packet_data: &ClientboundContainerSetContentPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
-    // https://wiki.vg/Protocol#Set_Container_Content
-    let ClientboundContainerSetContentPacket { container_id: _, state_id: _, items, carried_item } = packet_data;
-    // TODO
-}
-
 pub async fn open_screen(packet_data: &ClientboundOpenScreenPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
     let ClientboundOpenScreenPacket { container_id: _, menu_type, title } = packet_data;
     let form_spec = mt_definitions::get_container_formspec(menu_type, &title.to_string());
@@ -1213,7 +1205,6 @@ pub fn update_recipes(packet_data: &ClientboundUpdateRecipesPacket, mt_server_st
                     result: output,
                     shaped: RecipeShape::Shapeless,
                 });
-                println!("{:?}", mt_server_state.recipes);
             },
             RecipeData::CraftingShaped(shaped) => {
                 let ShapedRecipe { group: _, category: _, pattern, result, show_notification: _ } = shaped;
