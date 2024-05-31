@@ -63,7 +63,7 @@ pub struct MTServerState {
     players: Vec<String>, // names of all players
     this_player: (String, String), // the proxied player (0: clientside name, 1: name passed to the mc server)
     mt_clientside_pos: (f32, f32, f32), // used to tolerate slight position differences, resulting in far smoother movement
-    mt_clientside_rot: (f32, f32),
+    client_rotation: (f32, f32), // yaw/pitch
     mt_clientside_player_inv: inventory::Player,
     mt_last_known_health: u16, // used to determine if a HP change should trigger a damage effect flash
     respawn_pos: (f32, f32, f32),
@@ -94,6 +94,7 @@ async fn start_client_handler(settings: Config) {
         players: Vec::new(),
         this_player: (String::from(""), String::from("")),
         mt_clientside_pos: (0.0, 0.0, 0.0),
+        client_rotation: (0.0, 0.0),
         mt_clientside_player_inv: inventory::Player {
             craft_result: inventory::ItemSlot::default(),
             craft: inventory::SlotList::default(),
@@ -106,7 +107,6 @@ async fn start_client_handler(settings: Config) {
         current_dimension: Dimensions::Overworld,
         is_sneaking: false,
         keys_pressed: 0,
-        mt_clientside_rot: (0.0, 0.0),
         entity_id_pos_map: IntMap::new(),
         container_map: HashMap::new(),
         inventory_handle: None,

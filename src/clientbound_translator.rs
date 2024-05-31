@@ -247,54 +247,47 @@ pub async fn set_time(source_packet: &ClientboundSetTimePacket, conn: &MinetestC
 }
 
 pub async fn set_player_pos(source_packet: &ClientboundPlayerPositionPacket, conn: &MinetestConnection, mt_server_state: &mut MTServerState) {
-    /* y_rot: yaw
-     * x_rot: pitch
-     * 
-     * This packet gets sent a whole lot more often than to actual minecraft
-     * clients. This is due to subtle oddities in minetest's movement code (
-     * when compared to minecraft), that are impossible to fix without SSCSM
-     * , and cause the client to attempt invalid movements, which the server
-     * will fix/re-sync by sending these packets.
-     */
-
     let ClientboundPlayerPositionPacket {
-        x: source_x,
-        y: source_y,
-        z: source_z,
-        y_rot: _, x_rot: _, relative_arguments: _, id: _} = source_packet;
-    let dest_x = (*source_x as f32) * 10.0;
-    let dest_y = (*source_y as f32) * 10.0;
-    let dest_z = (*source_z as f32) * 10.0;
-
-    let abs_diff = (dest_x - mt_server_state.mt_clientside_pos.0).abs()/10.0 +
-                   (dest_y - mt_server_state.mt_clientside_pos.1).abs()/10.0 +
-                   (dest_z - mt_server_state.mt_clientside_pos.2).abs()/10.0;
+        x, y, z, y_rot, x_rot, relative_arguments: _, id: _
+    } = source_packet;
+    let dest_x = (*x as f32) * 10.0;
+    let dest_y = (*y as f32) * 10.0;
+    let dest_z = (*z as f32) * 10.0;
     
-    if abs_diff > settings::POS_DIFF_TOLERANCE {
-        let setpos_packet = ToClientCommand::MovePlayer(
-            Box::new(wire::command::MovePlayerSpec {
-                pos: v3f {x: dest_x, y: dest_y, z: dest_z},
-                pitch: mt_server_state.mt_clientside_rot.1, // not syncing rotation, we do that at movement anyways
-                yaw: mt_server_state.mt_clientside_rot.0,
-            })
-        );
-        let _ = conn.send(setpos_packet).await;
-        mt_server_state.mt_clientside_pos = (dest_x, dest_y, dest_z);
-        mt_server_state.ticks_since_sync = 0;
-    }
-}
-
-pub async fn force_player_pos(position: v3f, conn: &MinetestConnection, mt_server_state: &mut MTServerState) {
-    let v3f { x, y, z } = position;
-    mt_server_state.mt_clientside_pos = (x, y, z);
     let setpos_packet = ToClientCommand::MovePlayer(
         Box::new(wire::command::MovePlayerSpec {
-            pos: position,
-            pitch: mt_server_state.mt_clientside_rot.1,
-            yaw: mt_server_state.mt_clientside_rot.0
+            pos: v3f {x: dest_x, y: dest_y, z: dest_z},
+            pitch: *x_rot, yaw: *y_rot,
         })
     );
     let _ = conn.send(setpos_packet).await;
+    mt_server_state.mt_clientside_pos = (dest_x, dest_y, dest_z);
+    mt_server_state.client_rotation = (*y_rot, *x_rot);
+}
+
+pub async fn sync_client_pos(mc_client: &Client, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+    println!("syncing");
+    let vec_serverpos = mc_client.position();
+    let serverpos = (vec_serverpos.x as f32, vec_serverpos.y as f32, vec_serverpos.z as f32);
+    let clientpos = mt_server_state.mt_clientside_pos;
+
+    let total_difference: f32 = {
+        (serverpos.0 - clientpos.0).abs() +
+        (serverpos.1 - clientpos.1).abs() +
+        (serverpos.2 - clientpos.2).abs()
+    };
+    
+    if total_difference > 0.5 {
+        println!("synced {}", total_difference);
+        let setpos_packet = ToClientCommand::MovePlayer(
+            Box::new(wire::command::MovePlayerSpec {
+                pos: v3f { x: serverpos.0, y: serverpos.1, z: serverpos.2 },
+                pitch: mt_server_state.client_rotation.1,
+                yaw: mt_server_state.client_rotation.0
+            })
+        );
+        let _ = conn.send(setpos_packet).await;
+    }
 }
 
 pub async fn update_inventory(conn: &mut MinetestConnection, to_change: Vec<(&str, Vec<inventory::ItemSlot>)>) {

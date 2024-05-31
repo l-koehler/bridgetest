@@ -27,14 +27,16 @@ pub fn send_message(mc_client: &Client, specbox: Box<TSChatMessageSpec>) {
 
 pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_server_state: &mut MTServerState) {
     // the player moved, if a handle to the inventory is kept we may now drop it.
+    // this is needed as (unlike the minecraft client) the minetest client does not seem to send packets on container close
     mt_server_state.inventory_handle = None;
     
     let PlayerposSpec { player_pos } = *specbox;
     let PlayerPos { position, speed: _, pitch, yaw, keys_pressed, fov: _, wanted_range: _ } = player_pos;
-    let v3f {x: mt_x, y: mt_y, z: mt_z } = position;
-    mt_server_state.mt_clientside_pos = (mt_x, mt_y, mt_z);
-    mt_server_state.mt_clientside_rot = (yaw, pitch);
 
+    mc_client.set_direction(yaw, pitch);
+    mt_server_state.client_rotation = (yaw, pitch);
+    mt_server_state.mt_clientside_pos = (position.x, position.y, position.z);
+    
     // keys_pressed:
     // https://github.com/minetest/minetest/blob/e734b3f0d8055ff3ae710f3632726a711603bf84/src/player.cpp#L217    
     let direction_keys = keys_pressed & 0xf;
