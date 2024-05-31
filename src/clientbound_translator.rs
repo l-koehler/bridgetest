@@ -253,7 +253,6 @@ pub async fn set_player_pos(source_packet: &ClientboundPlayerPositionPacket, con
     let dest_x = (*x as f32) * 10.0;
     let dest_y = (*y as f32) * 10.0;
     let dest_z = (*z as f32) * 10.0;
-    
     let setpos_packet = ToClientCommand::MovePlayer(
         Box::new(wire::command::MovePlayerSpec {
             pos: v3f {x: dest_x, y: dest_y, z: dest_z},
@@ -266,27 +265,31 @@ pub async fn set_player_pos(source_packet: &ClientboundPlayerPositionPacket, con
 }
 
 pub async fn sync_client_pos(mc_client: &Client, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
-    println!("syncing");
     let vec_serverpos = mc_client.position();
     let serverpos = (vec_serverpos.x as f32, vec_serverpos.y as f32, vec_serverpos.z as f32);
     let clientpos = mt_server_state.mt_clientside_pos;
 
-    let total_difference: f32 = {
-        (serverpos.0 - clientpos.0).abs() +
-        (serverpos.1 - clientpos.1).abs() +
-        (serverpos.2 - clientpos.2).abs()
+    // incomprehensible and overcomplicated
+    // we count height as half, otherwise jumping is noticeably broken
+    let x_y_euclid_diff: f32 = {
+        ((serverpos.0 - clientpos.0).abs().powi(2) +
+        (serverpos.2 - clientpos.2).abs().powi(2)).sqrt()
     };
-    
-    if total_difference > 0.5 {
-        println!("synced {}", total_difference);
+    let distance = {
+        (x_y_euclid_diff.powi(2) +
+        ((serverpos.1 - clientpos.1).abs()/2.0).powi(2)).sqrt()
+    };
+
+    if distance > 0.5 {
         let setpos_packet = ToClientCommand::MovePlayer(
             Box::new(wire::command::MovePlayerSpec {
-                pos: v3f { x: serverpos.0, y: serverpos.1, z: serverpos.2 },
+                pos: v3f { x: serverpos.0*10.0, y: serverpos.1*10.0, z: serverpos.2*10.0 },
                 pitch: mt_server_state.client_rotation.1,
                 yaw: mt_server_state.client_rotation.0
             })
         );
         let _ = conn.send(setpos_packet).await;
+        mt_server_state.mt_clientside_pos = serverpos;
     }
 }
 
@@ -495,7 +498,7 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
     // Parse packet
     let ClientboundLevelChunkWithLightPacket {x: chunk_x_pos, z: chunk_z_pos, chunk_data: chunk_packet_data, light_data: _} = packet_data;
     let ClientboundLevelChunkPacketData { heightmaps: chunk_heightmaps, data: chunk_data, block_entities } = chunk_packet_data;
-    utils::logger(&format!("[Minecraft] Server sent chunk x/z {}/{}", chunk_x_pos, chunk_z_pos), 0);
+    utils::logger(&format!("[Minecraft] Server sent chunk x/z {}/{}", chunk_x_pos, chunk_z_pos), 1);
     //let chunk_location: ChunkPos = ChunkPos { x: *chunk_x_pos, z: *chunk_z_pos }; // unused
     // send chunk to the MT client
     let mut nodearr: [BlockState; 4096] = [BlockState{id:125};4096];

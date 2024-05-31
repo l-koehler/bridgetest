@@ -13,7 +13,7 @@ use azalea::container::ContainerClientExt;
 use alloc::boxed::Box;
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::wire::command::{TSChatMessageSpec, PlayerposSpec, InteractSpec, GotblocksSpec, PlayeritemSpec, InventoryActionSpec};
-use minetest_protocol::wire::types::{v3f, v3s16, InventoryAction, PlayerPos, PointedThing};
+use minetest_protocol::wire::types::{v3s16, InventoryAction, PlayerPos, PointedThing};
 use minetest_protocol::wire::types;
 use crate::MTServerState;
 
@@ -29,14 +29,15 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
     // the player moved, if a handle to the inventory is kept we may now drop it.
     // this is needed as (unlike the minecraft client) the minetest client does not seem to send packets on container close
     mt_server_state.inventory_handle = None;
-    
+    mt_server_state.has_moved_since_sync = true; // maybe true, at least
+
     let PlayerposSpec { player_pos } = *specbox;
     let PlayerPos { position, speed: _, pitch, yaw, keys_pressed, fov: _, wanted_range: _ } = player_pos;
 
     mc_client.set_direction(yaw, pitch);
     mt_server_state.client_rotation = (yaw, pitch);
     mt_server_state.mt_clientside_pos = (position.x, position.y, position.z);
-    
+
     // keys_pressed:
     // https://github.com/minetest/minetest/blob/e734b3f0d8055ff3ae710f3632726a711603bf84/src/player.cpp#L217    
     let direction_keys = keys_pressed & 0xf;

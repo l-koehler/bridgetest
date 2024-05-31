@@ -97,7 +97,10 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
 pub async fn on_minecraft_tick(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_server_state: &mut MTServerState) {
     // resync client position if the difference is above .5
     // needed because client-side physics arent exact.
-    clientbound_translator::sync_client_pos(mc_client, mt_conn, mt_server_state).await;
+    if mt_server_state.has_moved_since_sync {
+        clientbound_translator::sync_client_pos(mc_client, mt_conn, mt_server_state).await;
+        mt_server_state.has_moved_since_sync = false;
+    }
     // update the MT clients inventory if it changed
     // for stupid reasons, we don't use packets for this, instead on every tick
     // and whenever the player crafted something

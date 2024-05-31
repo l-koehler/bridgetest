@@ -1133,8 +1133,8 @@ pub async fn validate_texture_pack(settings: &Config) -> bool {
         if !utils::ask_confirm("No texture pack found! Download faithfulpack.net? [Y/N]: ") {
             // the user denied downloading the pack.
             let config_file_path: PathBuf = dirs::config_dir().unwrap().join("bridgetest.toml");
-            println!("A texture pack is needed for this program to run.
-    You can change what pack will be downloaded by editing the URL in {}", config_file_path.display());
+            utils::logger(&format!("A texture pack is needed for this program to run.
+    You can change what pack will be downloaded by editing the URL in {}", config_file_path.display()), 3);
             std::process::exit(0);
         } else {
             utils::logger("Preparing texture pack -- This might take a while, depending on your internet speed.", 1);

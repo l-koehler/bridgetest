@@ -69,6 +69,7 @@ pub struct MTServerState {
     respawn_pos: (f32, f32, f32),
     current_dimension: Dimensions,
     is_sneaking: bool,
+    has_moved_since_sync: bool,
     keys_pressed: u32,
     entity_id_pos_map: IntMap<mt_definitions::EntityResendableData>,
     // used for looking up wheter a block should open a right-click menu on click.
@@ -79,7 +80,6 @@ pub struct MTServerState {
     container_map: HashMap<(i32, i32, i32), BlockEntityKind>,
     inventory_handle: Option<Arc<Mutex<ContainerHandle>>>, // never read, only used to not drop the handle
     
-    ticks_since_sync: u32,
     sent_media: Vec<String>, // all the media things we sent, by names like "item-fish.png"
 }
 
@@ -106,11 +106,11 @@ async fn start_client_handler(settings: Config) {
         respawn_pos: (0.0, 0.0, 0.0),
         current_dimension: Dimensions::Overworld,
         is_sneaking: false,
+        has_moved_since_sync: false,
         keys_pressed: 0,
         entity_id_pos_map: IntMap::new(),
         container_map: HashMap::new(),
         inventory_handle: None,
-        ticks_since_sync: 0,
         sent_media: Vec::new(),
     };
 
