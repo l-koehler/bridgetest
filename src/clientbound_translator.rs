@@ -268,8 +268,6 @@ pub async fn sync_client_pos(mc_client: &Client, conn: &mut MinetestConnection, 
     let vec_serverpos = mc_client.position();
     let serverpos = (vec_serverpos.x as f32, vec_serverpos.y as f32, vec_serverpos.z as f32);
     let clientpos = mt_server_state.mt_clientside_pos;
-
-    // incomprehensible and overcomplicated
     // we count height as half, otherwise jumping is noticeably broken
     let x_y_euclid_diff: f32 = {
         ((serverpos.0 - clientpos.0).abs().powi(2) +
@@ -280,7 +278,8 @@ pub async fn sync_client_pos(mc_client: &Client, conn: &mut MinetestConnection, 
         ((serverpos.1 - clientpos.1).abs()/2.0).powi(2)).sqrt()
     };
 
-    if distance > 0.5 {
+    if distance > settings::POS_DIFF_TOLERANCE {
+        utils::logger(&format!("[Minetest] Re-Syncing Player Position: {} difference.", distance), 3);
         let setpos_packet = ToClientCommand::MovePlayer(
             Box::new(wire::command::MovePlayerSpec {
                 pos: v3f { x: serverpos.0*10.0, y: serverpos.1*10.0, z: serverpos.2*10.0 },

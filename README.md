@@ -21,44 +21,34 @@ This also needs the entity models as .b3d files. You can get these by
 downloading Mineclonia, taking all .b3d files that are in that folder  
 and pasting them into `~/.local/share/bridgetest/models/` (on linux).  
 
-#### Things that are still missing:
+#### Things that are still missing from a usable version:
 
-* Crafting (Recipes are already implemented, waiting for containers)  
+* Crafting (Containers work (mostly, the UI is broken))  
 * Attacking/usable combat in general  
-* burn the entire movement thing down and do the same mistakes again  
 
-#### TODO:
+#### Other, smaller, broken things:
 
-* Rotated Blocks  
-* Climbable Blocks  
-* Containers (waiting on upstream)  
+* Rotated Blocks (ex. ladders that have a "side")  
+* Climbable Blocks (ladders/vines)  
 * Sneaking (waiting on upstream)  
-* Crafting recipes (sort-of waiting on Containers)  
+* Swimming  
+* Various block interactions like opening doors, using levers etc.  
+* Particles (will suck to implement, delayed until i cant do other stuff instead)  
+* Imprecisions in the movement (the client speed/gravity etc is not exact, so  
+  server/client will drift out of sync for up to half a block, at which point the  
+  proxy re-positions the client)
 
-#### Limitations:
-
-Note:
-*Currently*, nearly everything is a limitation, but  
-most things are planned to be added. This only lists problems that will  
-likely remain even if this ever becomes somewhat complete.  
-Technical Limitations:  
+#### Even more limitations (ones that don't affect gameplay):
 
 * The Minecraft server needs to be in offline-mode. I could fix that  
   with `azalea-auth` but most people who might use this probably do not  
-  have a minecraft account.  
+  have a minecraft account. TODO later  
 
 * Any Anticheats are ~~likely~~ near-certain to ban you.  
   (if they don't, you probably found a bug in the anticheat? the traffic sent  
   by this proxy is looking basically the same as that from any bot.)  
   That is a slight danger even with GeyserMC in proxy mode, a similar  
   (but mature) program basically doing the same thing for Bedrock.  
-
-* The program cannot run as a server- or clientside mod.  
-  Server-side would probably be possible *somehow*, but  
-  there are only few protocol librarys for minetest, none of them for Java.  
-
-  A Client-side mod is simply impossible, as the Minetest Modding API (Lua)  
-  does not allow me to rip the entire engine networking out and replace it.  
 
 * The program *might* work on Windows, but I am not testing this.  
   If you find a windows bug, feel free to open a issue, but I will only work  
@@ -68,6 +58,9 @@ Technical Limitations:
 * The upstream library for the minecraft protocol  
   needs to be the bleeding-edge git version, but you can simply ignore  
   this warning here if you only want to *use* this program.  
+
+* The proxy can only handle one client at a time, but could probably be  
+  rewritten to handle more clients without changing that much.  
 
 #### Isn't this violating Microsofts Intellectual Property?
 

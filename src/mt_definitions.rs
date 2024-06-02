@@ -465,7 +465,7 @@ pub fn get_defaultpriv() -> ToClientCommand {
 pub fn get_movementspec() -> ToClientCommand {
     ToClientCommand::Movement(
         Box::new(command::MovementSpec {
-            acceleration_default: 2.4,
+            acceleration_default: 2.9,
             acceleration_air: 1.2,
             acceleration_fast: 10.0,
             speed_walk: 4.317,
@@ -573,10 +573,10 @@ pub fn generate_itemdef(name: &str, item: serde_json::Value, inventory_image: &s
     let mut groups: Vec<(String, i16)> = Vec::new();
 
     let mut item_type: ItemType = ItemType::Craft;
-    if block_id != "minecraft:air" {
-        item_type = ItemType::Node;
-    } else if max_durability != 0 {
+    if max_durability != 0 {
         item_type = ItemType::Tool;
+    } else if block_id != "minecraft:air" {
+        item_type = ItemType::Node;
     }
     
     if item_type == ItemType::Node {
@@ -596,8 +596,12 @@ pub fn generate_itemdef(name: &str, item: serde_json::Value, inventory_image: &s
         item_type: item_type.clone(),
         name: String::from(name),
         description: String::from(""),
-        inventory_image: String::from(inventory_image),
-        wield_image: String::from(inventory_image), // TODO what is a wield image doing and can i just decide to ignore it?
+        // legible formatted string (curly braces are escaped by duplication, so the output is "{a{b{c")
+        inventory_image: match item_type {
+            ItemType::Node => format!("[inventorycube{{{}{{{}{{{}", inventory_image, inventory_image, inventory_image),
+            _ => String::from(inventory_image)
+        },
+        wield_image: String::from(inventory_image),
         wield_scale: v3f {
             x: 1.0,
             y: 1.0,

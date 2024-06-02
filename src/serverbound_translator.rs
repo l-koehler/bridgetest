@@ -29,14 +29,14 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
     // the player moved, if a handle to the inventory is kept we may now drop it.
     // this is needed as (unlike the minecraft client) the minetest client does not seem to send packets on container close
     mt_server_state.inventory_handle = None;
-    mt_server_state.has_moved_since_sync = true; // maybe true, at least
 
     let PlayerposSpec { player_pos } = *specbox;
     let PlayerPos { position, speed: _, pitch, yaw, keys_pressed, fov: _, wanted_range: _ } = player_pos;
 
     mc_client.set_direction(yaw, pitch);
     mt_server_state.client_rotation = (yaw, pitch);
-    mt_server_state.mt_clientside_pos = (position.x, position.y, position.z);
+    // all coordinates from/to the minetest client are/have to be *10 for some reason
+    mt_server_state.mt_clientside_pos = (position.x/10.0, position.y/10.0, position.z/10.0);
 
     // keys_pressed:
     // https://github.com/minetest/minetest/blob/e734b3f0d8055ff3ae710f3632726a711603bf84/src/player.cpp#L217    
@@ -53,6 +53,10 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
     let _place_pressed = (keys_pressed & (1 << 8)) != 0;
     let _zoom_pressed  = (keys_pressed & (1 << 9)) != 0;
 
+    if (direction_keys, aux1_pressed, jump_pressed) != (0, 0, false) {
+        mt_server_state.has_moved_since_sync = true;
+    }
+    
     if keys_pressed != mt_server_state.keys_pressed {
         // always sync rotation over to MC before moving
         // this is also the only occasion where rotation will be
@@ -68,6 +72,8 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
             (0, 0, 1, _, _) => mc_client.walk(azalea::WalkDirection::Backward),
             (0, _, _, 1, 0) => mc_client.walk(azalea::WalkDirection::Left),
             (0, _, _, 0, 1) => mc_client.walk(azalea::WalkDirection::Right),
+            // I can't get sprinting to work, but it should be perfectly fine.
+            // TODO: Check this later
             (1, 1, 0, 1, 0) => mc_client.sprint(azalea::SprintDirection::ForwardLeft),
             (1, 1, 0, 0, 1) => mc_client.sprint(azalea::SprintDirection::ForwardRight),
             (1, 1, 0, _, _) => mc_client.sprint(azalea::SprintDirection::Forward),

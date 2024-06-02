@@ -30,9 +30,9 @@ pub const FOODBAR_ID:   u32 = 1;
 pub const AIRBAR_ID:    u32 = 2;
 
 // max "disagreement" between server and client about position
-pub const POS_DIFF_TOLERANCE: f32 = 0.0;
-// max ticks without forcing the mt client to fit the tolerance above (20=1sec)
-pub const POS_FORCE_AFTER: u32 = 15;
+// y distance is only weighted half:
+// sqrt(sqrt(delta_x^2 + delta_y^2) + (delta_y/2)^2)
+pub const POS_DIFF_TOLERANCE: f32 = 0.5;
 
 // names to use for random name generation
 pub const HS_NAMES: [&str; 26] = [
