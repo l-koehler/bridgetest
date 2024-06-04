@@ -10,7 +10,7 @@ use minetest_protocol::CommandRef;
 use minetest_protocol::CommandDirection;
 use minetest_protocol::wire::types::{v3f, MapNode};
 use azalea_client::Event;
-use azalea_core::position::Vec3;
+use azalea_core::{aabb::AABB, position::Vec3};
 use azalea_protocol::packets::game::ClientboundGamePacket;
 use azalea_registry::{EntityKind, Registry};
 use azalea_block::BlockState;
@@ -18,6 +18,61 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::io::Read;
 use rand::Rng;
+
+// modified version of the liang-barsky line clipping algo
+// adapted to work in 3d and also to return a simple boolean indicating if the line clips at all.
+pub fn liang_barsky_3d(bb: AABB, line_a: Vec3, line_b: Vec3) -> bool {
+    println!("{:?}", bb);
+    println!("{} -> {}", line_a, line_b);
+    let mut t0 = 0.0;
+    let mut t1 = 1.0;
+    
+    let dx = line_b.x - line_a.x;
+    let dy = line_b.y - line_a.y;
+    let dz = line_b.z - line_a.z;
+
+    let clipping_edges = [
+        (-dx, line_a.x - bb.min_x),
+        ( dx, bb.max_x - line_a.x),
+        (-dy, line_a.y - bb.min_y),
+        ( dy, bb.max_y - line_a.y),
+        (-dz, line_a.z - bb.min_z),
+        ( dz, bb.max_z - line_a.z),
+    ];
+
+    for &(p, q) in &clipping_edges {
+        if p == 0.0 && q < 0.0 {
+            return false;
+        }
+        let r = q / p;
+        if p < 0.0 {
+            if r > t1 {
+                return false;
+            }
+            if r > t0 {
+                t0 = r;
+            }
+        } else if p > 0.0 {
+            if r < t0 {
+                return false;
+            }
+            if r < t1 {
+                t1 = r;
+            }
+        }
+    }
+
+    t0 < t1
+}
+
+pub fn normalize_angle(angle: f32) -> f32 {
+    let mut normalized_angle = angle % 360.0;
+    if normalized_angle < 0.0 {
+        normalized_angle += 360.0;
+    }
+    normalized_angle
+}
+
 
 pub fn texture_from_itemslot(item: &ItemSlot, mt_server_state: &MTServerState) -> String {
     match item {

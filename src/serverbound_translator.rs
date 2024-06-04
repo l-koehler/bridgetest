@@ -1,9 +1,14 @@
 use crate::mt_definitions::Dimensions;
+use crate::utils::possibly_create_dir;
 // this contains functions that TAKE data from the client
 // and send it to the MC server.
 use crate::{clientbound_translator, mt_definitions, utils};
 
 use azalea::inventory::operations::{ClickOperation, PickupClick, ThrowClick};
+use azalea::Vec3;
+use azalea::world::{InstanceName, MinecraftEntityId};
+use azalea::entity::{metadata::AbstractEntity, Dead, LocalEntity, Position, Physics};
+use azalea::ecs::prelude::{With, Without};
 use azalea_client::Client;
 use azalea_client::inventory::InventoryComponent;
 use azalea_core::position::{ChunkPos, ChunkBlockPos};
@@ -18,6 +23,7 @@ use minetest_protocol::wire::types;
 use crate::MTServerState;
 
 use std::sync::{Arc, Mutex};
+use std::f32::consts::PI;
 
 pub fn send_message(mc_client: &Client, specbox: Box<TSChatMessageSpec>) {
     utils::logger("[Minetest] C->S Forwarding Message sent by client", 1);
@@ -49,7 +55,7 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
     let jump_pressed  = (keys_pressed & (1 << 4)) != 0;
     let aux1_pressed  = keys_pressed & (1 << 5);
     let sneak_pressed = (keys_pressed & (1 << 6)) != 0;
-    let _dig_pressed   = (keys_pressed & (1 << 7)) != 0;
+    let dig_pressed   = (keys_pressed & (1 << 7)) != 0;
     let _place_pressed = (keys_pressed & (1 << 8)) != 0;
     let _zoom_pressed  = (keys_pressed & (1 << 9)) != 0;
 
@@ -89,6 +95,70 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
         // TODO: not added to azalea yet, check if this is still accurate:
         // https://github.com/azalea-rs/azalea/commits/sneaking
     };
+    
+    if !mt_server_state.next_click_no_attack && dig_pressed && !mt_server_state.previous_dig_held {
+        attack_crosshair(mc_client);
+    }
+    
+    // if we previously already let go of the button and didn't press it right now either, reset next_no_atk
+    if !mt_server_state.previous_dig_held && !dig_pressed {
+        mt_server_state.next_click_no_attack = false;
+    }
+    
+    mt_server_state.previous_dig_held = dig_pressed
+}
+
+pub fn attack_crosshair(mc_client: &mut Client) {
+    let line_origin = mc_client.eye_position();
+    let client_instance_name = mc_client.component::<InstanceName>();
+    // convert to radians
+    let (mut yaw, mut pitch) = mc_client.direction();
+    yaw   = utils::normalize_angle(yaw)   * (PI/180.0);
+    pitch = utils::normalize_angle(pitch) * (PI/180.0);
+    const MAX_DIST: f32 = 10.0;
+    let dx = MAX_DIST * pitch.cos() * -yaw.sin();
+    let dy = MAX_DIST * pitch.sin();
+    let dz = MAX_DIST * pitch.cos() * yaw.cos();
+    // Calculate the end point of the line
+    println!("{}/{}/{}", dx, dy, dz);
+    let line_end = Vec3 {
+        x: line_origin.x + dx as f64,
+        y: line_origin.y + dy as f64,
+        z: line_origin.z + dz as f64
+    };
+    // we now have a line-of-sight from line_origin (player head) to line_end
+    // collect all entities in range
+    let mut ecs = mc_client.ecs.lock();
+    // MinecraftEntityId, distance_from_player
+    let mut possible_entities: Vec<(MinecraftEntityId, f64)> = Vec::new();
+    let mut query = ecs
+        .query_filtered::<(&MinecraftEntityId, &Position, &InstanceName, &Physics), (
+            With<AbstractEntity>,
+            Without<LocalEntity>, // idk what this does but the "official" killaura example has this
+            Without<Dead>,
+        )>();
+    for (&entity_id, position, instance_name, physics) in query.iter(&ecs) {
+        if (*instance_name != client_instance_name) || (line_origin.distance_to(&position) > MAX_DIST.into()) {
+            // fail early instead of failing with the slower liang–barsky algorithm later
+            continue;
+        }
+        // check if the bounding box is on the line-of-sight
+        let bounding_box = physics.bounding_box;
+        if utils::liang_barsky_3d(bounding_box, line_origin, line_end) {
+            possible_entities.push(
+                (entity_id, line_origin.distance_to(&position))
+            )
+        } else {
+            println!("barsky fail")
+        }
+    }
+    drop(ecs);
+    // either none or Some((minecraftentityid, distance_to_player))
+    let closest_entity = possible_entities.iter().min_by(|x, y| x.1.total_cmp(&y.1));
+    if let Some(closest_entity) = closest_entity {
+        println!("got one");
+        mc_client.attack(closest_entity.0)
+    }
 }
 
 pub fn set_mainhand(mc_client: &mut Client, specbox: Box<PlayeritemSpec>) {
@@ -106,14 +176,7 @@ pub async fn interact_generic(conn: &mut MinetestConnection, mc_client: &mut Cli
     match pointed_thing {
         PointedThing::Nothing => (), // TODO might still be relevant in some cases (eating), check that
         PointedThing::Node { under_surface, above_surface } => interact_node(conn, action, under_surface, above_surface, mc_client, mt_server_state).await,
-        PointedThing::Object { object_id } => interact_object(action, object_id, mc_client).await,
-    }
-}
-
-async fn interact_object(action: types::InteractAction, object_id: u16, mc_client: &mut Client) {
-    match action {
-        types::InteractAction::Use => mc_client.attack(azalea_world::MinecraftEntityId(object_id.into())),
-        _ => utils::logger(&format!("[Minetest] Client sent unsupported entity interaction: {:?} (entity ID: {})", action, object_id), 2)
+        _ => utils::logger("[Minetest] Interacting with objects is currently unsupported/done some other hacky way!", 2)
     }
 }
 
@@ -149,7 +212,12 @@ async fn interact_node(conn: &mut MinetestConnection, action: types::InteractAct
     let under_blockpos = azalea::BlockPos { x: under_surface.x.into(), y: under_surface.y.into(), z: under_surface.z.into() };
     let above_blockpos = azalea::BlockPos { x: above_surface.x.into(), y: above_surface.y.into(), z: above_surface.z.into() };
     match action {
-        types::InteractAction::StartDigging => mc_client.start_mining(under_blockpos),
+        types::InteractAction::StartDigging => {
+            // declare that this button press wasn't for attacking, rather for mining
+            // whenever that is set to false, "dig_pressed" switching to true will trigger an attack
+            mt_server_state.next_click_no_attack = true;
+            mc_client.start_mining(under_blockpos);
+        },
         types::InteractAction::StopDigging  => stop_digging(mc_client),
         // using a node needs the position of the node that was clicked
         types::InteractAction::Place        => node_rightclick(conn, mc_client, under_blockpos, above_blockpos, mt_server_state).await,

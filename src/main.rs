@@ -79,6 +79,10 @@ pub struct MTServerState {
     // falling back to sending these of the block closer to the player if needed.
     container_map: HashMap<(i32, i32, i32), BlockEntityKind>,
     inventory_handle: Option<Arc<Mutex<ContainerHandle>>>, // never read, only used to not drop the handle
+    // used to not attack on every left click, only on ones that aren't breaking blocks
+    next_click_no_attack: bool,
+    // used to only attack on the rising edge, not constantly
+    previous_dig_held: bool,
     
     sent_media: Vec<String>, // all the media things we sent, by names like "item-fish.png"
 }
@@ -111,6 +115,8 @@ async fn start_client_handler(settings: Config) {
         entity_id_pos_map: IntMap::new(),
         container_map: HashMap::new(),
         inventory_handle: None,
+        next_click_no_attack: false,
+        previous_dig_held: false,
         sent_media: Vec::new(),
     };
 
