@@ -31,13 +31,14 @@ pub fn liang_barsky_3d(bb: AABB, line_a: Vec3, line_b: Vec3) -> bool {
     let dy = line_b.y - line_a.y;
     let dz = line_b.z - line_a.z;
 
+
     let clipping_edges = [
-        (-dx, line_a.x - bb.min_x),
-        ( dx, bb.max_x - line_a.x),
-        (-dy, line_a.y - bb.min_y),
-        ( dy, bb.max_y - line_a.y),
-        (-dz, line_a.z - bb.min_z),
-        ( dz, bb.max_z - line_a.z),
+        (-dx, line_a.x - bb.min_x.min(bb.max_x)),
+        ( dx, bb.max_x.max(bb.min_x) - line_a.x),
+        (-dy, line_a.y - bb.min_y.min(bb.max_y)),
+        ( dy, bb.max_y.max(bb.min_y) - line_a.y),
+        (-dz, line_a.z - bb.min_z.min(bb.max_z)),
+        ( dz, bb.max_z.max(bb.min_z) - line_a.z),
     ];
 
     for &(p, q) in &clipping_edges {
