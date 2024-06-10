@@ -5,7 +5,6 @@
  * Minecraft client.
  */
 
-use crate::settings;
 use crate::utils;
 use crate::serverbound_translator;
 use crate::clientbound_translator;
@@ -58,6 +57,8 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
         Event::Tick => on_minecraft_tick(mt_conn, mc_client, mt_server_state).await,
         Event::Death(_) => clientbound_translator::death(mt_conn, mt_server_state).await,
         Event::Packet(packet_value) => match (*packet_value).clone() {
+            ClientboundGamePacket::Bundle(_) => (),
+
             ClientboundGamePacket::ChunkBatchStart(_) => clientbound_translator::chunkbatch(mt_conn, mc_conn, mt_server_state, mc_client).await,
             ClientboundGamePacket::SystemChat(message) => clientbound_translator::send_sys_message(mt_conn, &message).await,
             ClientboundGamePacket::PlayerPosition(playerpos_packet) => clientbound_translator::set_player_pos(&playerpos_packet, mt_conn, mt_server_state).await,
@@ -88,6 +89,8 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
             
             ClientboundGamePacket::BlockUpdate(blockupdate_packet) => clientbound_translator::blockupdate(&blockupdate_packet, mt_conn, mt_server_state).await,
             
+            ClientboundGamePacket::Sound(sound_packet) => clientbound_translator::show_sound(&sound_packet, mt_conn, mt_server_state).await,
+            ClientboundGamePacket::SoundEntity(sound_packet) => println!("!!!"),
             _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),
         }
         _ => utils::logger(&format!("[Minecraft] Got unimplemented command, dropping {}", command_name), 2),

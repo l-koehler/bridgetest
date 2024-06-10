@@ -28,6 +28,7 @@ arcticdata_items = \"https://raw.githubusercontent.com/Articdive/ArticData/1.20.
 pub const HEALTHBAR_ID: u32 = 0;
 pub const FOODBAR_ID:   u32 = 1;
 pub const AIRBAR_ID:    u32 = 2;
+pub const SUBTITLE_ID:  u32 = 3;
 
 // max "disagreement" between server and client about position
 // y distance is only weighted half:
@@ -89,6 +90,6 @@ pub const HOTBAR_SIZE: i32 = 9;
  * +: Disable utils::logger entirely
  *
  * This is not in the config file yet, mostly due to concerns on
- * how to implement that without performance drop.
+ * how to implement that without performance drop. (currently messages that don't get displayed get optimized out)
  */
 pub const DROP_LOG_BELOW: i8 = 3;

@@ -409,6 +409,47 @@ pub fn add_airbar() -> ToClientCommand {
     ToClientCommand::Hudadd(
         Box::new(command::HudaddSpec {
             server_id: settings::AIRBAR_ID,
+            typ: 1,
+            pos: v2f {
+                x: 1.0,
+                y: 1.0
+            },
+            name: String::from(""),
+            scale: v2f {
+                x: 0.0,
+                y: 0.0
+            },
+            text: String::from("-\n-"),
+            number: 0, // default to not show this element
+            item: 20,
+            dir: 0,
+            align: v2f {
+                x: 0.0,
+                y: 0.0
+            },
+            offset: v2f {
+                x: -70.0,
+                y: -40.0
+            },
+            world_pos: Some(
+                v3f {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+            ),
+            size: None,
+            z_index: Some(0),
+            text2: None,
+            style: Some(0)
+        })
+    )
+}
+
+pub fn add_subtitlebox() -> ToClientCommand { 
+    ToClientCommand::Hudadd(
+        Box::new(command::HudaddSpec {
+            server_id: settings::SUBTITLE_ID,
             typ: 2,
             pos: v2f {
                 x: 0.5,

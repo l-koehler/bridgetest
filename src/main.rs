@@ -85,6 +85,8 @@ pub struct MTServerState {
     previous_dig_held: bool,
     
     sent_media: Vec<String>, // all the media things we sent, by names like "item-fish.png"
+    //TODO: subtitles can only hold two non-expiring sounds
+    subtitles: Vec<String>,
 }
 
 async fn start_client_handler(settings: Config) {
@@ -118,6 +120,7 @@ async fn start_client_handler(settings: Config) {
         next_click_no_attack: false,
         previous_dig_held: false,
         sent_media: Vec::new(),
+        subtitles: vec![String::from(""); 2],
     };
 
     // Wait for a client to join

@@ -52,6 +52,7 @@ use azalea_protocol::packets::game::{ClientboundGamePacket,
     clientbound_block_destruction_packet::ClientboundBlockDestructionPacket,
     clientbound_block_entity_data_packet::ClientboundBlockEntityDataPacket,
     clientbound_open_screen_packet::ClientboundOpenScreenPacket,
+    clientbound_sound_packet::ClientboundSoundPacket,
 };
 
 use azalea_protocol::packets::common::CommonPlayerSpawnInfo;
@@ -1297,4 +1298,19 @@ pub async fn refresh_inv(mc_client: &Client, mt_conn: &mut MinetestConnection, m
     if !to_update.is_empty() {
         update_inventory(mt_conn, to_update).await;
     }
+}
+
+pub async fn show_sound(packet_data: &ClientboundSoundPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+    let ClientboundSoundPacket { sound, source: _, x: _, y: _, z: _, volume: _, pitch: _, seed: _ } = packet_data;
+    utils::logger(&format!("[Minetest] New Subtitle: {:?}", sound), 4);
+    mt_server_state.subtitles.pop();
+    mt_server_state.subtitles.insert(0, format!("{:?}", sound));
+    let formatted_str = mt_server_state.subtitles.join("\n");
+    let subtitle_update_command = ToClientCommand::Hudchange(
+        Box::new(wire::command::HudchangeSpec {
+            server_id: settings::SUBTITLE_ID,
+            stat: HudStat::Text(formatted_str)
+        })
+    );
+    let _ = conn.send(subtitle_update_command).await;
 }
