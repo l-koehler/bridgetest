@@ -1234,13 +1234,7 @@ fn texture_vec_iterator(texture_vec: &mut Vec<(PathBuf, String)>, media_folder: 
         if name.ends_with(".png") {
             path = item.unwrap().path();
             texture_vec.push((path, format!("{}-{}", prefix, name)));
-        } else if name.ends_with(".b3d") {
-            path = item.unwrap().path();
-            texture_vec.push((
-                path,
-                utils::b3d_sanitize(format!("{}-{}", prefix, name))
-            ));
-        };
+        }
     }
 }
 
@@ -1252,7 +1246,6 @@ pub async fn get_texture_media_commands(settings: &Config, mt_server_state: &mut
     // foreach texture, generate announce and send specs
     // TODO: This currently will have every texture loaded into RAM at the same time
     let textures_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/assets/minecraft/textures/");
-    let models_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/models/"); // HACK! does not auto-download nor explain what is meant to be there
 
     // iterate over each
     let mut block_texture_vec: Vec<(PathBuf, String)> = Vec::new();
@@ -1260,6 +1253,7 @@ pub async fn get_texture_media_commands(settings: &Config, mt_server_state: &mut
     let mut entity_texture_vec: Vec<(PathBuf, String)> = Vec::new();
     let mut item_texture_vec: Vec<(PathBuf, String)> = Vec::new();
     let mut misc_texture_vec: Vec<(PathBuf, String)> = Vec::new();
+    let mut model_texture_vec: Vec<(PathBuf, String)> = Vec::new();
     texture_vec_iterator(&mut block_texture_vec, textures_folder.join("block/"), "block", false);
     texture_vec_iterator(&mut particle_texture_vec, textures_folder.join("particle/"), "particle", false);
     texture_vec_iterator(&mut entity_texture_vec, textures_folder.join("entity/"), "entity", true);
@@ -1269,7 +1263,18 @@ pub async fn get_texture_media_commands(settings: &Config, mt_server_state: &mut
     texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("gui/container/"), "container", false);
     texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("gui/sprites/hud/"), "hud", false);
     texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("gui/sprites/hud/heart/"), "heart", false);
-    texture_vec_iterator(&mut misc_texture_vec, models_folder, "entitymodel", false);
+    // separate handler for b3d files that'll be embedded into the executable later
+    let iterator = fs::read_dir("../models/").expect("Failed to read media");
+    for item in iterator {
+        let name = item.as_ref().unwrap().file_name().into_string().unwrap();
+        if name.ends_with(".b3d") {
+            let path = item.unwrap().path();
+            model_texture_vec.push((
+                path,
+                utils::b3d_sanitize(format!("{}-{}", "entitymodel", name))
+            ));
+        };
+    }
     // texture_vec = [("/path/to/allay.png", "entity-allay"), ("/path/to/cactus_bottom.png", "block-cactus_bottom"), ...]
     // call get_mediafilevecs on each entry tuple in *_texture_vec
     let mut announcement_vec: Vec<MediaAnnouncement> = Vec::new();
@@ -1303,6 +1308,78 @@ pub async fn get_texture_media_commands(settings: &Config, mt_server_state: &mut
         mediafilevecs = get_mediafilevecs(path_name_tuple.0, &path_name_tuple.1);
         announcement_vec.push(mediafilevecs.1);
         misc_file_vec.push(mediafilevecs.0);
+    }
+    for (path, name) in model_texture_vec {
+        // we can't include by variable because compile-time stuff, do this mess instead
+        let buffer = match path.to_str().unwrap() {
+            "../models/extra_mobs_cod.b3d" => include_bytes!("../models/extra_mobs_cod.b3d").to_vec(),
+            "../models/extra_mobs_dolphin.b3d" => include_bytes!("../models/extra_mobs_dolphin.b3d").to_vec(),
+            "../models/extra_mobs_glow_squid.b3d" => include_bytes!("../models/extra_mobs_glow_squid.b3d").to_vec(),
+            "../models/extra_mobs_hoglin.b3d" => include_bytes!("../models/extra_mobs_hoglin.b3d").to_vec(),
+            "../models/extra_mobs_piglin.b3d" => include_bytes!("../models/extra_mobs_piglin.b3d").to_vec(),
+            "../models/extra_mobs_salmon.b3d" => include_bytes!("../models/extra_mobs_salmon.b3d").to_vec(),
+            "../models/extra_mobs_strider.b3d" => include_bytes!("../models/extra_mobs_strider.b3d").to_vec(),
+            "../models/extra_mobs_sword_piglin.b3d" => include_bytes!("../models/extra_mobs_sword_piglin.b3d").to_vec(),
+            "../models/extra_mobs_tropical_fish_a.b3d" => include_bytes!("../models/extra_mobs_tropical_fish_a.b3d").to_vec(),
+            "../models/extra_mobs_tropical_fish_b.b3d" => include_bytes!("../models/extra_mobs_tropical_fish_b.b3d").to_vec(),
+            "../models/mobs_mc_axolotl.b3d" => include_bytes!("../models/mobs_mc_axolotl.b3d").to_vec(),
+            "../models/mobs_mc_bat.b3d" => include_bytes!("../models/mobs_mc_bat.b3d").to_vec(),
+            "../models/mobs_mc_blaze.b3d" => include_bytes!("../models/mobs_mc_blaze.b3d").to_vec(),
+            "../models/mobs_mc_cat.b3d" => include_bytes!("../models/mobs_mc_cat.b3d").to_vec(),
+            "../models/mobs_mc_chicken.b3d" => include_bytes!("../models/mobs_mc_chicken.b3d").to_vec(),
+            "../models/mobs_mc_cow.b3d" => include_bytes!("../models/mobs_mc_cow.b3d").to_vec(),
+            "../models/mobs_mc_creeper.b3d" => include_bytes!("../models/mobs_mc_creeper.b3d").to_vec(),
+            "../models/mobs_mc_dragon.b3d" => include_bytes!("../models/mobs_mc_dragon.b3d").to_vec(),
+            "../models/mobs_mc_enderman.b3d" => include_bytes!("../models/mobs_mc_enderman.b3d").to_vec(),
+            "../models/mobs_mc_endermite.b3d" => include_bytes!("../models/mobs_mc_endermite.b3d").to_vec(),
+            "../models/mobs_mc_evoker.b3d" => include_bytes!("../models/mobs_mc_evoker.b3d").to_vec(),
+            "../models/mobs_mc_ghast.b3d" => include_bytes!("../models/mobs_mc_ghast.b3d").to_vec(),
+            "../models/mobs_mc_guardian.b3d" => include_bytes!("../models/mobs_mc_guardian.b3d").to_vec(),
+            "../models/mobs_mc_horse.b3d" => include_bytes!("../models/mobs_mc_horse.b3d").to_vec(),
+            "../models/mobs_mc_illusioner.b3d" => include_bytes!("../models/mobs_mc_illusioner.b3d").to_vec(),
+            "../models/mobs_mc_iron_golem.b3d" => include_bytes!("../models/mobs_mc_iron_golem.b3d").to_vec(),
+            "../models/mobs_mc_llama.b3d" => include_bytes!("../models/mobs_mc_llama.b3d").to_vec(),
+            "../models/mobs_mc_magmacube.b3d" => include_bytes!("../models/mobs_mc_magmacube.b3d").to_vec(),
+            "../models/mobs_mc_parrot.b3d" => include_bytes!("../models/mobs_mc_parrot.b3d").to_vec(),
+            "../models/mobs_mc_pig.b3d" => include_bytes!("../models/mobs_mc_pig.b3d").to_vec(),
+            "../models/mobs_mc_pillager.b3d" => include_bytes!("../models/mobs_mc_pillager.b3d").to_vec(),
+            "../models/mobs_mc_polarbear.b3d" => include_bytes!("../models/mobs_mc_polarbear.b3d").to_vec(),
+            "../models/mobs_mc_rabbit.b3d" => include_bytes!("../models/mobs_mc_rabbit.b3d").to_vec(),
+            "../models/mobs_mc_sheepfur.b3d" => include_bytes!("../models/mobs_mc_sheepfur.b3d").to_vec(),
+            "../models/mobs_mc_shulker.b3d" => include_bytes!("../models/mobs_mc_shulker.b3d").to_vec(),
+            "../models/mobs_mc_silverfish.b3d" => include_bytes!("../models/mobs_mc_silverfish.b3d").to_vec(),
+            "../models/mobs_mc_skeleton.b3d" => include_bytes!("../models/mobs_mc_skeleton.b3d").to_vec(),
+            "../models/mobs_mc_slime.b3d" => include_bytes!("../models/mobs_mc_slime.b3d").to_vec(),
+            "../models/mobs_mc_snowman.b3d" => include_bytes!("../models/mobs_mc_snowman.b3d").to_vec(),
+            "../models/mobs_mc_spider.b3d" => include_bytes!("../models/mobs_mc_spider.b3d").to_vec(),
+            "../models/mobs_mc_squid.b3d" => include_bytes!("../models/mobs_mc_squid.b3d").to_vec(),
+            "../models/mobs_mc_stray.b3d" => include_bytes!("../models/mobs_mc_stray.b3d").to_vec(),
+            "../models/mobs_mc_vex.b3d" => include_bytes!("../models/mobs_mc_vex.b3d").to_vec(),
+            "../models/mobs_mc_villager.b3d" => include_bytes!("../models/mobs_mc_villager.b3d").to_vec(),
+            "../models/mobs_mc_villager_zombie.b3d" => include_bytes!("../models/mobs_mc_villager_zombie.b3d").to_vec(),
+            "../models/mobs_mc_vindicator.b3d" => include_bytes!("../models/mobs_mc_vindicator.b3d").to_vec(),
+            "../models/mobs_mc_witch.b3d" => include_bytes!("../models/mobs_mc_witch.b3d").to_vec(),
+            "../models/mobs_mc_wither.b3d" => include_bytes!("../models/mobs_mc_wither.b3d").to_vec(),
+            "../models/mobs_mc_witherskeleton.b3d" => include_bytes!("../models/mobs_mc_witherskeleton.b3d").to_vec(),
+            "../models/mobs_mc_wolf.b3d" => include_bytes!("../models/mobs_mc_wolf.b3d").to_vec(),
+            "../models/mobs_mc_zombie.b3d" => include_bytes!("../models/mobs_mc_zombie.b3d").to_vec(),
+            _ => unreachable!(),
+        };
+        let filedata = MediaFileData {
+            name: name.clone(),
+            data: buffer.clone()
+        };
+        // buffer_hash_b64 is base64encode( sha1hash( buffer ) )
+        let mut hasher = Sha1::new();
+        hasher.update(buffer);
+        let mut buffer_hash_b64 = String::new();
+        general_purpose::STANDARD.encode_string(hasher.finalize(), &mut buffer_hash_b64);
+        let fileannounce = MediaAnnouncement {
+            name,
+            sha1_base64: buffer_hash_b64,
+        };
+        announcement_vec.push(fileannounce);
+        misc_file_vec.push(filedata);
     }
     // add to sent_media
     for announcement in announcement_vec.clone() {

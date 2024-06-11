@@ -10,17 +10,6 @@ for minetest and then proxy to a minecraft server specified in CONF_DIR/config.t
 
 You need nightly rust to build some dependencies (`rustup default nightly`).  
 
-As a minetest client assumes nearly everything is provided by the server  
-while the server assumes textures, blocks and items are known by the client,  
-this program does NOT ONLY proxy all traffic, but also sends a texture  
-pack and block/item/entity definitions, which are obtained from [ArcticData](https://github.com/Articdive/ArticData).  
-You can generate these definitions yourself if you don't want to use ArcticData,  
-possibly by using [Minecrafts inbuilt Data Generators](https://wiki.vg/Data_Generators) instead of it.
-
-This also needs the entity models as .b3d files. You can get these by  
-downloading Mineclonia, taking all .b3d files that are in that folder  
-and pasting them into `~/.local/share/bridgetest/models/` (on linux).  
-
 #### Things that are still missing from a usable version:
 
 * Crafting (Containers work (mostly, the UI is broken))  
@@ -61,6 +50,14 @@ and pasting them into `~/.local/share/bridgetest/models/` (on linux).
 
 * The proxy can only handle one client at a time, but could probably be  
   rewritten to handle more clients without changing that much.  
+
+#### Attributions
+
+This repository contains entity models (the .b3d files).  
+These were not made by me and are licensed under the [CC-BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/legalcode.en).  
+The MPL2 License does __NOT__ apply to anything in the `models` directory!  
+The Models are taken from [Mineclonia](https://content.minetest.net/packages/ryvnf/mineclonia/), a minetest mod.  
+This Mod is owned on ContentDB by [ryvnf](https://content.minetest.net/users/ryvnf/), a full list of contributors is [here](https://codeberg.org/mineclonia/mineclonia/src/branch/main/CREDITS.md).  
 
 #### Isn't this violating Microsofts Intellectual Property?
 
