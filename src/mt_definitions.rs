@@ -450,7 +450,7 @@ pub fn add_subtitlebox() -> ToClientCommand {
     ToClientCommand::Hudadd(
         Box::new(command::HudaddSpec {
             server_id: settings::SUBTITLE_ID,
-            typ: 2,
+            typ: 1,
             pos: v2f {
                 x: 0.5,
                 y: 1.0
@@ -460,7 +460,7 @@ pub fn add_subtitlebox() -> ToClientCommand {
                 x: 0.0,
                 y: 0.0
             },
-            text: String::from("hud-air.png"),
+            text: String::from("-\n-"),
             number: 0, // default to not show this element
             item: 20,
             dir: 0,
@@ -472,13 +472,7 @@ pub fn add_subtitlebox() -> ToClientCommand {
                 x: -265.0,
                 y: -116.0
             },
-            world_pos: Some(
-                v3f {
-                    x: 0.0,
-                    y: 0.0,
-                    z: 0.0,
-                },
-            ),
+            world_pos: None,
             size: Some(
                 v2s32 {
                     x: 24,

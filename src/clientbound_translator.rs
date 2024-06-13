@@ -1309,7 +1309,7 @@ pub async fn show_sound(packet_data: &ClientboundSoundPacket, conn: &mut Minetes
     let subtitle_update_command = ToClientCommand::Hudchange(
         Box::new(wire::command::HudchangeSpec {
             server_id: settings::SUBTITLE_ID,
-            stat: HudStat::Text(formatted_str)
+            stat: HudStat::Text(formatted_str),
         })
     );
     let _ = conn.send(subtitle_update_command).await;
