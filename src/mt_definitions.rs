@@ -1232,7 +1232,7 @@ fn texture_vec_iterator(texture_vec: &mut Vec<(PathBuf, String)>, media_folder: 
     }
 }
 
-pub async fn get_texture_media_commands(settings: &Config, mt_server_state: &mut MTServerState) -> [ToClientCommand; 6] {
+pub async fn get_texture_media_commands(settings: &Config, mt_server_state: &mut MTServerState) -> Vec<ToClientCommand> {
     // TODO: This is *very* inefficient. not that bad, its only run once each start, but still..
     // returns (announcemedia, media)
     // ensure a texture pack exists
@@ -1421,5 +1421,5 @@ pub async fn get_texture_media_commands(settings: &Config, mt_server_state: &mut
             files: misc_file_vec
         })
     );
-    [announcemedia, block_media_packet, particle_media_packet, entity_media_packet, item_media_packet, misc_media_packet]
+    vec![announcemedia, block_media_packet, particle_media_packet, entity_media_packet, item_media_packet, misc_media_packet]
 }

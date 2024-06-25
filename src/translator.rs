@@ -59,10 +59,8 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     }
     
     let media_packets = mt_definitions::get_texture_media_commands(&settings, &mut mt_server_state).await;
-    let packet_names = ["MediaAnnouncement", "Media (Blocks)", "Media (Particle)", "Media (Entity)", "Media (Item)", "Media (Other)"];
-    for index in 0..media_packets.len() {
-        utils::logger(&format!("[Minetest] S->C {}", packet_names[index]), 1);
-        let _ = mt_conn.send(media_packets[index].clone()).await;
+    for packet in media_packets {
+        let _ = mt_conn.send(packet).await;
     }
 
     utils::logger("[Minetest] S->C Itemdef", 1);
