@@ -17,7 +17,6 @@ pub async fn server(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_ser
     clientbound_translator::refresh_inv(mc_client, mt_conn, mt_server_state).await;
     // move every entity according to a position delta
     let thing = mt_server_state.entity_velocity_tracker.clone().into_iter();
-    let mut data: Vec<(u16, EntityResendableData)> = Vec::new();
     for entity in thing {
         let id = entity.0;
         let delta = entity.1;
@@ -25,7 +24,7 @@ pub async fn server(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_ser
             utils::logger(&format!("[Minetest] Failed to update position for (adjusted) entity ID {}: ID not yet present, dropping the packet!", id), 2);
             return
         }
-        let entitydata = mt_server_state.entity_id_pos_map.get(id.into()).unwrap();
+        let entitydata = mt_server_state.entity_id_pos_map.get_mut(id.into()).unwrap();
         let EntityResendableData {
             position: old_position,
             rotation,
@@ -41,13 +40,11 @@ pub async fn server(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_ser
             y: old_position.y + delta.y,
             z: old_position.z + delta.z
         };
-        let new_data = EntityResendableData {
+        *entitydata = EntityResendableData {
             position, rotation,
             velocity,
             acceleration, entity_kind
         };
-        let _ = mt_server_state.entity_id_pos_map.insert(id.into(), new_data.clone());
-        data.push((id, new_data));
+        clientbound_translator::send_entity_data(id, entitydata, mt_conn).await;
     }
-    clientbound_translator::send_multi_entity_data(data, mt_conn).await;
 }

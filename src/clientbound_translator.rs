@@ -1040,7 +1040,10 @@ pub async fn send_entity_data(id: u16, entitydata: &EntityResendableData, conn: 
     let _ = conn.send(clientbound_moveentity).await;
 }
 
-pub async fn send_multi_entity_data(data: Vec<(u16, EntityResendableData)>, conn: &mut MinetestConnection) {
+//FIXME
+// causes a segfault, wait for upstream (either minetest_protocol or minetest) to fix this.
+// until then, send one packet per entity
+pub async fn _send_multi_entity_data(data: Vec<(u16, EntityResendableData)>, conn: &mut MinetestConnection) {
     let mut objects: Vec<wire::types::ActiveObjectMessage> = Vec::new();
     for (id, entitydata) in data {
         objects.push(wire::types::ActiveObjectMessage{
