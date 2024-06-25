@@ -1,5 +1,4 @@
 use crate::mt_definitions::Dimensions;
-use crate::utils::possibly_create_dir;
 // this contains functions that TAKE data from the client
 // and send it to the MC server.
 use crate::{clientbound_translator, mt_definitions, utils};
@@ -110,6 +109,7 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
 
 pub fn attack_crosshair(mc_client: &mut Client) {
     let line_origin = mc_client.eye_position();
+    println!("{}/{}/{}", line_origin.x, line_origin.y, line_origin.z);
     let client_instance_name = mc_client.component::<InstanceName>();
     // convert to radians
     let (mut yaw, mut pitch) = mc_client.direction();

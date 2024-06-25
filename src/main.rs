@@ -9,12 +9,14 @@ mod settings;
 mod clientbound_translator;
 mod serverbound_translator;
 mod mt_definitions;
+mod on_tick;
 
 use azalea::container::ContainerHandle;
 use minetest_protocol::MinetestServer;
 use mt_definitions::Dimensions;
 use azalea_client::inventory;
 use azalea_registry::BlockEntityKind;
+use minetest_protocol::wire::types::v3f;
 
 use parking_lot::deadlock;
 use std::thread;
@@ -87,6 +89,8 @@ pub struct MTServerState {
     sent_media: Vec<String>, // all the media things we sent, by names like "item-fish.png"
     //TODO: subtitles can only hold two non-expiring sounds
     subtitles: Vec<String>,
+    //HACK: this really should be the clients problem but idk it wont work :D
+    entity_velocity_tracker: HashMap<u16, v3f>,
 }
 
 async fn start_client_handler(settings: Config) {
@@ -121,6 +125,7 @@ async fn start_client_handler(settings: Config) {
         previous_dig_held: false,
         sent_media: Vec::new(),
         subtitles: vec![String::from(""); 2],
+        entity_velocity_tracker: HashMap::new(),
     };
 
     // Wait for a client to join

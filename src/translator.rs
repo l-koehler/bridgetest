@@ -10,6 +10,7 @@ use crate::utils;
 use crate::commands;
 use crate::MTServerState; // ok this is stupid to do whatever it works (i need global variables) (for normal reasons)
 use crate::settings;
+use crate::on_tick;
 
 use minetest_protocol::peer::peer::PeerError;
 use minetest_protocol::wire::command::CommandProperties;
@@ -19,6 +20,9 @@ use minetest_protocol::MinetestServer;
 
 use azalea_client::Event;
 use config::Config;
+use tokio_stream::wrappers::IntervalStream;
+use tokio_stream::StreamExt;
+use std::time::Duration;
 
 pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestConnection, mut mt_server_state: MTServerState, settings: Config) {
     /*
@@ -118,7 +122,9 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
      * are connected.
      * mt_conn refers to the connection to the minetest client
      * mc_client and mc_conn refer to the minecraft client and its connection
+     * we also run a tick function every 50ms
      */
+    let mut stream = IntervalStream::new(tokio::time::interval(Duration::from_millis(50)));
     loop {
         tokio::select! {
             // recieve data over the MinetestConnection
@@ -154,6 +160,10 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
                     },
                     None => utils::logger(&format!("[Minecraft] Recieved empty/none, skipping: {:#?}", t), 2),
                 }
+            },
+            // or run the tick function if no packets are waiting to be processed
+            _ = stream.next() => {
+                on_tick::server(&mut mt_conn, &mc_client, &mut mt_server_state).await;
             }
         }
     }

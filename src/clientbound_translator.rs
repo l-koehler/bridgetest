@@ -765,6 +765,8 @@ pub async fn remove_entity(packet_data: &ClientboundRemoveEntitiesPacket, conn: 
         } else {
             utils::logger(&format!("[Minetest] Failed to remove entity with (adjusted) entity ID {}: ID not present. Skipping its removal!", adjusted_id), 2);
         }
+        // might not exist, do not log errors here
+        let _ = mt_server_state.entity_velocity_tracker.remove(&adjusted_id);
 
     }
     if !entity_ids_adjusted.is_empty() {
@@ -911,28 +913,13 @@ pub async fn entity_setmotion(packet_data: &ClientboundSetEntityMotionPacket, co
         utils::logger(&format!("[Minetest] Failed to update data for (adjusted) entity ID {}: ID not yet present, dropping the packet!", adjusted_id), 2);
         return
     }
-    let entitydata = mt_server_state.entity_id_pos_map.get_mut(adjusted_id.into()).unwrap();
-    let EntityResendableData {
-        position,
-        rotation,
-        velocity: _,
-        acceleration,
-        entity_kind,
-    } = entitydata.clone();
-    /* Translation for velocity:
-     * MT expects Nodes/Second
-     * MC sends in 1/8000 of a Node/Tick (Server Tick: 50ms)
-     * So MC/400 = MT
-     */
-    *entitydata = EntityResendableData {
-        velocity: v3f {
-            x: *xa as f32/400.0,
-            y: *ya as f32/400.0,
-            z: *za as f32/400.0
-        },
-        position, acceleration, rotation, entity_kind
+    // unit: 1block/50ms
+    let delta = v3f {
+        x: *xa as f32/8000.0,
+        y: *ya as f32/8000.0,
+        z: *za as f32/8000.0
     };
-    send_entity_data(adjusted_id, entitydata, conn).await;
+    mt_server_state.entity_velocity_tracker.insert(adjusted_id, delta);
 }
 
 pub async fn entity_rotatehead(packet_data: &ClientboundRotateHeadPacket, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
@@ -1031,7 +1018,7 @@ pub async fn set_entity_data(packet_data: &ClientboundSetEntityDataPacket, conn:
     }
 }
 
-async fn send_entity_data(id: u16, entitydata: &EntityResendableData, conn: &mut MinetestConnection) {
+pub async fn send_entity_data(id: u16, entitydata: &EntityResendableData, conn: &mut MinetestConnection) {
     let clientbound_moveentity = ToClientCommand::ActiveObjectMessages(
         Box::new(wire::command::ActiveObjectMessagesSpec{
             objects: vec![wire::types::ActiveObjectMessage{
@@ -1048,6 +1035,32 @@ async fn send_entity_data(id: u16, entitydata: &EntityResendableData, conn: &mut
                     }
                 )
             }]
+        })
+    );
+    let _ = conn.send(clientbound_moveentity).await;
+}
+
+pub async fn send_multi_entity_data(data: Vec<(u16, EntityResendableData)>, conn: &mut MinetestConnection) {
+    let mut objects: Vec<wire::types::ActiveObjectMessage> = Vec::new();
+    for (id, entitydata) in data {
+        objects.push(wire::types::ActiveObjectMessage{
+            id,
+            data: wire::types::ActiveObjectCommand::UpdatePosition(
+                wire::types::AOCUpdatePosition {
+                    position: entitydata.position,
+                    velocity: entitydata.velocity,
+                    acceleration: entitydata.acceleration,
+                    rotation: entitydata.rotation,
+                    do_interpolate: false,
+                    is_end_position: true,
+                    update_interval: 1.0
+                }
+            )
+        })
+    }
+    let clientbound_moveentity = ToClientCommand::ActiveObjectMessages(
+        Box::new(wire::command::ActiveObjectMessagesSpec {
+            objects
         })
     );
     let _ = conn.send(clientbound_moveentity).await;

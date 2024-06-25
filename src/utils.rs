@@ -26,7 +26,7 @@ pub fn liang_barsky_3d(bb: AABB, line_a: Vec3, line_b: Vec3) -> bool {
     println!("{} -> {}", line_a, line_b);
     let mut t0 = 0.0;
     let mut t1 = 1.0;
-    
+
     let dx = line_b.x - line_a.x;
     let dy = line_b.y - line_a.y;
     let dz = line_b.z - line_a.z;
