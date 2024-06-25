@@ -10,6 +10,7 @@ mod clientbound_translator;
 mod serverbound_translator;
 mod mt_definitions;
 mod on_tick;
+mod textures;
 
 use azalea::container::ContainerHandle;
 use minetest_protocol::MinetestServer;
@@ -25,6 +26,7 @@ use std::sync::{Mutex, Arc};
 use intmap::IntMap;
 use alloc::vec::Vec;
 use std::collections::HashMap;
+use bimap::BiHashMap;
 use config::Config;
 use std::path::{PathBuf, Path};
 use std::fs::File;
@@ -87,6 +89,7 @@ pub struct MTServerState {
     previous_dig_held: bool,
     
     sent_media: Vec<String>, // all the media things we sent, by names like "item-fish.png"
+    path_name_map: BiHashMap<PathBuf, String>, // path<->name mapping
     //TODO: subtitles can only hold two non-expiring sounds
     subtitles: Vec<String>,
     //HACK: this really should be the clients problem but idk it wont work :D
@@ -126,6 +129,7 @@ async fn start_client_handler(settings: Config) {
         sent_media: Vec::new(),
         subtitles: vec![String::from(""); 2],
         entity_velocity_tracker: HashMap::new(),
+        path_name_map: BiHashMap::new(),
     };
 
     // Wait for a client to join

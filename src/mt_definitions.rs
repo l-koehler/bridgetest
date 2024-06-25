@@ -85,7 +85,7 @@ pub fn get_container_formspec(container: &MenuKind, title: &str) -> String {
         MenuKind::Generic9x3 => format!(
 "formspec_version[7]\
 size[11.5,11]\
-background[0,0;17.5,17.5;container-shulker_box.png]\
+background[0,0;17.5,17.5;gui-container-shulker_box.png]\
 style_type[list;spacing=0.135,0.135;size=1.09,1.09;border=false]\
 listcolors[#0000;#0002]\
 list[current_player;container;0.55,1.3;9,3]\
@@ -128,7 +128,7 @@ pub fn set_hotbar_size() -> ToClientCommand {
 pub fn set_hotbar_texture() -> ToClientCommand {
     ToClientCommand::HudSetParam(
         Box::new(command::HudSetParamSpec {
-            value: types::HudSetParam::SetHotBarImage(String::from("hud-hotbar.png"))
+            value: types::HudSetParam::SetHotBarImage(String::from("gui-sprites-hud-hotbar.png"))
         })
     )
 }
@@ -136,7 +136,7 @@ pub fn set_hotbar_texture() -> ToClientCommand {
 pub fn set_hotbar_selected() -> ToClientCommand {
     ToClientCommand::HudSetParam(
         Box::new(command::HudSetParamSpec {
-            value: types::HudSetParam::SetHotBarSelectedImage(String::from("hud-hotbar_selection.png"))
+            value: types::HudSetParam::SetHotBarSelectedImage(String::from("gui-sprites-hud-hotbar_selection.png"))
         })
     )
 }
@@ -221,8 +221,8 @@ pub fn get_sky_stuff() -> [ToClientCommand; 5] {
                 sun: types::SunParams {
                     visible: true,
                     texture: String::from("misc-sun.png"),
-                    tonemap: String::from("qwq-what"),
-                    sunrise: String::from("dont-have-that"),
+                    tonemap: String::from(""),
+                    sunrise: String::from("air.png"),
                     sunrise_visible: true,
                     scale: 1.0
                 }
@@ -233,7 +233,7 @@ pub fn get_sky_stuff() -> [ToClientCommand; 5] {
                 moon: types::MoonParams {
                     visible: true,
                     texture: String::from("misc-moon_phases.png"),
-                    tonemap: String::from("qwq-what"),
+                    tonemap: String::from(""),
                     scale: 3.75
                 }
             })
@@ -323,7 +323,7 @@ pub fn add_healthbar() -> ToClientCommand {
                 x: 0.0,
                 y: 0.0
             },
-            text: String::from("heart-full.png"),
+            text: String::from("gui-sprites-hud-heart-full.png"),
             number: 20,
             item: 20,
             dir: 0,
@@ -350,7 +350,7 @@ pub fn add_healthbar() -> ToClientCommand {
             ),
             z_index: Some(0),
             text2: Some(
-                String::from("heart-container.png"),
+                String::from("gui-sprites-hud-heart-container.png"),
             ),
             style: Some(0)
         })
@@ -371,7 +371,7 @@ pub fn add_foodbar() -> ToClientCommand {
                 x: 0.0,
                 y: 0.0
             },
-            text: String::from("hud-food_full.png"),
+            text: String::from("gui-sprites-hud-food_full.png"),
             number: 20,
             item: 20,
             dir: 0,
@@ -398,7 +398,7 @@ pub fn add_foodbar() -> ToClientCommand {
             ),
             z_index: Some(0),
             text2: Some(
-                String::from("hud-food_empty.png"),
+                String::from("gui-sprites-hud-food_empty.png"),
             ),
             style: Some(0)
         })
@@ -1110,33 +1110,6 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
     }
 }
 
-/*
- * Texture pack sender/generators:
- * validate_texture_pack()
- * get_mediafilevecs()
- * texture_vec_iterator()
- * get_texture_media_commands()
- * alternate_exists()
- * 
- * Folder Structure
- * data_folder               -- dir::data_local_dir/bridgetest
- * |- url.dsv                -- contains "timestamp:url", where "url" is the url of the pack currently present and "timestamp" the time of download
- * \- textures               -- a valid minecraft texturepack, uncompressed
- *    |- pack.mcmeta
- *    |- pack.png
- *    \- assets
- *       \- minecraft
- *          \- textures
- *             |- block
- *             |  \- a bunch of PNGs (block-name.png)
- *             |- item
- *             |  \- a bunch of PNGs (item-name.png)
- *             |- entity
- *             |  \- a bunch of PNGs (entity-name.png)
- *             |
- *             \~ a bunch of other folders this program does not care about
- */
-
 pub async fn validate_texture_pack(settings: &Config) -> bool {
     // check (and possibly fix) the texture pack
     let texture_pack_url = settings.get_string("texture_pack_url").expect("Failed to read config!");
@@ -1189,237 +1162,4 @@ pub async fn validate_texture_pack(settings: &Config) -> bool {
         }
     } // else the textures are already installed
     do_download
-}
-
-pub fn get_mediafilevecs(filename: PathBuf, name: &str) -> (MediaFileData, MediaAnnouncement) {
-    let mut texture_file = fs::File::open(&filename).unwrap();
-    let metadata = fs::metadata(&filename).expect("Unable to read File Metadata! (Check Permissions?)");
-    let mut buffer = vec![0; metadata.len() as usize];
-    texture_file.read_exact(&mut buffer).expect("File Metadata lied about File Size. This should NOT happen, what the hell is wrong with your device?");
-    // buffer: Vec<u8> with the png's content.
-    let filedata = MediaFileData {
-        name: String::from(name),
-        data: buffer.clone()
-    };
-    // buffer_hash_b64 is base64encode( sha1hash( buffer ) )
-    let mut hasher = Sha1::new();
-    hasher.update(buffer);
-    let mut buffer_hash_b64 = String::new();
-    general_purpose::STANDARD.encode_string(hasher.finalize(), &mut buffer_hash_b64);
-    let fileannounce = MediaAnnouncement {
-        name: String::from(name),
-        sha1_base64: buffer_hash_b64,
-    };
-    (filedata, fileannounce)
-}
-
-fn texture_vec_iterator(texture_vec: &mut Vec<(PathBuf, String)>, media_folder: PathBuf, prefix: &str, recurse: bool) {
-    let mut name: String;
-    let mut path: PathBuf;
-    let iterator = fs::read_dir(media_folder).expect("Failed to read media");
-    for item in iterator {
-        name = item.as_ref().unwrap().file_name().into_string().unwrap();
-        if item.as_ref().unwrap().file_type().unwrap().is_dir() && recurse {
-            // recurse one layer deep
-            // also add the dir name to the prefix of these textures
-            // to avoid "boat/birch.png" -> "entity-birch.png", when it should be "entity-boat-birch.png"
-            texture_vec_iterator(texture_vec, item.as_ref().unwrap().path(), &format!("{}-{}", prefix, name), false);
-        }
-        if name.ends_with(".png") {
-            path = item.unwrap().path();
-            texture_vec.push((path, format!("{}-{}", prefix, name)));
-        }
-    }
-}
-
-pub async fn get_texture_media_commands(settings: &Config, mt_server_state: &mut MTServerState) -> Vec<ToClientCommand> {
-    // TODO: This is *very* inefficient. not that bad, its only run once each start, but still..
-    // returns (announcemedia, media)
-    // ensure a texture pack exists
-    validate_texture_pack(settings).await;
-    // foreach texture, generate announce and send specs
-    // TODO: This currently will have every texture loaded into RAM at the same time
-    let textures_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/assets/minecraft/textures/");
-
-    // iterate over each
-    let mut block_texture_vec: Vec<(PathBuf, String)> = Vec::new();
-    let mut particle_texture_vec: Vec<(PathBuf, String)> = Vec::new();
-    let mut entity_texture_vec: Vec<(PathBuf, String)> = Vec::new();
-    let mut item_texture_vec: Vec<(PathBuf, String)> = Vec::new();
-    let mut misc_texture_vec: Vec<(PathBuf, String)> = Vec::new();
-    let mut model_texture_vec: Vec<(PathBuf, String)> = Vec::new();
-    texture_vec_iterator(&mut block_texture_vec, textures_folder.join("block/"), "block", false);
-    texture_vec_iterator(&mut particle_texture_vec, textures_folder.join("particle/"), "particle", false);
-    texture_vec_iterator(&mut entity_texture_vec, textures_folder.join("entity/"), "entity", true);
-    texture_vec_iterator(&mut item_texture_vec, textures_folder.join("item/"), "item", false);
-    
-    texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("environment/"), "misc", false);
-    texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("gui/container/"), "container", false);
-    texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("gui/sprites/hud/"), "hud", false);
-    texture_vec_iterator(&mut misc_texture_vec, textures_folder.join("gui/sprites/hud/heart/"), "heart", false);
-    // separate handler for b3d files that'll be embedded into the executable later
-    let iterator = fs::read_dir("./models/").expect("Failed to read media");
-    for item in iterator {
-        let name = item.as_ref().unwrap().file_name().into_string().unwrap();
-        if name.ends_with(".b3d") {
-            let path = item.unwrap().path();
-            model_texture_vec.push((
-                path,
-                utils::b3d_sanitize(format!("{}-{}", "entitymodel", name))
-            ));
-        };
-    }
-    // texture_vec = [("/path/to/allay.png", "entity-allay"), ("/path/to/cactus_bottom.png", "block-cactus_bottom"), ...]
-    // call get_mediafilevecs on each entry tuple in *_texture_vec
-    let mut announcement_vec: Vec<MediaAnnouncement> = Vec::new();
-    let mut block_file_vec: Vec<MediaFileData> = Vec::new();
-    let mut particle_file_vec: Vec<MediaFileData> = Vec::new();
-    let mut entity_file_vec: Vec<MediaFileData> = Vec::new();
-    let mut item_file_vec: Vec<MediaFileData> = Vec::new();
-    let mut misc_file_vec: Vec<MediaFileData> = Vec::new();
-    let mut mediafilevecs;
-    for path_name_tuple in block_texture_vec {
-        mediafilevecs = get_mediafilevecs(path_name_tuple.0, &path_name_tuple.1);
-        announcement_vec.push(mediafilevecs.1);
-        block_file_vec.push(mediafilevecs.0);
-    }
-    for path_name_tuple in particle_texture_vec {
-        mediafilevecs = get_mediafilevecs(path_name_tuple.0, &path_name_tuple.1);
-        announcement_vec.push(mediafilevecs.1);
-        particle_file_vec.push(mediafilevecs.0);
-    }
-    for path_name_tuple in entity_texture_vec {
-        mediafilevecs = get_mediafilevecs(path_name_tuple.0, &path_name_tuple.1);
-        announcement_vec.push(mediafilevecs.1);
-        entity_file_vec.push(mediafilevecs.0);
-    }
-    for path_name_tuple in item_texture_vec {
-        mediafilevecs = get_mediafilevecs(path_name_tuple.0, &path_name_tuple.1);
-        announcement_vec.push(mediafilevecs.1);
-        item_file_vec.push(mediafilevecs.0);
-    }
-    for path_name_tuple in misc_texture_vec {
-        mediafilevecs = get_mediafilevecs(path_name_tuple.0, &path_name_tuple.1);
-        announcement_vec.push(mediafilevecs.1);
-        misc_file_vec.push(mediafilevecs.0);
-    }
-    for (path, name) in model_texture_vec {
-        // we can't include by variable because compile-time stuff, do this mess instead
-        let buffer = match path.to_str().unwrap() {
-            "./models/extra_mobs_cod.b3d" => include_bytes!("../models/extra_mobs_cod.b3d").to_vec(),
-            "./models/extra_mobs_dolphin.b3d" => include_bytes!("../models/extra_mobs_dolphin.b3d").to_vec(),
-            "./models/extra_mobs_glow_squid.b3d" => include_bytes!("../models/extra_mobs_glow_squid.b3d").to_vec(),
-            "./models/extra_mobs_hoglin.b3d" => include_bytes!("../models/extra_mobs_hoglin.b3d").to_vec(),
-            "./models/extra_mobs_piglin.b3d" => include_bytes!("../models/extra_mobs_piglin.b3d").to_vec(),
-            "./models/extra_mobs_salmon.b3d" => include_bytes!("../models/extra_mobs_salmon.b3d").to_vec(),
-            "./models/extra_mobs_strider.b3d" => include_bytes!("../models/extra_mobs_strider.b3d").to_vec(),
-            "./models/extra_mobs_sword_piglin.b3d" => include_bytes!("../models/extra_mobs_sword_piglin.b3d").to_vec(),
-            "./models/extra_mobs_tropical_fish_a.b3d" => include_bytes!("../models/extra_mobs_tropical_fish_a.b3d").to_vec(),
-            "./models/extra_mobs_tropical_fish_b.b3d" => include_bytes!("../models/extra_mobs_tropical_fish_b.b3d").to_vec(),
-            "./models/mobs_mc_axolotl.b3d" => include_bytes!("../models/mobs_mc_axolotl.b3d").to_vec(),
-            "./models/mobs_mc_bat.b3d" => include_bytes!("../models/mobs_mc_bat.b3d").to_vec(),
-            "./models/mobs_mc_blaze.b3d" => include_bytes!("../models/mobs_mc_blaze.b3d").to_vec(),
-            "./models/mobs_mc_cat.b3d" => include_bytes!("../models/mobs_mc_cat.b3d").to_vec(),
-            "./models/mobs_mc_chicken.b3d" => include_bytes!("../models/mobs_mc_chicken.b3d").to_vec(),
-            "./models/mobs_mc_cow.b3d" => include_bytes!("../models/mobs_mc_cow.b3d").to_vec(),
-            "./models/mobs_mc_creeper.b3d" => include_bytes!("../models/mobs_mc_creeper.b3d").to_vec(),
-            "./models/mobs_mc_dragon.b3d" => include_bytes!("../models/mobs_mc_dragon.b3d").to_vec(),
-            "./models/mobs_mc_enderman.b3d" => include_bytes!("../models/mobs_mc_enderman.b3d").to_vec(),
-            "./models/mobs_mc_endermite.b3d" => include_bytes!("../models/mobs_mc_endermite.b3d").to_vec(),
-            "./models/mobs_mc_evoker.b3d" => include_bytes!("../models/mobs_mc_evoker.b3d").to_vec(),
-            "./models/mobs_mc_ghast.b3d" => include_bytes!("../models/mobs_mc_ghast.b3d").to_vec(),
-            "./models/mobs_mc_guardian.b3d" => include_bytes!("../models/mobs_mc_guardian.b3d").to_vec(),
-            "./models/mobs_mc_horse.b3d" => include_bytes!("../models/mobs_mc_horse.b3d").to_vec(),
-            "./models/mobs_mc_illusioner.b3d" => include_bytes!("../models/mobs_mc_illusioner.b3d").to_vec(),
-            "./models/mobs_mc_iron_golem.b3d" => include_bytes!("../models/mobs_mc_iron_golem.b3d").to_vec(),
-            "./models/mobs_mc_llama.b3d" => include_bytes!("../models/mobs_mc_llama.b3d").to_vec(),
-            "./models/mobs_mc_magmacube.b3d" => include_bytes!("../models/mobs_mc_magmacube.b3d").to_vec(),
-            "./models/mobs_mc_parrot.b3d" => include_bytes!("../models/mobs_mc_parrot.b3d").to_vec(),
-            "./models/mobs_mc_pig.b3d" => include_bytes!("../models/mobs_mc_pig.b3d").to_vec(),
-            "./models/mobs_mc_pillager.b3d" => include_bytes!("../models/mobs_mc_pillager.b3d").to_vec(),
-            "./models/mobs_mc_polarbear.b3d" => include_bytes!("../models/mobs_mc_polarbear.b3d").to_vec(),
-            "./models/mobs_mc_rabbit.b3d" => include_bytes!("../models/mobs_mc_rabbit.b3d").to_vec(),
-            "./models/mobs_mc_sheepfur.b3d" => include_bytes!("../models/mobs_mc_sheepfur.b3d").to_vec(),
-            "./models/mobs_mc_shulker.b3d" => include_bytes!("../models/mobs_mc_shulker.b3d").to_vec(),
-            "./models/mobs_mc_silverfish.b3d" => include_bytes!("../models/mobs_mc_silverfish.b3d").to_vec(),
-            "./models/mobs_mc_skeleton.b3d" => include_bytes!("../models/mobs_mc_skeleton.b3d").to_vec(),
-            "./models/mobs_mc_slime.b3d" => include_bytes!("../models/mobs_mc_slime.b3d").to_vec(),
-            "./models/mobs_mc_snowman.b3d" => include_bytes!("../models/mobs_mc_snowman.b3d").to_vec(),
-            "./models/mobs_mc_spider.b3d" => include_bytes!("../models/mobs_mc_spider.b3d").to_vec(),
-            "./models/mobs_mc_squid.b3d" => include_bytes!("../models/mobs_mc_squid.b3d").to_vec(),
-            "./models/mobs_mc_stray.b3d" => include_bytes!("../models/mobs_mc_stray.b3d").to_vec(),
-            "./models/mobs_mc_vex.b3d" => include_bytes!("../models/mobs_mc_vex.b3d").to_vec(),
-            "./models/mobs_mc_villager.b3d" => include_bytes!("../models/mobs_mc_villager.b3d").to_vec(),
-            "./models/mobs_mc_villager_zombie.b3d" => include_bytes!("../models/mobs_mc_villager_zombie.b3d").to_vec(),
-            "./models/mobs_mc_vindicator.b3d" => include_bytes!("../models/mobs_mc_vindicator.b3d").to_vec(),
-            "./models/mobs_mc_witch.b3d" => include_bytes!("../models/mobs_mc_witch.b3d").to_vec(),
-            "./models/mobs_mc_wither.b3d" => include_bytes!("../models/mobs_mc_wither.b3d").to_vec(),
-            "./models/mobs_mc_witherskeleton.b3d" => include_bytes!("../models/mobs_mc_witherskeleton.b3d").to_vec(),
-            "./models/mobs_mc_wolf.b3d" => include_bytes!("../models/mobs_mc_wolf.b3d").to_vec(),
-            "./models/mobs_mc_zombie.b3d" => include_bytes!("../models/mobs_mc_zombie.b3d").to_vec(),
-            _ => panic!("Attempted to load {}", path.to_str().unwrap()),
-        };
-        let filedata = MediaFileData {
-            name: name.clone(),
-            data: buffer.clone()
-        };
-        // buffer_hash_b64 is base64encode( sha1hash( buffer ) )
-        let mut hasher = Sha1::new();
-        hasher.update(buffer);
-        let mut buffer_hash_b64 = String::new();
-        general_purpose::STANDARD.encode_string(hasher.finalize(), &mut buffer_hash_b64);
-        let fileannounce = MediaAnnouncement {
-            name,
-            sha1_base64: buffer_hash_b64,
-        };
-        announcement_vec.push(fileannounce);
-        misc_file_vec.push(filedata);
-    }
-    // add to sent_media
-    for announcement in announcement_vec.clone() {
-        mt_server_state.sent_media.push(announcement.name);
-    }
-    let announcemedia = ToClientCommand::AnnounceMedia(
-        Box::new(command::AnnounceMediaSpec {
-            files: announcement_vec,
-            remote_servers: String::from("") // IDK what this means or does, but it works if left alone. (meee :3)
-        })
-    );
-    // split texture packets across 4 packets
-    let block_media_packet = ToClientCommand::Media(
-        Box::new(MediaSpec {
-            num_bunches: 5,
-            bunch_index: 1,
-            files: block_file_vec
-        })
-    );
-    let particle_media_packet = ToClientCommand::Media(
-        Box::new(MediaSpec {
-            num_bunches: 5,
-            bunch_index: 2,
-            files: particle_file_vec
-        })
-    );
-    let entity_media_packet = ToClientCommand::Media(
-        Box::new(MediaSpec {
-            num_bunches: 5,
-            bunch_index: 3,
-            files: entity_file_vec
-        })
-    );
-    let item_media_packet = ToClientCommand::Media(
-        Box::new(MediaSpec {
-            num_bunches: 5,
-            bunch_index: 4,
-            files: item_file_vec
-        })
-    );
-    let misc_media_packet = ToClientCommand::Media(
-        Box::new(MediaSpec {
-            num_bunches: 5,
-            bunch_index: 5,
-            files: misc_file_vec
-        })
-    );
-    vec![announcemedia, block_media_packet, particle_media_packet, entity_media_packet, item_media_packet, misc_media_packet]
 }

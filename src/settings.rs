@@ -69,7 +69,7 @@ pub const ALL_INV_FIELDS: [&str; 6] = ["main", "armor", "offhand", "craft", "cra
 pub const PLAYER_INV_FORMSPEC: &str = "\
 formspec_version[7]
 size[12,11.3]
-background[0,0;17.45,17.45;container-inventory.png]
+background[0,0;17.45,17.45;gui-container-inventory.png]
 style_type[list;spacing=0.135,0.135;size=1.09,1.09;border=false]
 listcolors[#0000;#0002]
 list[current_player;armor;0.55,0.575;1,4]

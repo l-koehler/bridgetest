@@ -6,6 +6,7 @@
 
 use crate::clientbound_translator;
 use crate::mt_definitions;
+use crate::textures;
 use crate::utils;
 use crate::commands;
 use crate::MTServerState; // ok this is stupid to do whatever it works (i need global variables) (for normal reasons)
@@ -42,7 +43,7 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
                 }
             }
         };
-
+        
     }
     let (mut mc_client, mut mc_conn) = commands::handshake(command, &mut mt_conn, &mut mt_server_state, &settings).await;
     // Await a LOGIN packet
@@ -58,19 +59,26 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
         }
     }
     
-    let media_packets = mt_definitions::get_texture_media_commands(&settings, &mut mt_server_state).await;
-    for packet in media_packets {
-        let _ = mt_conn.send(packet).await;
-    }
+    // let media_packets = mt_definitions::get_texture_media_commands(&settings, &mut mt_server_state).await;
+    // let packet_names = ["MediaAnnouncement", "Media (Blocks)", "Media (Particle)", "Media (Entity)", "Media (Item)", "Media (Other)"];
+    // for index in 0..media_packets.len() {
+    //     utils::logger(&format!("[Minetest] S->C {}", packet_names[index]), 1);
+    //     let _ = mt_conn.send(media_packets[index].clone()).await;
+    // }
+    let path_name_map = textures::generate_map();
+    let announcement = textures::get_announcement(&path_name_map);
+    
+    let _ = mt_conn.send(announcement).await;
+    mt_server_state.path_name_map = path_name_map;
 
     utils::logger("[Minetest] S->C Itemdef", 1);
     let _ = mt_conn.send(mt_definitions::get_item_def_command(&mt_server_state.sent_media, &settings).await).await;
     utils::logger("[Minetest] S->C Nodedef", 1);
     let _ = mt_conn.send(mt_definitions::get_node_def_command(&settings, &mut mt_server_state).await).await;
-
+    
     utils::logger("[Minetest] S->C Movement", 1);
     let _ = mt_conn.send(mt_definitions::get_movementspec()).await;
-
+    
     utils::logger("[Minetest] S->C SetPriv", 1);
     let _ = mt_conn.send(mt_definitions::get_defaultpriv()).await;
     
@@ -82,18 +90,21 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     let _ = mt_conn.send(mt_definitions::add_airbar()).await;
     utils::logger("[Minetest] S->C AddHud Subtitles", 1);
     let _ = mt_conn.send(mt_definitions::add_subtitlebox()).await;
-
+    
     utils::logger("[Minetest] S->C Formspec", 1);
     let _ = mt_conn.send(mt_definitions::get_inventory_formspec(settings::PLAYER_INV_FORMSPEC)).await;
-
+    
     utils::logger("[Minetest] S->C CsmRestrictions", 1);
     let _ = mt_conn.send(mt_definitions::get_csmrestrictions()).await;
-
+    
     utils::logger("Awaiting ClientReady", 1);
     loop {
         let t = mt_conn.recv().await;
         let command = t.unwrap();
         match command {
+            ToServerCommand::RequestMedia(packet) => {
+                let _ = mt_conn.send(textures::handle_request(&mt_server_state, packet)).await;
+            },
             ToServerCommand::ClientReady(_) => break,
             _ => utils::logger(&format!("[Minetest] Dropping unexpected packet! Got serverbound \"{}\", expected \"ClientReady\"!", command.command_name()), 2)
         }
@@ -111,7 +122,7 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     for thing in mt_definitions::get_sky_stuff() {
         let _ = mt_conn.send(thing).await;
     }
-
+    
     utils::logger("[Minetest] S->C ActiveObjectRemoveAdd LocalPlayer", 1);
     clientbound_translator::add_entity(None, &mut mt_conn, &mut mt_server_state).await;
     /*
