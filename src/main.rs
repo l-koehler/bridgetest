@@ -88,8 +88,7 @@ pub struct MTServerState {
     // used to only attack on the rising edge, not constantly
     previous_dig_held: bool,
     
-    sent_media: Vec<String>, // all the media things we sent, by names like "item-fish.png"
-    path_name_map: BiHashMap<PathBuf, String>, // path<->name mapping
+    path_name_map: BiHashMap<(PathBuf, String), String>, // (path,basename)<->name mapping
     //TODO: subtitles can only hold two non-expiring sounds
     subtitles: Vec<String>,
     //HACK: this really should be the clients problem but idk it wont work :D
@@ -126,7 +125,6 @@ async fn start_client_handler(settings: Config) {
         inventory_handle: None,
         next_click_no_attack: false,
         previous_dig_held: false,
-        sent_media: Vec::new(),
         subtitles: vec![String::from(""); 2],
         entity_velocity_tracker: HashMap::new(),
         path_name_map: BiHashMap::new(),

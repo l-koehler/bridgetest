@@ -9,6 +9,7 @@ use minetest_protocol::wire::types;
 
 use alloc::boxed::Box;
 use config::Config;
+use bimap::BiHashMap;
 
 use std::path::{ Path, PathBuf };
 use std::fs;
@@ -556,7 +557,7 @@ pub const fn get_metadata_placeholder(x_pos: u16, y_pos: u16, z_pos: u16) -> (Bl
 
 // item def stuff
 
-pub async fn get_item_def_command(sent_media: &Vec<String>, settings: &Config) -> ToClientCommand {
+pub async fn get_item_def_command(path_name_map: &BiHashMap<(PathBuf, String), String>, settings: &Config) -> ToClientCommand {
     // ensure arcticdata_items exists
     let data_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/");
     if !Path::new(data_folder.join("arcticdata_items.json").as_path()).exists() {
@@ -578,7 +579,7 @@ pub async fn get_item_def_command(sent_media: &Vec<String>, settings: &Config) -
     let mut item_definitions: Vec<ItemDef> = Vec::new();
     for item in arcticdata_items {
         mc_name = item.0;
-        if sent_media.contains(&format!("item-{}.png", mc_name.replace("minecraft:", ""))) {
+        if path_name_map.contains_right(&format!("item-{}.png", mc_name.replace("minecraft:", ""))) {
             texture_name = format!("item-{}.png", mc_name.replace("minecraft:", ""));
         } else {
             texture_name = format!("block-{}.png", mc_name.replace("minecraft:", ""));
@@ -1029,20 +1030,43 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
         }
     }
     let texture_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/assets/minecraft/textures/block/");
-    let texture_fallback_name = format!("block-{}.png", texture_base_name);
+    let texture_fallback_name: String; // what we initialize everything to
+    if utils::basename_to_prefixed(&mt_server_state, &format!("{}.png", texture_base_name)).is_some() {
+        texture_fallback_name = utils::basename_to_prefixed(&mt_server_state, &format!("{}.png", texture_base_name)).unwrap();
+    } else if utils::basename_to_prefixed(&mt_server_state, &format!("{}_side.png", texture_base_name)).is_some() {
+        texture_fallback_name = utils::basename_to_prefixed(&mt_server_state, &format!("{}_side.png", texture_base_name)).unwrap();
+    } else if utils::basename_to_prefixed(&mt_server_state, &format!("{}_top.png", texture_base_name)).is_some() {
+        texture_fallback_name = utils::basename_to_prefixed(&mt_server_state, &format!("{}_top.png", texture_base_name)).unwrap();
+    } else if utils::basename_to_prefixed(&mt_server_state, &format!("{}_bottom.png", texture_base_name)).is_some() {
+        texture_fallback_name = utils::basename_to_prefixed(&mt_server_state, &format!("{}_bottom.png", texture_base_name)).unwrap();
+    } else {
+        utils::logger("[Minetest] Unable to set sane default texture for block, using air.png", 1);
+        texture_fallback_name = String::from("air.png");
+    }
+
     let mut tiledef_sides: [TileDef; 6] = [get_tiledef(&texture_fallback_name, &animation), get_tiledef(&texture_fallback_name, &animation), get_tiledef(&texture_fallback_name, &animation), get_tiledef(&texture_fallback_name, &animation), get_tiledef(&texture_fallback_name, &animation), get_tiledef(&texture_fallback_name, &animation)];
-    // TODO: This breaks tall blocks (doors etc) which use _top and _bottom
-    if Path::new(texture_folder.join(format!("{}_top.png", texture_base_name)).as_path()).exists() {
-        tiledef_sides[0] = get_tiledef(&format!("block-{}_top.png", texture_base_name), &animation);
+    // if _side/_top/_bottom exists, use that for the respective side(s)
+    if utils::basename_to_prefixed(&mt_server_state, &format!("{}_top.png", texture_base_name)).is_some() {
+        tiledef_sides[0] = get_tiledef(
+            &utils::basename_to_prefixed(&mt_server_state, &format!("{}_top.png", texture_base_name)).unwrap(),
+            &animation);
     }
-    if Path::new(texture_folder.join(format!("{}_bottom.png", texture_base_name)).as_path()).exists() {
-        tiledef_sides[1] = get_tiledef(&format!("block-{}_bottom.png", texture_base_name), &animation);
+    if utils::basename_to_prefixed(&mt_server_state, &format!("{}_bottom.png", texture_base_name)).is_some() {
+        tiledef_sides[1] = get_tiledef(&utils::basename_to_prefixed(&mt_server_state, &format!("{}_bottom.png", texture_base_name)).unwrap(), &animation);
     }
-    if Path::new(texture_folder.join(format!("{}_side.png", texture_base_name)).as_path()).exists() {
-        tiledef_sides[2] = get_tiledef(&format!("block-{}_side.png", texture_base_name), &animation);
-        tiledef_sides[3] = get_tiledef(&format!("block-{}_side.png", texture_base_name), &animation);
-        tiledef_sides[4] = get_tiledef(&format!("block-{}_side.png", texture_base_name), &animation);
-        tiledef_sides[5] = get_tiledef(&format!("block-{}_side.png", texture_base_name), &animation);
+    if utils::basename_to_prefixed(&mt_server_state, &format!("{}_side.png", texture_base_name)).is_some() {
+        tiledef_sides[2] = get_tiledef(
+            &utils::basename_to_prefixed(&mt_server_state, &format!("{}_side.png", texture_base_name)).unwrap(),
+            &animation);
+        tiledef_sides[3] = get_tiledef(
+            &utils::basename_to_prefixed(&mt_server_state, &format!("{}_side.png", texture_base_name)).unwrap(),
+            &animation);
+        tiledef_sides[4] = get_tiledef(
+            &utils::basename_to_prefixed(&mt_server_state, &format!("{}_side.png", texture_base_name)).unwrap(),
+            &animation);
+        tiledef_sides[5] = get_tiledef(
+            &utils::basename_to_prefixed(&mt_server_state, &format!("{}_side.png", texture_base_name)).unwrap(),
+            &animation);
     }
     ContentFeatures {
         version: 13, // https://github.com/minetest/minetest/blob/master/src/nodedef.h#L313

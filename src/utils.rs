@@ -80,14 +80,21 @@ pub fn texture_from_itemslot(item: &ItemSlot, mt_server_state: &MTServerState) -
         ItemSlot::Empty => String::from("block-air.png"),
         ItemSlot::Present(slot_data) => {
             let item_name = slot_data.kind.to_string().replace("minecraft:", "").to_lowercase() + ".png";
-            if mt_server_state.sent_media.contains(&format!("item-{}", &item_name)) {
-                // the thing is a item
-                format!("item-{}", item_name)
-            } else {
-                format!("block-{}", item_name)
+            return match basename_to_prefixed(mt_server_state, &item_name) {
+                Some(name) => name,
+                None => format!("block-{}", item_name)
             }
         }
     }
+}
+
+pub fn basename_to_prefixed(mt_server_state: &MTServerState, basename: &str) -> Option<String> {
+    for item in mt_server_state.path_name_map.iter() {
+        if item.0.1 == basename { // basename
+            return Some(String::from(item.1)) // prefixed name
+        }
+    }
+    None
 }
 
 pub fn state_to_node(state: BlockState, cave_air_glow: bool) -> MapNode {

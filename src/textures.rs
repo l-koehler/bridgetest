@@ -11,9 +11,10 @@ use base64::{Engine, engine::general_purpose};
 
 use crate::{utils, MTServerState};
 
-pub fn generate_map() -> BiHashMap<PathBuf, String> {
-    // generates the bimap path<->name
-    let mut path_name_map: BiHashMap<PathBuf, String> = BiHashMap::new();
+pub fn generate_map() -> BiHashMap<(PathBuf, String), String> {
+    // generates the bimap (path,basename)<->name
+    // basename is the (possibly ambiguous) name without prefix (with extension)
+    let mut path_name_map: BiHashMap<(PathBuf, String), String> = BiHashMap::new();
     let textures_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/assets/minecraft/textures/");
     for dir_prefix in ["block", "particle", "entity", "item", "environment", "gui"] {
         scan_dir(&mut path_name_map, &textures_folder.join(dir_prefix), 3, dir_prefix);
@@ -24,13 +25,17 @@ pub fn generate_map() -> BiHashMap<PathBuf, String> {
         let name = item.as_ref().unwrap().file_name().into_string().unwrap();
         if name.ends_with(".b3d") {
             let path = item.unwrap().path();
-            path_name_map.insert(path, format!("{}-{}", "entitymodel", utils::b3d_sanitize(name)));
+            let basename = utils::b3d_sanitize(name);
+            path_name_map.insert(
+                (path, basename.clone()),
+                format!("{}-{}", "entitymodel", basename)
+            );
         };
     }
     path_name_map
 }
 
-pub fn scan_dir(path_name_map: &mut BiHashMap<PathBuf, String>, dir: &PathBuf, recurse: u8, prefix: &str) {
+pub fn scan_dir(path_name_map: &mut BiHashMap<(PathBuf, String), String>, dir: &PathBuf, recurse: u8, prefix: &str) {
     let iterator = fs::read_dir(dir).expect("Failed to read media");
     for item in iterator {
         let name = item.as_ref().unwrap().file_name().into_string().unwrap();
@@ -42,15 +47,18 @@ pub fn scan_dir(path_name_map: &mut BiHashMap<PathBuf, String>, dir: &PathBuf, r
         }
         // ignore non-texture files
         if name.ends_with(".png") {
-            path_name_map.insert(item.as_ref().unwrap().path(), format!("{}-{}", prefix, name));
+            path_name_map.insert(
+                (item.as_ref().unwrap().path(), name.clone()),
+                format!("{}-{}", prefix, name)
+            );
         }
     }
 }
 
-pub fn get_announcement(path_name_map: &BiHashMap<PathBuf, String>) -> ToClientCommand {
+pub fn get_announcement(path_name_map: &BiHashMap<(PathBuf, String), String>) -> ToClientCommand {
     let mut announcement_vec: Vec<MediaAnnouncement> = Vec::new();
     for texture in path_name_map.iter() {
-        let sha1_base64 = get_sha1_base64(texture.0);
+        let sha1_base64 = get_sha1_base64(&texture.0.0);
         announcement_vec.push(MediaAnnouncement {
             name: texture.1.to_string(),
             sha1_base64
@@ -85,7 +93,7 @@ pub fn handle_request(mt_server_state: &MTServerState, specbox: Box<RequestMedia
             utils::logger(&format!("[Minetest] Client requested unknown media: {}", file_name), 3);
             continue;
         }
-        let path = mt_server_state.path_name_map.get_by_right(&file_name).unwrap();
+        let path = &mt_server_state.path_name_map.get_by_right(&file_name).unwrap().0;
         if file_name.starts_with("entitymodel") {
             // handle models separately, these are included in the binary
             let buffer = match path.file_name().unwrap().to_str().unwrap() {
