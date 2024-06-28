@@ -77,7 +77,7 @@ pub fn normalize_angle(angle: f32) -> f32 {
 
 pub fn texture_from_itemslot(item: &ItemSlot, mt_server_state: &MTServerState) -> String {
     match item {
-        ItemSlot::Empty => String::from("block-air.png"),
+        ItemSlot::Empty => String::from("air.png"),
         ItemSlot::Present(slot_data) => {
             let item_name = slot_data.kind.to_string().replace("minecraft:", "").to_lowercase() + ".png";
             return match basename_to_prefixed(mt_server_state, &item_name) {
@@ -89,8 +89,30 @@ pub fn texture_from_itemslot(item: &ItemSlot, mt_server_state: &MTServerState) -
 }
 
 pub fn basename_to_prefixed(mt_server_state: &MTServerState, basename: &str) -> Option<String> {
+    // chests are in entity-chest-(something.png) eg
+    match basename {
+        "chest_side.png" => {
+            return Some(String::from("entity-chest-normal_left.png"))
+        }
+        "chest_bottom.png" | "chest_top.png" | "chest.png" => {
+            return Some(String::from("entity-chest-normal.png"))
+        },
+        "trapped_chest_side.png" => {
+            return Some(String::from("entity-chest-trapped_left.png"))
+        }
+        "trapped_chest_bottom.png" | "trapped_chest_top.png" | "trapped_chest.png" => {
+            return Some(String::from("entity-chest-trapped.png"))
+        },
+        "ender_chest.png" | "ender_chest_top.png" | "ender_chest_bottom.png" | "ender_chest_side.png" => {
+            return Some(String::from("entity-chest-ender.png"))
+        },
+        _ => ()
+    };
     for item in mt_server_state.path_name_map.iter() {
         if item.0.1 == basename { // basename
+            if basename.contains("chest") {
+                println!("success")
+            }
             return Some(String::from(item.1)) // prefixed name
         }
     }
@@ -108,7 +130,7 @@ pub fn state_to_node(state: BlockState, cave_air_glow: bool) -> MapNode {
         param0 = 126;
         param1 = 0xEE;
     } else if (azalea_registry::Block::try_from(state).unwrap() == azalea_registry::Block::CaveAir) && cave_air_glow {
-        param0 = 120; // custom node: glowing_air
+        param0 = 120; // custom node: glowing_air, used in nether
         param1 = 0xEE;
     } else {
         param1 = 0x00;

@@ -11,11 +11,12 @@ use alloc::boxed::Box;
 use config::Config;
 use bimap::BiHashMap;
 
+use std::collections::hash_map;
 use std::path::{ Path, PathBuf };
 use std::fs;
 use std::io::{ Cursor, Write, Read };
 
-use crate::{utils, MTServerState};
+use crate::{textures, utils, MTServerState};
 use crate::settings;
 use sha1::{Sha1, Digest};
 use base64::{Engine as _, engine::general_purpose};
@@ -708,7 +709,7 @@ pub async fn get_node_def_command(settings: &Config, mt_server_state: &mut MTSer
     // add a special block without MC equivalent: glowing_air. this block will replace cave_air in the nether.
     // because the minetest engine has no concept of dimensions, it is impossible to tell it to make air glow in the nether.
     let tiledef = TileDef {
-        name: String::from("block-air.png"),
+        name: String::from("air.png"),
         animation: TileAnimationParams::None,
         backface_culling: true,
         tileable_horizontal: false,
@@ -845,7 +846,7 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
     if this_block == Block::PointedDripstone {
         texture_base_name = String::from("pointed_dripstone_down_middle")
     }
-    
+
     // drawtype is a little complicated, there isn't a field in the json for that.
     /*
      * PlantLike: Texture rendered along both diagonal horizontal lines.
@@ -1029,7 +1030,6 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
             align_style: AlignStyle::Node
         }
     }
-    let texture_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/assets/minecraft/textures/block/");
     let texture_fallback_name: String; // what we initialize everything to
     if utils::basename_to_prefixed(&mt_server_state, &format!("{}.png", texture_base_name)).is_some() {
         texture_fallback_name = utils::basename_to_prefixed(&mt_server_state, &format!("{}.png", texture_base_name)).unwrap();
@@ -1040,7 +1040,7 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
     } else if utils::basename_to_prefixed(&mt_server_state, &format!("{}_bottom.png", texture_base_name)).is_some() {
         texture_fallback_name = utils::basename_to_prefixed(&mt_server_state, &format!("{}_bottom.png", texture_base_name)).unwrap();
     } else {
-        utils::logger("[Minetest] Unable to set sane default texture for block, using air.png", 1);
+        utils::logger(&format!("[Minetest] Unable to set sane default texture for block {}, using air.png", texture_base_name), 3);
         texture_fallback_name = String::from("air.png");
     }
 
