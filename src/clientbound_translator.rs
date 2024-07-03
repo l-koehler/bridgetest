@@ -556,6 +556,7 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
     let name: String;
     let id: u16;
     let position: v3f;
+    let velocity: v3f;
     let mesh: &str;
     let textures: Vec<String>;
     let visual: String;
@@ -568,11 +569,16 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
                 uuid,
                 entity_type, // TODO: textures and models depend on this thing
                 position: vec_pos,
-                x_rot: _, y_rot: _, y_head_rot: _, data: _, x_vel: _, y_vel: _, z_vel: _ } = packet_data;
+                x_rot: _, y_rot: _, y_head_rot: _, data: _, x_vel, y_vel, z_vel } = packet_data;
             is_player = false;
             name = format!("UUID-{}", uuid);
             id = *serverside_id as u16 + 1; // ensure 0 is always "free" for the local player, because the actual ID can't be known
             position = utils::vec3_to_v3f(vec_pos, 0.1);
+            velocity = v3f::new(
+                *x_vel as f32/8000.0,
+                *y_vel as f32/8000.0,
+                *z_vel as f32/8000.0
+            );
             entity_kind = *entity_type;
             if *entity_type == EntityKind::Item {
                 visual = String::from("sprite");
@@ -596,13 +602,14 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
             mesh = "entitymodel-villager.b3d"; // TODO
             textures = vec![String::from("entity-player-slim-steve.png")];
             entity_kind = EntityKind::Player;
+            velocity = v3f::new(0.0, 0.0, 0.0);
         }
     };
     
     let entitydata = EntityResendableData {
         position,
         rotation: v3f::new(0.0, 0.0, 0.0),
-        velocity: v3f::new(0.0, 0.0, 0.0),
+        velocity,
         acceleration: v3f::new(0.0, 0.0, 0.0),
         entity_kind
     };
