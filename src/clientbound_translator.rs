@@ -575,9 +575,9 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
             id = *serverside_id as u16 + 1; // ensure 0 is always "free" for the local player, because the actual ID can't be known
             position = utils::vec3_to_v3f(vec_pos, 0.1);
             velocity = v3f::new(
-                *x_vel as f32/8000.0,
-                *y_vel as f32/8000.0,
-                *z_vel as f32/8000.0
+                *x_vel as f32/400.0,
+                *y_vel as f32/400.0,
+                *z_vel as f32/400.0
             );
             entity_kind = *entity_type;
             if *entity_type == EntityKind::Item {
@@ -920,11 +920,11 @@ pub async fn entity_setmotion(packet_data: &ClientboundSetEntityMotionPacket, co
         utils::logger(&format!("[Minetest] Failed to update data for (adjusted) entity ID {}: ID not yet present, dropping the packet!", adjusted_id), 2);
         return
     }
-    // unit: 1block/50ms
+    // unit: block/second
     let delta = v3f {
-        x: *xa as f32/8000.0,
-        y: *ya as f32/8000.0,
-        z: *za as f32/8000.0
+        x: *xa as f32/400.0,
+        y: *ya as f32/400.0,
+        z: *za as f32/400.0
     };
     mt_server_state.entity_velocity_tracker.insert(adjusted_id, delta);
 }
