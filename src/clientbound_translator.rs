@@ -280,7 +280,7 @@ pub async fn sync_client_pos(mc_client: &Client, conn: &mut MinetestConnection, 
     };
 
     if distance > settings::POS_DIFF_TOLERANCE {
-        utils::logger(&format!("[Minetest] Re-Syncing Player Position: {} difference.", distance), 3);
+        utils::logger(&format!("[Minetest] Re-Syncing Player Position: {} difference.", distance), 1);
         let setpos_packet = ToClientCommand::MovePlayer(
             Box::new(wire::command::MovePlayerSpec {
                 pos: v3f { x: serverpos.0*10.0, y: serverpos.1*10.0, z: serverpos.2*10.0 },
@@ -1325,7 +1325,7 @@ pub async fn refresh_inv(mc_client: &Client, mt_conn: &mut MinetestConnection, m
 
 pub async fn show_sound(packet_data: &ClientboundSoundPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
     let ClientboundSoundPacket { sound, source: _, x: _, y: _, z: _, volume: _, pitch: _, seed: _ } = packet_data;
-    utils::logger(&format!("[Minetest] New Subtitle: {:?}", sound), 4);
+    utils::logger(&format!("[Minetest] New Subtitle: {:?}", sound), 1);
     mt_server_state.subtitles.pop();
     mt_server_state.subtitles.insert(0, format!("{:?}", sound));
     let formatted_str = mt_server_state.subtitles.join("\n");

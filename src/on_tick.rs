@@ -33,12 +33,11 @@ pub async fn server(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_ser
             entity_kind
         } = entitydata.clone();
 
-        // MT: velocity as floats nodes/second
-        // MC: velocity as int diff*4096
+        // delta is in nodes/sec, this runs every 50ms
         let position = v3f {
-            x: old_position.x + delta.x,
-            y: old_position.y + delta.y,
-            z: old_position.z + delta.z
+            x: old_position.x + (delta.x/20.0),
+            y: old_position.y + (delta.y/20.0),
+            z: old_position.z + (delta.z/20.0)
         };
         *entitydata = EntityResendableData {
             position, rotation,

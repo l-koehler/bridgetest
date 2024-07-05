@@ -1040,7 +1040,7 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
     } else if utils::basename_to_prefixed(&mt_server_state, &format!("{}_bottom.png", texture_base_name)).is_some() {
         texture_fallback_name = utils::basename_to_prefixed(&mt_server_state, &format!("{}_bottom.png", texture_base_name)).unwrap();
     } else {
-        utils::logger(&format!("[Minetest] Unable to set sane default texture for block {}, using air.png", texture_base_name), 3);
+        utils::logger(&format!("[Minetest] Unable to set sane default texture for block {}, using air.png", texture_base_name), 2);
         texture_fallback_name = String::from("air.png");
     }
 
