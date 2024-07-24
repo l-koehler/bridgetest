@@ -53,17 +53,19 @@ pub async fn server(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_ser
     // update subtitles, removing any older than 1.5 seconds
     let cutoff = Instant::now() - Duration::from_millis(1500);
     mt_server_state.subtitles.retain(|x| x.1 > cutoff);
-    // update client-side subtitles
     let mut formatted_str = String::from("");
     for (text, _) in mt_server_state.subtitles.clone() {
         formatted_str = format!("{}\n{}", formatted_str, text);
     };
-    let subtitle_update_command = ToClientCommand::Hudchange(
-        Box::new(wire::command::HudchangeSpec {
-            server_id: settings::SUBTITLE_ID,
-            stat: wire::types::HudStat::Text(formatted_str),
-        })
-    );
-    let _ = mt_conn.send(subtitle_update_command).await;
-    
+    if formatted_str != mt_server_state.prev_subtitle_string {
+        // if the subtitle actually changed, update the client
+        mt_server_state.prev_subtitle_string = formatted_str.clone();
+        let subtitle_update_command = ToClientCommand::Hudchange(
+            Box::new(wire::command::HudchangeSpec {
+                server_id: settings::SUBTITLE_ID,
+                stat: wire::types::HudStat::Text(formatted_str),
+            })
+        );
+        let _ = mt_conn.send(subtitle_update_command).await;
+    }
 }
