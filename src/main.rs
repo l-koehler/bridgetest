@@ -32,6 +32,7 @@ use std::path::{PathBuf, Path};
 use std::fs::File;
 use std::io::Write;
 use dirs;
+use std::time::Instant;
 
 #[tokio::main]
 async fn main() {
@@ -89,8 +90,7 @@ pub struct MTServerState {
     previous_dig_held: bool,
     
     path_name_map: BiHashMap<(PathBuf, String), String>, // (path,basename)<->name mapping
-    //TODO: subtitles can only hold two non-expiring sounds
-    subtitles: Vec<String>,
+    subtitles: Vec<(String, Instant)>,
     //HACK: this really should be the clients problem but idk it wont work :D
     entity_velocity_tracker: HashMap<u16, v3f>,
 }
@@ -125,7 +125,7 @@ async fn start_client_handler(settings: Config) {
         inventory_handle: None,
         next_click_no_attack: false,
         previous_dig_held: false,
-        subtitles: vec![String::from(""); 2],
+        subtitles: Vec::new(),
         entity_velocity_tracker: HashMap::new(),
         path_name_map: BiHashMap::new(),
     };

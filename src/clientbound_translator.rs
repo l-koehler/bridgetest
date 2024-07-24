@@ -63,6 +63,7 @@ use std::sync::Arc;
 use std::io::Cursor;
 use azalea_world::chunk_storage;
 use azalea_block::BlockState;
+use std::time::Instant;
 
 pub async fn update_dimension(source_packet: &ClientboundRespawnPacket, mt_server_state: &mut MTServerState) {
     let ClientboundRespawnPacket { common: player_spawn_info, data_to_keep: _ } = source_packet;
@@ -1326,8 +1327,8 @@ pub async fn refresh_inv(mc_client: &Client, mt_conn: &mut MinetestConnection, m
 pub async fn show_sound(packet_data: &ClientboundSoundPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
     let ClientboundSoundPacket { sound, source: _, x: _, y: _, z: _, volume: _, pitch: _, seed: _ } = packet_data;
     utils::logger(&format!("[Minetest] New Subtitle: {:?}", sound), 1);
-    mt_server_state.subtitles.pop();
-    mt_server_state.subtitles.insert(0, format!("{:?}", sound));
+    mt_server_state.subtitles.push((format!("{:?}", sound), Instant::now()));
+    /*
     let formatted_str = mt_server_state.subtitles.join("\n");
     let subtitle_update_command = ToClientCommand::Hudchange(
         Box::new(wire::command::HudchangeSpec {
@@ -1335,5 +1336,5 @@ pub async fn show_sound(packet_data: &ClientboundSoundPacket, conn: &mut Minetes
             stat: HudStat::Text(formatted_str),
         })
     );
-    let _ = conn.send(subtitle_update_command).await;
+    let _ = conn.send(subtitle_update_command).await;*/
 }

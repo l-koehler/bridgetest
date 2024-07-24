@@ -5,6 +5,10 @@ use crate::clientbound_translator;
 use crate::utils;
 use crate::mt_definitions::EntityResendableData;
 use minetest_protocol::wire::types::v3f;
+use std::time::{Duration, Instant};
+use minetest_protocol::wire::command::ToClientCommand;
+use minetest_protocol::wire;
+use crate::settings;
 
 pub async fn server(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_server_state: &mut MTServerState) {
     if mt_server_state.has_moved_since_sync {
@@ -46,4 +50,20 @@ pub async fn server(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_ser
         };
         clientbound_translator::send_entity_data(id, entitydata, mt_conn).await;
     }
+    // update subtitles, removing any older than 1.5 seconds
+    let cutoff = Instant::now() - Duration::from_millis(1500);
+    mt_server_state.subtitles.retain(|x| x.1 > cutoff);
+    // update client-side subtitles
+    let mut formatted_str = String::from("");
+    for (text, _) in mt_server_state.subtitles.clone() {
+        formatted_str = format!("{}\n{}", formatted_str, text);
+    };
+    let subtitle_update_command = ToClientCommand::Hudchange(
+        Box::new(wire::command::HudchangeSpec {
+            server_id: settings::SUBTITLE_ID,
+            stat: wire::types::HudStat::Text(formatted_str),
+        })
+    );
+    let _ = mt_conn.send(subtitle_update_command).await;
+    
 }
