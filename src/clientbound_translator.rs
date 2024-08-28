@@ -808,12 +808,12 @@ pub async fn entity_setpos(packet_data: &ClientboundMoveEntityPosPacket, conn: &
     } = entitydata.clone();
 
     let position = v3f {
-        x: old_position.x + (xa*4096) as f32,
-        y: old_position.y + (ya*4096) as f32,
-        z: old_position.z + (za*4096) as f32
+        x: old_position.x + xa as f32/4096.0,
+        y: old_position.y + ya as f32/4096.0,
+        z: old_position.z + za as f32/4096.0
     };
     if (entity_kind != EntityKind::Player) {
-        println!("New Chicken setpos: {:?}", delta);
+        println!("Moving Chicken to (pos): {:?}", position);
     }
     *entitydata = EntityResendableData {
         position, rotation,
@@ -839,10 +839,10 @@ pub async fn entity_teleport(packet_data: &ClientboundTeleportEntityPacket, conn
         entity_kind
     } = entitydata.clone();
     if (entity_kind == EntityKind::Chicken) {
-        println!("Teleporting chicken to: {:?}",utils::vec3_to_v3f(position, 1.0));
+        println!("Teleporting chicken to: {:?}",utils::vec3_to_v3f(position, 0.1));
     }
     *entitydata = EntityResendableData {
-        position: utils::vec3_to_v3f(position, 1.0),
+        position: utils::vec3_to_v3f(position, 0.1),
         rotation: v3f { x: *x_rot as f32, y: *y_rot as f32, z: old_rotation.z },
         velocity, acceleration, entity_kind
     };
@@ -867,12 +867,12 @@ pub async fn entity_setposrot(packet_data: &ClientboundMoveEntityPosRotPacket, c
     } = entitydata.clone();
 
     let position = v3f {
-        x: old_position.x + (xa*4096) as f32,
-        y: old_position.y + (ya*4096) as f32,
-        z: old_position.z + (za*4096) as f32
+        x: old_position.x + xa as f32/4096.0,
+        y: old_position.y + ya as f32/4096.0,
+        z: old_position.z + za as f32/4096.0
     };
     if (entity_kind != EntityKind::Player) {
-        println!("New Chicken setposrot: {:?}", delta);
+        println!("Moving Chicken to (p+r): {:?}", position);
     }
     *entitydata = EntityResendableData {
         position,
@@ -926,7 +926,7 @@ pub async fn entity_setmotion(packet_data: &ClientboundSetEntityMotionPacket, co
     // unit: (1/8000)block/50ms -> block/second
     let delta = v3f {
         x: *xa as f32/400.0,
-        y: 0.0, //*ya as f32/400.0,
+        y: *ya as f32/400.0,
         z: *za as f32/400.0
     };
     if (entity_kind != EntityKind::Player) {
