@@ -526,14 +526,6 @@ pub fn get_inventory_formspec(formspec: &str) -> ToClientCommand {
     )
 }
 
-pub fn get_formspec_prepend(formspec: &str) -> ToClientCommand {
-    ToClientCommand::FormspecPrepend(
-        Box::new(command::FormspecPrependSpec{
-            formspec_prepend: String::from(formspec),
-        })
-    )
-}
-
 pub fn get_csmrestrictions() -> ToClientCommand {
     ToClientCommand::CsmRestrictionFlags(
         Box::new(command::CsmRestrictionFlagsSpec {

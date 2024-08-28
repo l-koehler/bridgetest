@@ -19,37 +19,6 @@ pub async fn server(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_ser
     // for stupid reasons, we don't use packets for this, instead on every tick
     // and whenever the player crafted something
     clientbound_translator::refresh_inv(mc_client, mt_conn, mt_server_state).await;
-    // move every entity according to a position delta
-    let thing = mt_server_state.entity_velocity_tracker.clone().into_iter();
-    for entity in thing {
-        let id = entity.0;
-        let delta = entity.1;
-        if !mt_server_state.entity_id_pos_map.contains_key(id.into()){
-            utils::logger(&format!("[Minetest] Failed to update position for (adjusted) entity ID {}: ID not yet present, dropping the packet!", id), 2);
-            return
-        }
-        let entitydata = mt_server_state.entity_id_pos_map.get_mut(id.into()).unwrap();
-        let EntityResendableData {
-            position: old_position,
-            rotation,
-            velocity,
-            acceleration,
-            entity_kind
-        } = entitydata.clone();
-
-        // delta is in nodes/sec, this runs every 50ms
-        let position = v3f {
-            x: old_position.x + (delta.x/20.0),
-            y: old_position.y + (delta.y/20.0),
-            z: old_position.z + (delta.z/20.0)
-        };
-        *entitydata = EntityResendableData {
-            position, rotation,
-            velocity,
-            acceleration, entity_kind
-        };
-        clientbound_translator::send_entity_data(id, entitydata, mt_conn).await;
-    }
     // update subtitles, removing any older than 1.5 seconds
     let cutoff = Instant::now() - Duration::from_millis(1500);
     mt_server_state.subtitles.retain(|x| x.1 > cutoff);

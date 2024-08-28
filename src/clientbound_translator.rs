@@ -773,9 +773,6 @@ pub async fn remove_entity(packet_data: &ClientboundRemoveEntitiesPacket, conn: 
         } else {
             utils::logger(&format!("[Minetest] Failed to remove entity with (adjusted) entity ID {}: ID not present. Skipping its removal!", adjusted_id), 2);
         }
-        // might not exist, do not log errors here
-        let _ = mt_server_state.entity_velocity_tracker.remove(&adjusted_id);
-
     }
     if !entity_ids_adjusted.is_empty() {
         let clientbound_removeentity = ToClientCommand::ActiveObjectRemoveAdd(
@@ -792,7 +789,7 @@ pub async fn remove_entity(packet_data: &ClientboundRemoveEntitiesPacket, conn: 
 
 pub async fn entity_setpos(packet_data: &ClientboundMoveEntityPosPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
     let ClientboundMoveEntityPosPacket { entity_id, delta, on_ground: _ } = packet_data;
-    let PositionDelta8 {xa: delta_x, ya: delta_y, za: delta_z} = *delta;
+    let PositionDelta8 {xa, ya, za} = *delta;
     // delta: offset from the current position
 
     // force conversion u32->u16->u64, because the overflow behavior will differ with u32->u64
@@ -803,25 +800,21 @@ pub async fn entity_setpos(packet_data: &ClientboundMoveEntityPosPacket, conn: &
     }
     let entitydata = mt_server_state.entity_id_pos_map.get_mut(adjusted_id.into()).unwrap();
     let EntityResendableData {
-        position,
+        position: old_position,
         rotation,
-        velocity: _,
-        acceleration: old_accel,
+        velocity,
+        acceleration,
         entity_kind
     } = entitydata.clone();
 
-    // MT: velocity as floats nodes/second
-    // MC: velocity as int diff*4096
-    let velocity = v3f {
-        x: (delta_x / 4096) as f32,
-        y: (delta_y / 4096) as f32,
-        z: (delta_z / 4096) as f32
+    let position = v3f {
+        x: old_position.x + (xa*4096) as f32,
+        y: old_position.y + (ya*4096) as f32,
+        z: old_position.z + (za*4096) as f32
     };
-    let acceleration = v3f {
-        x: velocity.x - old_accel.x,
-        y: velocity.y - old_accel.y,
-        z: velocity.z - old_accel.z
-    };
+    if (entity_kind != EntityKind::Player) {
+        println!("New Chicken setpos: {:?}", delta);
+    }
     *entitydata = EntityResendableData {
         position, rotation,
         velocity,
@@ -845,10 +838,12 @@ pub async fn entity_teleport(packet_data: &ClientboundTeleportEntityPacket, conn
         acceleration,
         entity_kind
     } = entitydata.clone();
-    let v3f { x: _, y: _, z: old_z_rot } = old_rotation;
+    if (entity_kind == EntityKind::Chicken) {
+        println!("Teleporting chicken to: {:?}",utils::vec3_to_v3f(position, 1.0));
+    }
     *entitydata = EntityResendableData {
-        position: utils::vec3_to_v3f(position, 0.1),
-        rotation: v3f { x: *x_rot as f32, y: *y_rot as f32, z: old_z_rot },
+        position: utils::vec3_to_v3f(position, 1.0),
+        rotation: v3f { x: *x_rot as f32, y: *y_rot as f32, z: old_rotation.z },
         velocity, acceleration, entity_kind
     };
     send_entity_data(adjusted_id, entitydata, conn).await;
@@ -856,7 +851,7 @@ pub async fn entity_teleport(packet_data: &ClientboundTeleportEntityPacket, conn
 
 pub async fn entity_setposrot(packet_data: &ClientboundMoveEntityPosRotPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
     let ClientboundMoveEntityPosRotPacket { entity_id, delta, y_rot, x_rot, on_ground: _ } = packet_data;
-    let PositionDelta8 {xa: delta_x, ya: delta_y, za: delta_z} = *delta;
+    let PositionDelta8 {xa, ya, za} = *delta;
     let adjusted_id = *entity_id as u16 + 1;
     if !mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
         utils::logger(&format!("[Minetest] Failed to update data for (adjusted) entity ID {}: ID not yet present, dropping the packet!", adjusted_id), 2);
@@ -864,26 +859,24 @@ pub async fn entity_setposrot(packet_data: &ClientboundMoveEntityPosRotPacket, c
     }
     let entitydata = mt_server_state.entity_id_pos_map.get_mut(adjusted_id.into()).unwrap();
     let EntityResendableData {
-        position,
+        position: old_position,
         rotation: old_rotation,
-        velocity: _,
-        acceleration: old_accel,
+        velocity,
+        acceleration,
         entity_kind,
     } = entitydata.clone();
-    let v3f { x: _, y: _, z: old_z_rot } = old_rotation;
-    let velocity = v3f {
-        x: (delta_x / 4096) as f32,
-        y: (delta_y / 4096) as f32,
-        z: (delta_z / 4096) as f32
+
+    let position = v3f {
+        x: old_position.x + (xa*4096) as f32,
+        y: old_position.y + (ya*4096) as f32,
+        z: old_position.z + (za*4096) as f32
     };
-    let acceleration = v3f {
-        x: velocity.x - old_accel.x,
-        y: velocity.y - old_accel.y,
-        z: velocity.z - old_accel.z
-    };
+    if (entity_kind != EntityKind::Player) {
+        println!("New Chicken setposrot: {:?}", delta);
+    }
     *entitydata = EntityResendableData {
         position,
-        rotation: v3f { x: *x_rot as f32, y: *y_rot as f32, z: old_z_rot },
+        rotation: v3f { x: *x_rot as f32, y: *y_rot as f32, z: old_rotation.z },
         velocity,
         acceleration,
         entity_kind
@@ -906,9 +899,9 @@ pub async fn entity_setrot(packet_data: &ClientboundMoveEntityRotPacket, conn: &
         acceleration,
         entity_kind
     } = entitydata.clone();
-    let v3f { x: _, y: _, z: old_z_rot } = old_rotation;
+
     *entitydata = EntityResendableData {
-        rotation: v3f { x: *x_rot as f32, y: *y_rot as f32, z: old_z_rot },
+        rotation: v3f { x: *x_rot as f32, y: *y_rot as f32, z: old_rotation.z },
         position, velocity, acceleration, entity_kind
     };
     send_entity_data(adjusted_id, entitydata, conn).await;
@@ -921,13 +914,30 @@ pub async fn entity_setmotion(packet_data: &ClientboundSetEntityMotionPacket, co
         utils::logger(&format!("[Minetest] Failed to update data for (adjusted) entity ID {}: ID not yet present, dropping the packet!", adjusted_id), 2);
         return
     }
-    // unit: block/second
+    let entitydata = mt_server_state.entity_id_pos_map.get_mut(adjusted_id.into()).unwrap();
+    let EntityResendableData {
+        position,
+        rotation,
+        velocity: _,
+        acceleration,
+        entity_kind
+    } = entitydata.clone();
+
+    // unit: (1/8000)block/50ms -> block/second
     let delta = v3f {
         x: *xa as f32/400.0,
-        y: *ya as f32/400.0,
+        y: 0.0, //*ya as f32/400.0,
         z: *za as f32/400.0
     };
-    mt_server_state.entity_velocity_tracker.insert(adjusted_id, delta);
+    if (entity_kind != EntityKind::Player) {
+        println!("New Chicken setmot: {:?}", delta);
+    }
+    *entitydata = EntityResendableData {
+        rotation, position,
+        velocity: delta,
+        acceleration, entity_kind
+    };
+    send_entity_data(adjusted_id, entitydata, conn).await;
 }
 
 pub async fn entity_rotatehead(packet_data: &ClientboundRotateHeadPacket, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {

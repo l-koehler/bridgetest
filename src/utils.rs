@@ -22,8 +22,6 @@ use rand::Rng;
 // modified version of the liang-barsky line clipping algo
 // adapted to work in 3d and also to return a simple boolean indicating if the line clips at all.
 pub fn liang_barsky_3d(bb: AABB, line_a: Vec3, line_b: Vec3) -> bool {
-    println!("{:?}", bb);
-    println!("{} -> {}", line_a, line_b);
     let mut t0 = 0.0;
     let mut t1 = 1.0;
 

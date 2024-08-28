@@ -109,7 +109,6 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
 
 pub fn attack_crosshair(mc_client: &mut Client) {
     let line_origin = mc_client.eye_position();
-    println!("{}/{}/{}", line_origin.x, line_origin.y, line_origin.z);
     let client_instance_name = mc_client.component::<InstanceName>();
     // convert to radians
     let (mut yaw, mut pitch) = mc_client.direction();
@@ -120,7 +119,6 @@ pub fn attack_crosshair(mc_client: &mut Client) {
     let dy = MAX_DIST * pitch.sin();
     let dz = MAX_DIST * pitch.cos() * yaw.cos();
     // Calculate the end point of the line
-    println!("{}/{}/{}", dx, dy, dz);
     let line_end = Vec3 {
         x: line_origin.x + dx as f64,
         y: line_origin.y + dy as f64,
@@ -148,15 +146,12 @@ pub fn attack_crosshair(mc_client: &mut Client) {
             possible_entities.push(
                 (entity_id, line_origin.distance_to(&position))
             )
-        } else {
-            println!("barsky fail")
         }
     }
     drop(ecs);
     // either none or Some((minecraftentityid, distance_to_player))
     let closest_entity = possible_entities.iter().min_by(|x, y| x.1.total_cmp(&y.1));
     if let Some(closest_entity) = closest_entity {
-        println!("got one");
         mc_client.attack(closest_entity.0)
     }
 }

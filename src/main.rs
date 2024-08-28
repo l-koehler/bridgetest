@@ -92,8 +92,6 @@ pub struct MTServerState {
     path_name_map: BiHashMap<(PathBuf, String), String>, // (path,basename)<->name mapping
     subtitles: Vec<(String, Instant)>,
     prev_subtitle_string: String,
-    //HACK: this really should be the clients problem but idk it wont work :D
-    entity_velocity_tracker: HashMap<u16, v3f>,
 }
 
 async fn start_client_handler(settings: Config) {
@@ -128,7 +126,6 @@ async fn start_client_handler(settings: Config) {
         previous_dig_held: false,
         subtitles: Vec::new(),
         prev_subtitle_string: String::from(""),
-        entity_velocity_tracker: HashMap::new(),
         path_name_map: BiHashMap::new(),
     };
 
