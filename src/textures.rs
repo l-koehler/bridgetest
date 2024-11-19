@@ -1,11 +1,12 @@
 // code to get media to the client
 use bimap::BiHashMap;
-use minetest_protocol::wire::command::{MediaSpec, ToClientCommand, RequestMediaSpec};
+use minetest_protocol::wire::command::{ToClientCommand, RequestMediaSpec};
 use minetest_protocol::wire::{self, command};
 use minetest_protocol::wire::types::{MediaAnnouncement, MediaFileData};
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 use std::fs;
-use std::io::Read;
+use config::Config;
+use std::io::{Read, Write, Cursor};
 use sha1::{Sha1, Digest};
 use base64::{Engine, engine::general_purpose};
 
@@ -172,4 +173,59 @@ pub fn handle_request(mt_server_state: &MTServerState, specbox: Box<RequestMedia
             files: file_data
         })
     )
+}
+
+
+pub async fn validate_texture_pack(settings: &Config) -> bool {
+    // check (and possibly fix) the texture pack
+    let texture_pack_url = settings.get_string("texture_pack_url").expect("Failed to read config!");
+    let mut do_download: bool = false;
+    // ensure the data folder exists
+    let data_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/"); // if this fails, your system got bigger issues
+    utils::possibly_create_dir(&data_folder);
+    // check if url.dsv exists
+    if !Path::new(data_folder.join("url.dsv").as_path()).exists() {
+        // url.dsv does not exist
+        utils::logger("url.dsv is missing, creating it.", 1);
+        let dsv_content = format!("{}:{}", chrono::Utc::now().timestamp(), texture_pack_url);
+        let mut url_dsv = fs::File::create(data_folder.join("url.dsv").as_path()).expect("Creating url.dsv failed!");
+        url_dsv.write_all(dsv_content.as_bytes()).expect("Writing data to url.dsv failed!");
+        // we need to re-download in this case
+        do_download = true;
+    } else {
+        // url.dsv does exist
+        // example dsv_content = "1708635188:https://database.faithfulpack.net/packs/32x-Java/December%202023/Faithful%2032x%20-%201.20.4.zip"
+        let dsv_content = fs::read_to_string(data_folder.join("url.dsv").as_path()).expect("Failed to read url.dsv, but it exists! (Check permissions?)");
+        if !dsv_content.contains(&texture_pack_url) {
+            // url.dsv does not contain our pack URL, so we need to re-download.
+            utils::logger("url.dsv does exist, but contains the wrong URL. re-writing it.", 1);
+            let new_dsv_content = format!("{}:{}", chrono::Utc::now().timestamp(), texture_pack_url);
+            let mut url_dsv = fs::File::open(data_folder.join("url.dsv").as_path()).expect("Opening url.dsv failed!");
+            url_dsv.write_all(new_dsv_content.as_bytes()).expect("Writing data to url.dsv failed!");
+            do_download = true;
+        } else {
+            utils::logger(&format!("Found url.dsv at {}", data_folder.join("url.dsv").display()), 1)
+        }
+    };
+    if do_download {
+        if !utils::ask_confirm("No texture pack found! Download faithfulpack.net? [Y/N]: ") {
+            // the user denied downloading the pack.
+            let config_file_path: PathBuf = dirs::config_dir().unwrap().join("bridgetest.toml");
+            utils::logger(&format!("A texture pack is needed for this program to run.
+    You can change what pack will be downloaded by editing the URL in {}", config_file_path.display()), 3);
+            std::process::exit(0);
+        } else {
+            utils::logger("Preparing texture pack -- This might take a while, depending on your internet speed.", 1);
+            if Path::new(data_folder.join("textures/").as_path()).exists() {
+                utils::logger("Detected old texture folder in data_dir, deleting it.", 1);
+                let _ = fs::remove_dir_all(data_folder.join("textures/").as_path()); // TODO: rn assuming this works
+            }
+            utils::logger("Downloading textures.zip (into memory)", 1);
+            let resp = reqwest::get(texture_pack_url).await.expect("Failed to request texture pack!");
+            let texture_pack_data = resp.bytes().await.expect("Recieved invalid response! This might be caused by not supplying a direct download link.");
+            utils::logger("Unpacking textures.zip to data_dir/textures", 1);
+            zip_extract::extract(Cursor::new(texture_pack_data), data_folder.join("textures/").as_path(), true).expect("Failed to extract! Check Permissions!");
+        }
+    } // else the textures are already installed
+    do_download
 }

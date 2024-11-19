@@ -17,7 +17,6 @@ use minetest_protocol::MinetestServer;
 use mt_definitions::Dimensions;
 use azalea_client::inventory;
 use azalea_registry::BlockEntityKind;
-use minetest_protocol::wire::types::v3f;
 
 use parking_lot::deadlock;
 use std::thread;
@@ -37,7 +36,7 @@ use std::time::Instant;
 #[tokio::main]
 async fn main() {
     let settings: Config = load_config();
-    mt_definitions::validate_texture_pack(&settings).await;
+    textures::validate_texture_pack(&settings).await;
 
     // Create a background thread which checks for deadlocks every 10s
     thread::spawn(move || loop {

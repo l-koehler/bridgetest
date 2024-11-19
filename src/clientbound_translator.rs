@@ -812,9 +812,6 @@ pub async fn entity_setpos(packet_data: &ClientboundMoveEntityPosPacket, conn: &
         y: old_position.y + ya as f32/4096.0,
         z: old_position.z + za as f32/4096.0
     };
-    if (entity_kind != EntityKind::Player) {
-        println!("Moving Chicken to (pos): {:?}", position);
-    }
     *entitydata = EntityResendableData {
         position, rotation,
         velocity,
@@ -838,9 +835,6 @@ pub async fn entity_teleport(packet_data: &ClientboundTeleportEntityPacket, conn
         acceleration,
         entity_kind
     } = entitydata.clone();
-    if (entity_kind == EntityKind::Chicken) {
-        println!("Teleporting chicken to: {:?}",utils::vec3_to_v3f(position, 0.1));
-    }
     *entitydata = EntityResendableData {
         position: utils::vec3_to_v3f(position, 0.1),
         rotation: v3f { x: *x_rot as f32, y: *y_rot as f32, z: old_rotation.z },
@@ -871,7 +865,7 @@ pub async fn entity_setposrot(packet_data: &ClientboundMoveEntityPosRotPacket, c
         y: old_position.y + ya as f32/4096.0,
         z: old_position.z + za as f32/4096.0
     };
-    if (entity_kind != EntityKind::Player) {
+    if entity_kind != EntityKind::Player {
         println!("Moving Chicken to (p+r): {:?}", position);
     }
     *entitydata = EntityResendableData {
@@ -929,9 +923,6 @@ pub async fn entity_setmotion(packet_data: &ClientboundSetEntityMotionPacket, co
         y: *ya as f32/400.0,
         z: *za as f32/400.0
     };
-    if (entity_kind != EntityKind::Player) {
-        println!("New Chicken setmot: {:?}", delta);
-    }
     *entitydata = EntityResendableData {
         rotation, position,
         velocity: delta,
