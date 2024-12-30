@@ -9,8 +9,8 @@ use azalea::world::{InstanceName, MinecraftEntityId};
 use azalea::entity::{metadata::AbstractEntity, Dead, LocalEntity, Position, Physics};
 use azalea::ecs::prelude::{With, Without};
 use azalea_client::Client;
-use azalea_client::inventory::InventoryComponent;
-use azalea_core::position::{ChunkPos, ChunkBlockPos};
+use azalea_client::inventory::Inventory;
+use azalea::core::position::{ChunkPos, ChunkBlockPos};
 use azalea_block::BlockState;
 use azalea::container::ContainerClientExt;
 
@@ -160,7 +160,7 @@ pub fn set_mainhand(mc_client: &mut Client, specbox: Box<PlayeritemSpec>) {
     // hotbar_index: 0..8, first..last slot of hotbar
     let PlayeritemSpec { item: hotbar_index } = *specbox;
     let mut ecs = mc_client.ecs.lock();
-    let mut inventory = mc_client.query::<&mut InventoryComponent>(&mut ecs);
+    let mut inventory = mc_client.query::<&mut Inventory>(&mut ecs);
     inventory.selected_hotbar_slot = hotbar_index as u8;
     drop(ecs);
 }

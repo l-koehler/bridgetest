@@ -6,17 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-# i really cant be bothered to update all this shit, run viaversion (standalone https://github.com/ViaVersion/ViaProxy) if you need to.
-# this commit is from 2024-08-19 and mostly picked at random, but at least it works. supports 1.21.1
-azalea =          { git = "https://github.com/azalea-rs/azalea", rev = "d5a281bf15a1aad07b0f108d86461eafffa590a0" }
-azalea-client =   { git = "https://github.com/azalea-rs/azalea", rev = "d5a281bf15a1aad07b0f108d86461eafffa590a0" }
-azalea-protocol = { git = "https://github.com/azalea-rs/azalea", rev = "d5a281bf15a1aad07b0f108d86461eafffa590a0" }
-azalea-world =    { git = "https://github.com/azalea-rs/azalea", rev = "d5a281bf15a1aad07b0f108d86461eafffa590a0" }
-azalea-core =     { git = "https://github.com/azalea-rs/azalea", rev = "d5a281bf15a1aad07b0f108d86461eafffa590a0" }
-azalea-registry = { git = "https://github.com/azalea-rs/azalea", rev = "d5a281bf15a1aad07b0f108d86461eafffa590a0" }
-azalea-chat =     { git = "https://github.com/azalea-rs/azalea", rev = "d5a281bf15a1aad07b0f108d86461eafffa590a0" }
-azalea-block =    { git = "https://github.com/azalea-rs/azalea", rev = "d5a281bf15a1aad07b0f108d86461eafffa590a0" }
-azalea-entity =   { git = "https://github.com/azalea-rs/azalea", rev = "d5a281bf15a1aad07b0f108d86461eafffa590a0" }
+azalea = "0.11.0"
+azalea-client = "0.11.0"
+azalea-block = "0.11.0"
 
 base64 = "0.21.7"
 chrono = "0.4.34"
@@ -33,7 +25,3 @@ intmap = "2.0.0"
 parking_lot = "0.12.1"
 tokio-stream = "0.1.15"
 bimap = "0.6.3"
-
-[patch.crates-io]
-# needed for azalea to compile, as d5a281b specifies 0.6.* but needs 0.6.0
-simdnbt = { git = "https://github.com/azalea-rs/simdnbt", tag = "v0.6.0" }

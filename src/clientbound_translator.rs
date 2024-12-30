@@ -12,15 +12,15 @@ use crate::mt_definitions;
 use crate::commands;
 use crate::MTServerState;
 use azalea::BlockPos;
-use azalea_core::delta::PositionDelta8;
-use azalea_core::position::ChunkBlockPos;
-use azalea_entity::{EntityDataValue, EntityDataItem};
+use azalea::core::delta::PositionDelta8;
+use azalea::core::position::ChunkBlockPos;
+use azalea::entity::{EntityDataValue, EntityDataItem};
 use minetest_protocol::wire::types::ItemStackMetadata;
 use minetest_protocol::wire::types::ObjectProperties;
 use mt_definitions::{HeartDisplay, FoodDisplay, Dimensions};
 use minetest_protocol::peer::peer::PeerError;
 
-use azalea_registry::EntityKind;
+use azalea::registry::EntityKind;
 use minetest_protocol::wire::command::ToClientCommand;
 use minetest_protocol::wire::types::HudStat;
 use minetest_protocol::MinetestConnection;
@@ -32,45 +32,46 @@ use azalea_client::chat::ChatPacket;
 
 use tokio::sync::mpsc::UnboundedReceiver;
 use azalea_client::Event;
-use azalea_protocol::packets::game::{ClientboundGamePacket,
-    clientbound_player_position_packet::ClientboundPlayerPositionPacket,
-    clientbound_set_time_packet::ClientboundSetTimePacket,
-    clientbound_set_health_packet::ClientboundSetHealthPacket,
-    clientbound_set_default_spawn_position_packet::ClientboundSetDefaultSpawnPositionPacket,
-    clientbound_respawn_packet::ClientboundRespawnPacket,
-    clientbound_add_entity_packet::ClientboundAddEntityPacket,
-    clientbound_move_entity_pos_packet::ClientboundMoveEntityPosPacket,
-    clientbound_teleport_entity_packet::ClientboundTeleportEntityPacket,
-    clientbound_move_entity_pos_rot_packet::ClientboundMoveEntityPosRotPacket,
-    clientbound_move_entity_rot_packet::ClientboundMoveEntityRotPacket,
-    clientbound_remove_entities_packet::ClientboundRemoveEntitiesPacket,
-    clientbound_set_entity_motion_packet::ClientboundSetEntityMotionPacket,
-    clientbound_rotate_head_packet::ClientboundRotateHeadPacket,
-    clientbound_block_update_packet::ClientboundBlockUpdatePacket,
-    clientbound_entity_event_packet::ClientboundEntityEventPacket,
-    clientbound_set_entity_data_packet::ClientboundSetEntityDataPacket,
-    clientbound_block_destruction_packet::ClientboundBlockDestructionPacket,
-    clientbound_block_entity_data_packet::ClientboundBlockEntityDataPacket,
-    clientbound_open_screen_packet::ClientboundOpenScreenPacket,
-    clientbound_sound_packet::ClientboundSoundPacket,
+use azalea::protocol::packets::game::{ClientboundGamePacket,
+    c_player_position::ClientboundPlayerPosition,
+    c_set_time::ClientboundSetTime,
+    c_set_health::ClientboundSetHealth,
+    c_set_default_spawn_position::ClientboundSetDefaultSpawnPosition,
+    c_respawn::ClientboundRespawn,
+    c_add_entity::ClientboundAddEntity,
+    c_move_entity_pos::ClientboundMoveEntityPos,
+    c_teleport_entity::ClientboundTeleportEntity,
+    c_move_entity_pos_rot::ClientboundMoveEntityPosRot,
+    c_move_entity_rot::ClientboundMoveEntityRot,
+    c_remove_entities::ClientboundRemoveEntities,
+    c_set_entity_motion::ClientboundSetEntityMotion,
+    c_rotate_head::ClientboundRotateHead,
+    c_block_update::ClientboundBlockUpdate,
+    c_entity_event::ClientboundEntityEvent,
+    c_set_entity_data::ClientboundSetEntityData,
+    c_block_destruction::ClientboundBlockDestruction,
+    c_block_entity_data::ClientboundBlockEntityData,
+    c_open_screen::ClientboundOpenScreen,
+    c_sound::ClientboundSound,
 };
 
-use azalea_protocol::packets::common::CommonPlayerSpawnInfo;
-use azalea_core::resource_location::ResourceLocation;
-use azalea_protocol::packets::game::clientbound_level_chunk_with_light_packet::{ClientboundLevelChunkWithLightPacket, ClientboundLevelChunkPacketData};
-use azalea_protocol::packets::game::clientbound_system_chat_packet::ClientboundSystemChatPacket;
+use azalea::protocol::packets::common::CommonPlayerSpawnInfo;
+use azalea::core::resource_location::ResourceLocation;
+use azalea::protocol::packets::game::c_level_chunk_with_light::{ClientboundLevelChunkWithLight, ClientboundLevelChunkPacketData};
+use azalea::protocol::packets::game::c_system_chat::ClientboundSystemChat;
 use std::sync::Arc;
 use std::io::Cursor;
-use azalea_world::chunk_storage;
+use azalea::world::chunk_storage;
 use azalea_block::BlockState;
 use std::time::Instant;
 
-pub async fn update_dimension(source_packet: &ClientboundRespawnPacket, mt_server_state: &mut MTServerState) {
-    let ClientboundRespawnPacket { common: player_spawn_info, data_to_keep: _ } = source_packet;
+pub async fn update_dimension(source_packet: &ClientboundRespawn, mt_server_state: &mut MTServerState) {
+    let ClientboundRespawn { common: player_spawn_info, data_to_keep: _ } = source_packet;
     let CommonPlayerSpawnInfo {
         dimension_type: _,
         dimension,
         seed: _,
+        sea_level: _,
         game_type: _,
         previous_game_type: _,
         is_debug: _,
@@ -92,8 +93,8 @@ pub async fn update_dimension(source_packet: &ClientboundRespawnPacket, mt_serve
     utils::logger(&format!("[Minetest] New Dimension: {}:{}", namespace, path), 1)
 }
 
-pub async fn set_spawn(source_packet: &ClientboundSetDefaultSpawnPositionPacket, mt_server_state: &mut MTServerState) {
-    let ClientboundSetDefaultSpawnPositionPacket { pos, angle: _ } = source_packet;
+pub async fn set_spawn(source_packet: &ClientboundSetDefaultSpawnPosition, mt_server_state: &mut MTServerState) {
+    let ClientboundSetDefaultSpawnPosition { pos, angle: _ } = source_packet;
     let BlockPos {x, y, z} = pos;
     let dest_x = *x as f32;
     let dest_y = *y as f32;
@@ -126,7 +127,7 @@ pub async fn death(conn: &MinetestConnection, mt_server_state: &mut MTServerStat
 
     let _ = conn.send(deathscreen).await;*/
 
-    set_health(&ClientboundSetHealthPacket { health: 20.0, food: 20, saturation: 0.0 }, conn, mt_server_state).await;
+    set_health(&ClientboundSetHealth { health: 20.0, food: 20, saturation: 0.0 }, conn, mt_server_state).await;
 }
 
 pub async fn edit_healthbar(mode: HeartDisplay, num: u32, conn: &MinetestConnection) {
@@ -209,8 +210,8 @@ pub async fn edit_airbar(num: u32, conn: &MinetestConnection) {
     let _ = conn.send(set_bar_number).await;
 }
 
-pub async fn set_health(source_packet: &ClientboundSetHealthPacket, conn: &MinetestConnection, mt_server_state: &mut MTServerState) {
-    let ClientboundSetHealthPacket { health, food, saturation:_ } = source_packet;
+pub async fn set_health(source_packet: &ClientboundSetHealth, conn: &MinetestConnection, mt_server_state: &mut MTServerState) {
+    let ClientboundSetHealth { health, food, saturation:_ } = source_packet;
     // health: 0..20
     let new_health: u16 = *health as u16;
     let mut damage_effect: Option<bool> = None;
@@ -231,8 +232,8 @@ pub async fn set_health(source_packet: &ClientboundSetHealthPacket, conn: &Minet
     edit_foodbar(FoodDisplay::NoChange, *food, conn).await;
 }
 
-pub async fn set_time(source_packet: &ClientboundSetTimePacket, conn: &MinetestConnection) {
-    let ClientboundSetTimePacket { game_time: _, day_time } = source_packet;
+pub async fn set_time(source_packet: &ClientboundSetTime, conn: &MinetestConnection) {
+    let ClientboundSetTime { game_time: _, day_time, tick_day_time: _ } = source_packet; // likely wrong to ignore tick_day_time FIXME
     // day_time seems to be the world age in ticks, so mod 24000 is the age of the day
     // age of the day is 0..23999
     // where 0 is 06:00, 6000 is 12:00, 12000 is 18:00, 18000 is 24:00 and 23999 is 05:59
@@ -248,22 +249,23 @@ pub async fn set_time(source_packet: &ClientboundSetTimePacket, conn: &MinetestC
     let _ = conn.send(settime_packet).await;
 }
 
-pub async fn set_player_pos(source_packet: &ClientboundPlayerPositionPacket, conn: &MinetestConnection, mt_server_state: &mut MTServerState) {
-    let ClientboundPlayerPositionPacket {
-        x, y, z, y_rot, x_rot, relative_arguments: _, id: _
-    } = source_packet;
-    let dest_x = (*x as f32) * 10.0;
-    let dest_y = (*y as f32) * 10.0;
-    let dest_z = (*z as f32) * 10.0;
+pub async fn set_player_pos(source_packet: &ClientboundPlayerPosition, conn: &MinetestConnection, mt_server_state: &mut MTServerState) {
+
+    let ClientboundPlayerPosition { id: _, change, relative: _ } = source_packet;
+    
+    let dest_x = (change.pos.x as f32) * 10.0;
+    let dest_y = (change.pos.y as f32) * 10.0;
+    let dest_z = (change.pos.z as f32) * 10.0;
+    
     let setpos_packet = ToClientCommand::MovePlayer(
         Box::new(wire::command::MovePlayerSpec {
             pos: v3f {x: dest_x, y: dest_y, z: dest_z},
-            pitch: *x_rot, yaw: *y_rot,
+            pitch: change.look_direction.x_rot, yaw: change.look_direction.y_rot,
         })
     );
     let _ = conn.send(setpos_packet).await;
     mt_server_state.mt_clientside_pos = (dest_x, dest_y, dest_z);
-    mt_server_state.client_rotation = (*y_rot, *x_rot);
+    mt_server_state.client_rotation = (change.look_direction.y_rot, change.look_direction.x_rot);
 }
 
 pub async fn sync_client_pos(mc_client: &Client, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
@@ -294,7 +296,7 @@ pub async fn sync_client_pos(mc_client: &Client, conn: &mut MinetestConnection, 
     }
 }
 
-pub async fn update_inventory(conn: &mut MinetestConnection, to_change: Vec<(&str, Vec<inventory::ItemSlot>)>) {
+pub async fn update_inventory(conn: &mut MinetestConnection, to_change: Vec<(&str, Vec<inventory::ItemStack>)>) {
     let mut entries: Vec<InventoryEntry> = vec![];
     let mut changed_fields: Vec<&str> = vec![];
     for field in to_change {
@@ -302,7 +304,7 @@ pub async fn update_inventory(conn: &mut MinetestConnection, to_change: Vec<(&st
         let mut field_items: Vec<ItemStackUpdate> = vec![];
         for item in field.1 {
             match item {
-                inventory::ItemSlot::Present(ref slot_data) => {
+                inventory::ItemStack::Present(ref slot_data) => {
                     field_items.push(ItemStackUpdate::Item(
                         ItemStack {
                             name: slot_data.kind.to_string(),
@@ -314,7 +316,7 @@ pub async fn update_inventory(conn: &mut MinetestConnection, to_change: Vec<(&st
                         }
                     ));
                 },
-                inventory::ItemSlot::Empty => {
+                inventory::ItemStack::Empty => {
                     field_items.push(ItemStackUpdate::Empty)
                 }
             }
@@ -355,8 +357,8 @@ pub async fn send_message(conn: &mut MinetestConnection, message: ChatPacket) {
     let _ = conn.send(chat_packet).await;
 }
 
-pub async fn send_sys_message(conn: &mut MinetestConnection, message: &ClientboundSystemChatPacket) {
-    if let azalea_chat::FormattedText::Text(component) = &message.content {
+pub async fn send_sys_message(conn: &mut MinetestConnection, message: &ClientboundSystemChat) {
+    if let azalea::FormattedText::Text(component) = &message.content {
         let chat_packet = ToClientCommand::TCChatMessage(
             Box::new(wire::command::TCChatMessageSpec {
                 version: 1, // idk what this or message_type do
@@ -493,11 +495,11 @@ pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut Unbounde
     }
 }
 
-pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket, mt_conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLight, mt_conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
     let y_bounds = mt_definitions::get_y_bounds(&mt_server_state.current_dimension);
     let is_nether = matches!(mt_server_state.current_dimension, Dimensions::Nether);
     // Parse packet
-    let ClientboundLevelChunkWithLightPacket {x: chunk_x_pos, z: chunk_z_pos, chunk_data: chunk_packet_data, light_data: _} = packet_data;
+    let ClientboundLevelChunkWithLight {x: chunk_x_pos, z: chunk_z_pos, chunk_data: chunk_packet_data, light_data: _} = packet_data;
     let ClientboundLevelChunkPacketData { heightmaps: chunk_heightmaps, data: chunk_data, block_entities } = chunk_packet_data;
     utils::logger(&format!("[Minecraft] Server sent chunk x/z {}/{}", chunk_x_pos, chunk_z_pos), 1);
     //let chunk_location: ChunkPos = ChunkPos { x: *chunk_x_pos, z: *chunk_z_pos }; // unused
@@ -524,7 +526,7 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
         for z in 0..16 {
             for y in 0..16 {
                 for x in 0..16 {
-                    current_state = section.get(azalea_core::position::ChunkSectionBlockPos { x: x as u8, y: y as u8, z: z as u8});
+                    current_state = section.get(azalea::core::position::ChunkSectionBlockPos { x: x as u8, y: y as u8, z: z as u8});
                     // index ranges from 0 (0/0/0) to 4095 (15/15/15), as described in initialize_16node_chunk()
                     nodearr[x+(y*16)+(z*256)] = current_state;
                 }
@@ -540,9 +542,9 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
             z: block_entity.packed_xz & 15
         };
         let pos: (i32, i32, i32) = (
-            chunk_pos.x as i32 + ((chunk_x_pos*16) as i32),
+            chunk_pos.x as i32 + ((*chunk_x_pos * 16) as i32),
             chunk_pos.y,
-            chunk_pos.z as i32 + ((chunk_z_pos*16) as i32)
+            chunk_pos.z as i32 + ((*chunk_z_pos * 16) as i32)
         );
         utils::logger(&format!("[Minecraft] Registring Block Entity at {:?}", pos), 1);
         if mt_server_state.container_map.insert(pos, block_entity.kind) != None {
@@ -552,7 +554,7 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLightPacket
 }
 
 // if no packet is passed, add the player using data from the server state
-pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+pub async fn add_entity(optional_packet: Option<&ClientboundAddEntity>, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
     let is_player: bool;
     let name: String;
     let id: u16;
@@ -565,7 +567,7 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
     match optional_packet {
         Some(packet_data) => {
             // use a network packet
-            let ClientboundAddEntityPacket {
+            let ClientboundAddEntity {
                 id: serverside_id,
                 uuid,
                 entity_type, // TODO: textures and models depend on this thing
@@ -614,7 +616,7 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
         acceleration: v3f::new(0.0, 0.0, 0.0),
         entity_kind
     };
-    let insert_successful = mt_server_state.entity_id_pos_map.insert_checked(id.into(), entitydata);
+    let insert_successful = mt_server_state.entity_id_pos_map.insert_checked(id as u64, entitydata);
     if !insert_successful {
         utils::logger(&format!("[Minetest] Failed to insert position for (adjusted) entity ID {}: ID already present, dropping the packet!", id), 2);
         return
@@ -761,8 +763,8 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntityPacket>, co
     let _ = conn.send(clientbound_addentity).await;
 }
 
-pub async fn remove_entity(packet_data: &ClientboundRemoveEntitiesPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
-    let ClientboundRemoveEntitiesPacket { entity_ids } = packet_data;
+pub async fn remove_entity(packet_data: &ClientboundRemoveEntities, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+    let ClientboundRemoveEntities { entity_ids } = packet_data;
     let mut adjusted_id: u16;
     let mut entity_ids_adjusted: Vec<u16> = vec![];
     for entity_id in entity_ids {
@@ -787,8 +789,8 @@ pub async fn remove_entity(packet_data: &ClientboundRemoveEntitiesPacket, conn: 
     }
 }
 
-pub async fn entity_setpos(packet_data: &ClientboundMoveEntityPosPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
-    let ClientboundMoveEntityPosPacket { entity_id, delta, on_ground: _ } = packet_data;
+pub async fn entity_setpos(packet_data: &ClientboundMoveEntityPos, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+    let ClientboundMoveEntityPos { entity_id, delta, on_ground: _ } = packet_data;
     let PositionDelta8 {xa, ya, za} = *delta;
     // delta: offset from the current position
 
@@ -820,8 +822,10 @@ pub async fn entity_setpos(packet_data: &ClientboundMoveEntityPosPacket, conn: &
     send_entity_data(adjusted_id, entitydata, conn).await;
 }
 
-pub async fn entity_teleport(packet_data: &ClientboundTeleportEntityPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
-    let ClientboundTeleportEntityPacket { id: entity_id, position, y_rot, x_rot, on_ground: _ } = packet_data;
+pub async fn entity_teleport(packet_data: &ClientboundTeleportEntity, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+    let ClientboundTeleportEntity { id: entity_id, change, relatives: _, on_ground: _ } = packet_data;
+    
+    
     let adjusted_id = *entity_id as u16 + 1;
     if !mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
         utils::logger(&format!("[Minetest] Failed to update data for (adjusted) entity ID {}: ID not yet present, dropping the packet!", adjusted_id), 2);
@@ -836,15 +840,15 @@ pub async fn entity_teleport(packet_data: &ClientboundTeleportEntityPacket, conn
         entity_kind
     } = entitydata.clone();
     *entitydata = EntityResendableData {
-        position: utils::vec3_to_v3f(position, 0.1),
-        rotation: v3f { x: *x_rot as f32, y: *y_rot as f32, z: old_rotation.z },
+        position: utils::vec3_to_v3f(&change.pos, 0.1),
+        rotation: v3f { x: change.look_direction.x_rot, y: change.look_direction.y_rot, z: old_rotation.z },
         velocity, acceleration, entity_kind
     };
     send_entity_data(adjusted_id, entitydata, conn).await;
 }
 
-pub async fn entity_setposrot(packet_data: &ClientboundMoveEntityPosRotPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
-    let ClientboundMoveEntityPosRotPacket { entity_id, delta, y_rot, x_rot, on_ground: _ } = packet_data;
+pub async fn entity_setposrot(packet_data: &ClientboundMoveEntityPosRot, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+    let ClientboundMoveEntityPosRot { entity_id, delta, y_rot, x_rot, on_ground: _ } = packet_data;
     let PositionDelta8 {xa, ya, za} = *delta;
     let adjusted_id = *entity_id as u16 + 1;
     if !mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
@@ -878,8 +882,8 @@ pub async fn entity_setposrot(packet_data: &ClientboundMoveEntityPosRotPacket, c
     send_entity_data(adjusted_id, entitydata, conn).await;
 }
 
-pub async fn entity_setrot(packet_data: &ClientboundMoveEntityRotPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
-    let ClientboundMoveEntityRotPacket { entity_id, y_rot, x_rot, on_ground: _ } = packet_data;
+pub async fn entity_setrot(packet_data: &ClientboundMoveEntityRot, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+    let ClientboundMoveEntityRot { entity_id, y_rot, x_rot, on_ground: _ } = packet_data;
     let adjusted_id = *entity_id as u16 + 1;
     if !mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
         utils::logger(&format!("[Minetest] Failed to update data for (adjusted) entity ID {}: ID not yet present, dropping the packet!", adjusted_id), 2);
@@ -901,8 +905,8 @@ pub async fn entity_setrot(packet_data: &ClientboundMoveEntityRotPacket, conn: &
     send_entity_data(adjusted_id, entitydata, conn).await;
 }
 
-pub async fn entity_setmotion(packet_data: &ClientboundSetEntityMotionPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
-    let ClientboundSetEntityMotionPacket { id, xa, ya, za } = packet_data;
+pub async fn entity_setmotion(packet_data: &ClientboundSetEntityMotion, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+    let ClientboundSetEntityMotion { id, xa, ya, za } = packet_data;
     let adjusted_id = *id as u16 + 1;
     if !mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
         utils::logger(&format!("[Minetest] Failed to update data for (adjusted) entity ID {}: ID not yet present, dropping the packet!", adjusted_id), 2);
@@ -931,13 +935,13 @@ pub async fn entity_setmotion(packet_data: &ClientboundSetEntityMotionPacket, co
     send_entity_data(adjusted_id, entitydata, conn).await;
 }
 
-pub async fn entity_rotatehead(packet_data: &ClientboundRotateHeadPacket, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
+pub async fn entity_rotatehead(packet_data: &ClientboundRotateHead, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
     // TODO
 }
 
-pub async fn entity_event(packet_data: &ClientboundEntityEventPacket, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
+pub async fn entity_event(packet_data: &ClientboundEntityEvent, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
     return; // TODO finish this fn
-    let ClientboundEntityEventPacket { entity_id, event_id } = packet_data;
+    let ClientboundEntityEvent { entity_id, event_id } = packet_data;
     let adjusted_id = *entity_id as u16 + 1;
     if !mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
         utils::logger(&format!("[Minetest] Failed to get entity kind for (adjusted) entity ID {}: ID not yet present, dropping the packet!", adjusted_id), 2);
@@ -999,10 +1003,10 @@ pub async fn entity_event(packet_data: &ClientboundEntityEventPacket, conn: &mut
     }
 }
 
-pub async fn set_entity_data(packet_data: &ClientboundSetEntityDataPacket, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
+pub async fn set_entity_data(packet_data: &ClientboundSetEntityData, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
     // Currently, the only data that will actually be used is EntityDataValue::ItemStack in EntityKind::Item
     // Everything else gets dropped.
-    let ClientboundSetEntityDataPacket { id, packed_items } = packet_data;
+    let ClientboundSetEntityData { id, packed_items } = packet_data;
     let adjusted_id = *id as u16 + 1;
 
     if !mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
@@ -1018,7 +1022,7 @@ pub async fn set_entity_data(packet_data: &ClientboundSetEntityDataPacket, conn:
         match value {
             EntityDataValue::ItemStack(data) => {
                 match entity_kind {
-                    EntityKind::Item => set_entity_texture(adjusted_id, utils::texture_from_itemslot(data, mt_server_state), conn).await,
+                    EntityKind::Item => set_entity_texture(adjusted_id, utils::texture_from_itemstack(data, mt_server_state), conn).await,
                     _ => utils::logger("[Minecraft] Server sent SetEntityData with ItemStack, but this is only implemented for dropped items! Dropping this EntityDataItem.", 2)
                 }
             },
@@ -1102,13 +1106,13 @@ async fn set_entity_texture(id: u16, texture: String, conn: &MinetestConnection)
 }
 
 // block placement/destruction
-pub async fn blockupdate(packet_data: &ClientboundBlockUpdatePacket, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
-    let ClientboundBlockUpdatePacket { pos, block_state } = packet_data;
+pub async fn blockupdate(packet_data: &ClientboundBlockUpdate, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
+    let ClientboundBlockUpdate { pos, block_state } = packet_data;
     let cave_air_glow = mt_server_state.current_dimension == Dimensions::Nether;
     let BlockPos { x, y, z } = pos;
     let addnodecommand = ToClientCommand::Addnode(
         Box::new(wire::command::AddnodeSpec {
-            pos: v3s16 { x: *x as i16, y: *y as i16, z: *z as i16 },
+            pos: v3s16 { x: *x as i16, y: *y  as i16, z: *z as i16 },
             node: utils::state_to_node(*block_state, cave_air_glow),
             keep_metadata: false
         })
@@ -1117,9 +1121,9 @@ pub async fn blockupdate(packet_data: &ClientboundBlockUpdatePacket, conn: &mut 
 }
 
 // block destruction overlay stuff
-pub async fn destruction_overlay(packet_data: &ClientboundBlockDestructionPacket, conn: &mut MinetestConnection) {
+pub async fn destruction_overlay(packet_data: &ClientboundBlockDestruction, conn: &mut MinetestConnection) {
     // TODO finish this thing as soon as i figure out how to send overlays
-    let ClientboundBlockDestructionPacket { id: _, pos, progress } = packet_data;
+    let ClientboundBlockDestruction { id: _, pos, progress } = packet_data;
     let new_overlay = match progress {
         0 => "block-destroy_stage_0.png",
         1 => "block-destroy_stage_1.png",
@@ -1135,8 +1139,8 @@ pub async fn destruction_overlay(packet_data: &ClientboundBlockDestructionPacket
     };
 }
 
-pub async fn open_screen(packet_data: &ClientboundOpenScreenPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
-    let ClientboundOpenScreenPacket { container_id: _, menu_type, title } = packet_data;
+pub async fn open_screen(packet_data: &ClientboundOpenScreen, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+    let ClientboundOpenScreen { container_id: _, menu_type, title } = packet_data;
     let form_spec = mt_definitions::get_container_formspec(menu_type, &title.to_string());
     utils::logger("[Minetest] Showing Formspec for opened container", 1);
     let formspec_command = ToClientCommand::ShowFormspec(
@@ -1177,8 +1181,8 @@ pub async fn open_screen(packet_data: &ClientboundOpenScreenPacket, conn: &mut M
 }
 
 
-pub async fn block_entity_data(packet_data: &ClientboundBlockEntityDataPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
-    let ClientboundBlockEntityDataPacket { pos, block_entity_type, tag: _ } = packet_data;
+pub async fn block_entity_data(packet_data: &ClientboundBlockEntityData, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+    let ClientboundBlockEntityData { pos, block_entity_type, tag: _ } = packet_data;
     if mt_server_state.container_map.insert((pos.x, pos.y, pos.z), *block_entity_type) != None {
         utils::logger(&format!("[Minecraft] Overwriting Block Entity at {:?}", pos), 2);
     }
@@ -1186,7 +1190,7 @@ pub async fn block_entity_data(packet_data: &ClientboundBlockEntityDataPacket, c
 }
 
 pub async fn refresh_inv(mc_client: &Client, mt_conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
-    let mut to_update: Vec<(&str,Vec<inventory::ItemSlot>)> = vec![];
+    let mut to_update: Vec<(&str,Vec<inventory::ItemStack>)> = vec![];
     match mc_client.menu() {
         inventory::Menu::Player(serverside_inventory) => {
             // fields of the inventory needing a update
@@ -1325,8 +1329,8 @@ pub async fn refresh_inv(mc_client: &Client, mt_conn: &mut MinetestConnection, m
     }
 }
 
-pub async fn show_sound(packet_data: &ClientboundSoundPacket, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
-    let ClientboundSoundPacket { sound, source: _, x: _, y: _, z: _, volume: _, pitch: _, seed: _ } = packet_data;
+pub async fn show_sound(packet_data: &ClientboundSound, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+    let ClientboundSound { sound, source: _, x: _, y: _, z: _, volume: _, pitch: _, seed: _ } = packet_data;
     utils::logger(&format!("[Minetest] New Subtitle: {:?}", sound), 1);
     mt_server_state.subtitles.push((format!("{:?}", sound), Instant::now()));
     /*

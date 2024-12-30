@@ -19,7 +19,7 @@ use crate::{ utils, MTServerState };
 use crate::settings;
 use serde_json;
 
-use azalea_registry::{self, Block, EntityKind, MenuKind};
+use azalea::registry::{Block, EntityKind, MenuKind};
 
 // the only way to change an entitys pos/rot/vel in minetest is by updating *all* the values
 // but minecraft will send packets only updating one of these values, so the server_state needs to keep the values to resend.
@@ -789,7 +789,7 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
     // If *every* possible state is solid, then walkable=true
     // for light stuff, use the "brightest" state
     // for everything else, do other stuff idk look at the code
-    let this_block: azalea_registry::Block = (id as u32).try_into().expect("Got invalid ID!");
+    let this_block: azalea::registry::Block = (id as u32).try_into().expect("Got invalid ID!");
     let mut walkable = true;
     let mut light_source = 0;
     let mut sunlight_propagates = 0;

@@ -4,7 +4,7 @@
 
 This program is supposed to let a unmodified [Minetest](https://github.com/minetest/minetest) client connect to  
 another (mostly) unmodified Minecraft (Java Edition) server.  
-The Java Server version needed is 1.21.1, use [ViaProxy](https://github.com/ViaVersion/ViaProxy) if you need another version.  
+The Java Server version needed is 1.21.4, use [ViaProxy](https://github.com/ViaVersion/ViaProxy) if you need another version.  
 It compiles to a standalone executable, which will listen on 127.0.0.1:30000  
 for minetest and then proxy to a minecraft server specified in CONF_DIR/config.txt  
 
@@ -34,7 +34,7 @@ You need nightly rust to build some dependencies (`rustup default nightly`).
   have a minecraft account. TODO later  
 
 * [ArcticData](https://github.com/Articdive/ArticData) only supports 1.20.4, but there isn't enough  
-  difference between 1.21.1 and 1.20.4 to make this a big problem IMO.  
+  difference between 1.21.4 and 1.20.4 to make this a big problem IMO.  
 
 * Any Anticheats are ~~likely~~ near-certain to ban you.  
   (if they don't, you probably found a bug in the anticheat? the traffic sent  

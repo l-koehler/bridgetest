@@ -25,7 +25,7 @@ use azalea_client::{Client, Account};
 use tokio::sync::mpsc::UnboundedReceiver;
 use alloc::boxed::Box;
 use azalea_client::Event;
-use azalea_protocol::packets::game::ClientboundGamePacket;
+use azalea::protocol::packets::game::ClientboundGamePacket;
 use config::Config;
 use std::net::SocketAddr;
 
@@ -57,7 +57,7 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
         Event::Tick => on_minecraft_tick(mt_conn, mc_client, mt_server_state).await,
         Event::Death(_) => clientbound_translator::death(mt_conn, mt_server_state).await,
         Event::Packet(packet_value) => match (*packet_value).clone() {
-            ClientboundGamePacket::Bundle(_) => (),
+            ClientboundGamePacket::BundleDelimiter(_) => (),
 
             ClientboundGamePacket::ChunkBatchStart(_) => clientbound_translator::chunkbatch(mt_conn, mc_conn, mt_server_state, mc_client).await,
             ClientboundGamePacket::SystemChat(message) => clientbound_translator::send_sys_message(mt_conn, &message).await,

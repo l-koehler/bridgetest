@@ -16,11 +16,8 @@ use azalea::container::ContainerHandle;
 use minetest_protocol::MinetestServer;
 use mt_definitions::Dimensions;
 use azalea_client::inventory;
-use azalea_registry::BlockEntityKind;
+use azalea::registry::BlockEntityKind;
 
-use parking_lot::deadlock;
-use std::thread;
-use std::time::Duration;
 use std::sync::{Mutex, Arc};
 use intmap::IntMap;
 use alloc::vec::Vec;
@@ -37,24 +34,6 @@ use std::time::Instant;
 async fn main() {
     let settings: Config = load_config();
     textures::validate_texture_pack(&settings).await;
-
-    // Create a background thread which checks for deadlocks every 10s
-    thread::spawn(move || loop {
-        thread::sleep(Duration::from_secs(10));
-        let deadlocks = deadlock::check_deadlock();
-        if deadlocks.is_empty() {
-            continue;
-        }
-        println!("{} deadlocks detected", deadlocks.len());
-        for (i, threads) in deadlocks.iter().enumerate() {
-            println!("Deadlock #{i}");
-            for t in threads {
-                println!("Thread Id {:#?}", t.thread_id());
-                println!("{:#?}", t.backtrace());
-            }
-        }
-    });
-    
     start_client_handler(settings).await;
 }
 
@@ -106,11 +85,11 @@ async fn start_client_handler(settings: Config) {
         mt_clientside_pos: (0.0, 0.0, 0.0),
         client_rotation: (0.0, 0.0),
         mt_clientside_player_inv: inventory::Player {
-            craft_result: inventory::ItemSlot::default(),
+            craft_result: inventory::ItemStack::default(),
             craft: inventory::SlotList::default(),
             armor: inventory::SlotList::default(),
             inventory: inventory::SlotList::default(),
-            offhand: inventory::ItemSlot::default()
+            offhand: inventory::ItemStack::default()
         },
         mt_last_known_health: 0,
         respawn_pos: (0.0, 0.0, 0.0),

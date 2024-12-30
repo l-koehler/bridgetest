@@ -5,14 +5,14 @@
 use crate::settings;
 use crate::MTServerState;
 
-use azalea::inventory::ItemSlot;
+use azalea::inventory::ItemStack;
 use minetest_protocol::CommandRef;
 use minetest_protocol::CommandDirection;
 use minetest_protocol::wire::types::{v3f, MapNode};
 use azalea_client::Event;
-use azalea_core::{aabb::AABB, position::Vec3};
-use azalea_protocol::packets::game::ClientboundGamePacket;
-use azalea_registry::{EntityKind, Registry};
+use azalea::core::{aabb::AABB, position::Vec3};
+use azalea::protocol::packets::game::ClientboundGamePacket;
+use azalea::registry::{EntityKind, Registry};
 use azalea_block::BlockState;
 use std::path::Path;
 use std::path::PathBuf;
@@ -73,10 +73,10 @@ pub fn normalize_angle(angle: f32) -> f32 {
 }
 
 
-pub fn texture_from_itemslot(item: &ItemSlot, mt_server_state: &MTServerState) -> String {
+pub fn texture_from_itemstack(item: &ItemStack, mt_server_state: &MTServerState) -> String {
     match item {
-        ItemSlot::Empty => String::from("air.png"),
-        ItemSlot::Present(slot_data) => {
+        ItemStack::Empty => String::from("air.png"),
+        ItemStack::Present(slot_data) => {
             let item_name = slot_data.kind.to_string().replace("minecraft:", "").to_lowercase() + ".png";
             return match basename_to_prefixed(mt_server_state, &item_name) {
                 Some(name) => name,
@@ -121,13 +121,13 @@ pub fn state_to_node(state: BlockState, cave_air_glow: bool) -> MapNode {
     let mut param0: u16;
     let param1: u8;
     let param2: u8 = 0;
-    param0 = azalea_registry::Block::try_from(state).unwrap().to_u32() as u16 + 128;
+    param0 = azalea::registry::Block::try_from(state).unwrap().to_u32() as u16 + 128;
     
     // param1: transparency i think
     if state.is_air() {
         param0 = 126;
         param1 = 0xEE;
-    } else if (azalea_registry::Block::try_from(state).unwrap() == azalea_registry::Block::CaveAir) && cave_air_glow {
+    } else if (azalea::registry::Block::try_from(state).unwrap() == azalea::registry::Block::CaveAir) && cave_air_glow {
         param0 = 120; // custom node: glowing_air, used in nether
         param1 = 0xEE;
     } else {
@@ -260,7 +260,18 @@ pub fn get_entity_model(entity: &EntityKind) -> (&str, Vec<String>) {
         EntityKind::Axolotl    => ("entitymodel-axolotl.b3d" , vec![String::from("entity-axolotl-cyan.png")]),
         EntityKind::Bat        => ("entitymodel-bat.b3d"     , vec![String::from("entity-bat.png")]),
         EntityKind::Blaze      => ("entitymodel-blaze.b3d"   , vec![String::from("entity-blaze.png")]),
-        EntityKind::Boat       => ("entitymodel-boat.b3d"    , vec![String::from("entity-boat-oak.png")]), // TODO use the actual textures for variants
+        
+        EntityKind::AcaciaBoat => ("entitymodel-boat.b3d"    , vec![String::from("entity-boat-acacia.png")]),
+        EntityKind::BirchBoat  => ("entitymodel-boat.b3d"    , vec![String::from("entity-boat-birch.png")]),
+        EntityKind::BambooRaft => ("entitymodel-boat.b3d"    , vec![String::from("entity-boat-oak.png")]), // TODO
+        EntityKind::CherryBoat => ("entitymodel-boat.b3d"    , vec![String::from("entity-boat-cherry.png")]),
+        EntityKind::DarkOakBoat => ("entitymodel-boat.b3d"   , vec![String::from("entity-boat-darkoak.png")]),
+        EntityKind::JungleBoat => ("entitymodel-boat.b3d"    , vec![String::from("entity-boat-jungle.png")]),
+        EntityKind::MangroveBoat => ("entitymodel-boat.b3d"  , vec![String::from("entity-boat-mangrove.png")]),
+        EntityKind::OakBoat    => ("entitymodel-boat.b3d"    , vec![String::from("entity-boat-oak.png")]),
+        EntityKind::PaleOakBoat => ("entitymodel-boat.b3d"   , vec![String::from("entity-boat-birch.png")]), // TODO
+        EntityKind::SpruceBoat => ("entitymodel-boat.b3d"    , vec![String::from("entity-boat-spruce.png")]),
+        
         EntityKind::Cat        => ("entitymodel-cat.b3d"     , vec![String::from("entity-cat-red.png")]),
         EntityKind::CaveSpider => ("entitymodel-spider.b3d"  , vec![String::from("entity-spider-cave_spider.png")]),
         EntityKind::ChestMinecart => ("entitymodel-minecart_chest.b3d", vec![String::from("entity-minecart.png")]), // minecraft adds the chest texture, there is no separate minecart texture
@@ -337,6 +348,7 @@ pub fn get_entity_model(entity: &EntityKind) -> (&str, Vec<String>) {
     }
 }
 
+// these can't be printed any sane way, so have this nonsense
 pub fn mc_packet_name(command: &Event) -> &str {
     match command {
         Event::Init => "Init",
@@ -345,129 +357,8 @@ pub fn mc_packet_name(command: &Event) -> &str {
         Event::Tick => "Tick",
         Event::Packet(packet_value) => match **packet_value {
             // There are 117 possible cases here and most of them do not matter
-            // Uncomment below if you do not actually need this
-            //_ => "GamePacket: Detail disabled!",
-            ClientboundGamePacket::Bundle(_) => "GamePacket: Bundle",
-            ClientboundGamePacket::AddEntity(_) => "GamePacket: AddEntity",
-            ClientboundGamePacket::AddExperienceOrb(_) => "GamePacket: AddExperienceOrb",
-            ClientboundGamePacket::Animate(_) => "GamePacket: Animate",
-            ClientboundGamePacket::AwardStats(_) => "GamePacket: AwardStats",
-            ClientboundGamePacket::BlockChangedAck(_) => "GamePacket: BlockChangedAck",
-            ClientboundGamePacket::BlockDestruction(_) => "GamePacket: BlockDestruction",
-            ClientboundGamePacket::BlockEntityData(_) => "GamePacket: BlockEntityData",
-            ClientboundGamePacket::BlockEvent(_) => "GamePacket: BlockEvent",
-            ClientboundGamePacket::BlockUpdate(_) => "GamePacket: BlockUpdate",
-            ClientboundGamePacket::BossEvent(_) => "GamePacket: BossEvent",
-            ClientboundGamePacket::ChangeDifficulty(_) => "GamePacket: ChangeDifficulty",
-            ClientboundGamePacket::ChunkBatchFinished(_) => "GamePacket: ChunkBatchFinished",
-            ClientboundGamePacket::ChunkBatchStart(_) => "GamePacket: ChunkBatchStart",
-            ClientboundGamePacket::ChunksBiomes(_) => "GamePacket: ChunksBiomes",
-            ClientboundGamePacket::ClearTitles(_) => "GamePacket: ClearTitles",
-            ClientboundGamePacket::CommandSuggestions(_) => "GamePacket: CommandSuggestions",
-            ClientboundGamePacket::Commands(_) => "GamePacket: Commands",
-            ClientboundGamePacket::ContainerClose(_) => "GamePacket: ContainerClose",
-            ClientboundGamePacket::ContainerSetContent(_) => "GamePacket: ContainerSetContent",
-            ClientboundGamePacket::ContainerSetData(_) => "GamePacket: ContainerSetData",
-            ClientboundGamePacket::ContainerSetSlot(_) => "GamePacket: ContainerSetSlot",
-            ClientboundGamePacket::CookieRequest(_) => "GamePacket: CookieRequest",
-            ClientboundGamePacket::Cooldown(_) => "GamePacket: Cooldown",
-            ClientboundGamePacket::CustomChatCompletions(_) => "GamePacket: CustomChatCompletions",
-            ClientboundGamePacket::CustomPayload(_) => "GamePacket: CustomPayload",
-            ClientboundGamePacket::DamageEvent(_) => "GamePacket: DamageEvent",
-            ClientboundGamePacket::DebugSample(_) => "GamePacket: DebugSample",
-            ClientboundGamePacket::DeleteChat(_) => "GamePacket: DeleteChat",
-            ClientboundGamePacket::Disconnect(_) => "GamePacket: Disconnect",
-            ClientboundGamePacket::DisguisedChat(_) => "GamePacket: DisguisedChat",
-            ClientboundGamePacket::EntityEvent(_) => "GamePacket: EntityEvent",
-            ClientboundGamePacket::Explode(_) => "GamePacket: Explode",
-            ClientboundGamePacket::ForgetLevelChunk(_) => "GamePacket: ForgetLevelChunk",
-            ClientboundGamePacket::GameEvent(_) => "GamePacket: GameEvent",
-            ClientboundGamePacket::HorseScreenOpen(_) => "GamePacket: HorseScreenOpen",
-            ClientboundGamePacket::HurtAnimation(_) => "GamePacket: HurtAnimation",
-            ClientboundGamePacket::InitializeBorder(_) => "GamePacket: InitializeBorder",
-            ClientboundGamePacket::KeepAlive(_) => "GamePacket: KeepAlive",
-            ClientboundGamePacket::LevelChunkWithLight(_) => "GamePacket: LevelChunkWithLight",
-            ClientboundGamePacket::LevelEvent(_) => "GamePacket: LevelEvent",
-            ClientboundGamePacket::LevelParticles(_) => "GamePacket: LevelParticles",
-            ClientboundGamePacket::LightUpdate(_) => "GamePacket: LightUpdate",
-            ClientboundGamePacket::Login(_) => "GamePacket: Login",
-            ClientboundGamePacket::MapItemData(_) => "GamePacket: MapItemData",
-            ClientboundGamePacket::MerchantOffers(_) => "GamePacket: MerchantOffers",
-            ClientboundGamePacket::MoveEntityPos(_) => "GamePacket: MoveEntityPos",
-            ClientboundGamePacket::MoveEntityPosRot(_) => "GamePacket: MoveEntityPosRot",
-            ClientboundGamePacket::MoveEntityRot(_) => "GamePacket: MoveEntityRot",
-            ClientboundGamePacket::MoveVehicle(_) => "GamePacket: MoveVehicle",
-            ClientboundGamePacket::OpenBook(_) => "GamePacket: OpenBook",
-            ClientboundGamePacket::OpenScreen(_) => "GamePacket: OpenScreen",
-            ClientboundGamePacket::OpenSignEditor(_) => "GamePacket: OpenSignEditor",
-            ClientboundGamePacket::Ping(_) => "GamePacket: Ping",
-            ClientboundGamePacket::PongResponse(_) => "GamePacket: PongResponse",
-            ClientboundGamePacket::PlaceGhostRecipe(_) => "GamePacket: PlaceGhostRecipe",
-            ClientboundGamePacket::PlayerAbilities(_) => "GamePacket: PlayerAbilities",
-            ClientboundGamePacket::PlayerChat(_) => "GamePacket: PlayerChat",
-            ClientboundGamePacket::PlayerCombatEnd(_) => "GamePacket: PlayerCombatEnd",
-            ClientboundGamePacket::PlayerCombatEnter(_) => "GamePacket: PlayerCombatEnter",
-            ClientboundGamePacket::PlayerCombatKill(_) => "GamePacket: PlayerCombatKill",
-            ClientboundGamePacket::PlayerInfoRemove(_) => "GamePacket: PlayerInfoRemove",
-            ClientboundGamePacket::PlayerInfoUpdate(_) => "GamePacket: PlayerInfoUpdate",
-            ClientboundGamePacket::PlayerLookAt(_) => "GamePacket: PlayerLookAt",
-            ClientboundGamePacket::PlayerPosition(_) => "GamePacket: PlayerPosition",
-            ClientboundGamePacket::Recipe(_) => "GamePacket: Recipe",
-            ClientboundGamePacket::RemoveEntities(_) => "GamePacket: RemoveEntities",
-            ClientboundGamePacket::RemoveMobEffect(_) => "GamePacket: RemoveMobEffect",
-            ClientboundGamePacket::ResetScore(_) => "GamePacket: ResetScore",
-            ClientboundGamePacket::ResourcePackPop(_) => "GamePacket: ResourcePackPop",
-            ClientboundGamePacket::ResourcePackPush(_) => "GamePacket: ResourcePackPush",
-            ClientboundGamePacket::Respawn(_) => "GamePacket: Respawn",
-            ClientboundGamePacket::RotateHead(_) => "GamePacket: RotateHead",
-            ClientboundGamePacket::SectionBlocksUpdate(_) => "GamePacket: SectionBlocksUpdate",
-            ClientboundGamePacket::SelectAdvancementsTab(_) => "GamePacket: SelectAdvancementsTab",
-            ClientboundGamePacket::ServerData(_) => "GamePacket: ServerData",
-            ClientboundGamePacket::SetActionBarText(_) => "GamePacket: SetActionBarText",
-            ClientboundGamePacket::SetBorderCenter(_) => "GamePacket: SetBorderCenter",
-            ClientboundGamePacket::SetBorderLerpSize(_) => "GamePacket: SetBorderLerpSize",
-            ClientboundGamePacket::SetBorderSize(_) => "GamePacket: SetBorderSize",
-            ClientboundGamePacket::SetBorderWarningDelay(_) => "GamePacket: SetBorderWarningDelay",
-            ClientboundGamePacket::SetBorderWarningDistance(_) => "GamePacket: SetBorderWarningDistance",
-            ClientboundGamePacket::SetCamera(_) => "GamePacket: SetCamera",
-            ClientboundGamePacket::SetCarriedItem(_) => "GamePacket: SetCarriedItem",
-            ClientboundGamePacket::SetChunkCacheCenter(_) => "GamePacket: SetChunkCacheCenter",
-            ClientboundGamePacket::SetChunkCacheRadius(_) => "GamePacket: SetChunkCacheRadius",
-            ClientboundGamePacket::SetDefaultSpawnPosition(_) => "GamePacket: SetDefaultSpawnPosition",
-            ClientboundGamePacket::SetDisplayObjective(_) => "GamePacket: SetDisplayObjective",
-            ClientboundGamePacket::SetEntityData(_) => "GamePacket: SetEntityData",
-            ClientboundGamePacket::SetEntityLink(_) => "GamePacket: SetEntityLink",
-            ClientboundGamePacket::SetEntityMotion(_) => "GamePacket: SetEntityMotion",
-            ClientboundGamePacket::SetEquipment(_) => "GamePacket: SetEquipment",
-            ClientboundGamePacket::SetExperience(_) => "GamePacket: SetExperience",
-            ClientboundGamePacket::SetHealth(_) => "GamePacket: SetHealth",
-            ClientboundGamePacket::SetObjective(_) => "GamePacket: SetObjective",
-            ClientboundGamePacket::SetPassengers(_) => "GamePacket: SetPassengers",
-            ClientboundGamePacket::SetPlayerTeam(_) => "GamePacket: SetPlayerTeam",
-            ClientboundGamePacket::SetScore(_) => "GamePacket: SetScore",
-            ClientboundGamePacket::SetSimulationDistance(_) => "GamePacket: SetSimulationDistance",
-            ClientboundGamePacket::SetSubtitleText(_) => "GamePacket: SetSubtitleText",
-            ClientboundGamePacket::SetTime(_) => "GamePacket: SetTime",
-            ClientboundGamePacket::SetTitleText(_) => "GamePacket: SetTitleText",
-            ClientboundGamePacket::SetTitlesAnimation(_) => "GamePacket: SetTitlesAnimation",
-            ClientboundGamePacket::SoundEntity(_) => "GamePacket: SoundEntity",
-            ClientboundGamePacket::Sound(_) => "GamePacket: Sound",
-            ClientboundGamePacket::StartConfiguration(_) => "GamePacket: StartConfiguration",
-            ClientboundGamePacket::StopSound(_) => "GamePacket: StopSound",
-            ClientboundGamePacket::StoreCookie(_) => "GamePacket: StoreCookie",
-            ClientboundGamePacket::SystemChat(_) => "GamePacket: SystemChat",
-            ClientboundGamePacket::TabList(_) => "GamePacket: TabList",
-            ClientboundGamePacket::TagQuery(_) => "GamePacket: TagQuery",
-            ClientboundGamePacket::TakeItemEntity(_) => "GamePacket: TakeItemEntity",
-            ClientboundGamePacket::TeleportEntity(_) => "GamePacket: TeleportEntity",
-            ClientboundGamePacket::TickingState(_) => "GamePacket: TickingState",
-            ClientboundGamePacket::TickingStep(_) => "GamePacket: TickingStep",
-            ClientboundGamePacket::Transfer(_) => "GamePacket: Transfer",
-            ClientboundGamePacket::UpdateAdvancements(_) => "GamePacket: UpdateAdvancements",
-            ClientboundGamePacket::UpdateAttributes(_) => "GamePacket: UpdateAttributes",
-            ClientboundGamePacket::UpdateMobEffect(_) => "GamePacket: UpdateMobEffect",
-            ClientboundGamePacket::UpdateRecipes(_) => "GamePacket: UpdateRecipes",
-            ClientboundGamePacket::UpdateTags(_) => "GamePacket: UpdateTags",
+            // Can't be bothered to keep this up to date tbh
+            _ => "GamePacket (no detail)",
         },
         Event::AddPlayer(_) => "AddPlayer",
         Event::RemovePlayer(_) => "RemovePlayer",
