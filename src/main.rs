@@ -65,6 +65,10 @@ pub struct MTServerState {
     // mapped by the server-side ID
     // also EntityKind for some other stuff
     entity_meta_map: HashMap<u32, EntityMetadata>,
+    // entities that will be updated in the next tick
+    // used to prevent flooding the client with thousands of packets
+    // side effect: we only iterate the ECS once
+    entities_update_scheduled: Vec<u32>,
     // used for looking up wheter a block should open a right-click menu on click.
     // only contains positions that have some block entity
     // to be exact, when the user clicks on a block _face_ (touching two _blocks_), we need to send the server
@@ -110,6 +114,7 @@ async fn start_client_handler(settings: Config) {
         entity_id_map: BiMap::new(),
         c_alloc_id_ranges: vec![(1, u16::MAX)],
         entity_meta_map: HashMap::new(),
+        entities_update_scheduled: Vec::new(),
         container_map: HashMap::new(),
         inventory_handle: None,
         next_click_no_attack: false,

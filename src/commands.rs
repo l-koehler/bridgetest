@@ -72,11 +72,11 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
             ClientboundGamePacket::ContainerSetContent(_) => utils::logger("[Minecraft] Got ContainerSetContent packet, syncing next tick.", 0),
             
             ClientboundGamePacket::AddEntity(addentity_packet) => clientbound_translator::add_entity(Some(&addentity_packet), mt_conn, mt_server_state).await,
-            ClientboundGamePacket::MoveEntityPos(entitypos_packet) => clientbound_translator::entity_setpos(&entitypos_packet, mt_conn, mt_server_state, mc_client).await,
-            ClientboundGamePacket::TeleportEntity(entitytp_packet) => clientbound_translator::entity_teleport(&entitytp_packet, mt_conn, mt_server_state, mc_client).await,
-            ClientboundGamePacket::MoveEntityPosRot(entityposrot_packet) => clientbound_translator::entity_setposrot(&entityposrot_packet, mt_conn, mt_server_state, mc_client).await,
-            ClientboundGamePacket::MoveEntityRot(entityrot_packet) => clientbound_translator::entity_setrot(&entityrot_packet, mt_conn, mt_server_state, mc_client).await,
-            ClientboundGamePacket::SetEntityMotion(entitymotion_packet) => clientbound_translator::entity_setmotion(&entitymotion_packet, mt_conn, mt_server_state, mc_client).await,
+            ClientboundGamePacket::MoveEntityPos(entitypos_packet) => clientbound_translator::entity_setpos(&entitypos_packet, mt_server_state).await,
+            ClientboundGamePacket::TeleportEntity(entitytp_packet) => clientbound_translator::entity_teleport(&entitytp_packet, mt_server_state).await,
+            ClientboundGamePacket::MoveEntityPosRot(entityposrot_packet) => clientbound_translator::entity_setposrot(&entityposrot_packet, mt_server_state).await,
+            ClientboundGamePacket::MoveEntityRot(entityrot_packet) => clientbound_translator::entity_setrot(&entityrot_packet, mt_server_state).await,
+            ClientboundGamePacket::SetEntityMotion(entitymotion_packet) => clientbound_translator::entity_setmotion(&entitymotion_packet, mt_server_state).await,
             ClientboundGamePacket::RemoveEntities(removeentity_packet) => clientbound_translator::remove_entity(&removeentity_packet, mt_conn, mt_server_state).await,
             
             ClientboundGamePacket::EntityEvent(event_packet) => clientbound_translator::entity_event(&event_packet, mt_conn, mt_server_state).await,

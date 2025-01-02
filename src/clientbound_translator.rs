@@ -52,7 +52,6 @@ use azalea::protocol::packets::game::{ClientboundGamePacket,
     c_move_entity_rot::ClientboundMoveEntityRot,
     c_remove_entities::ClientboundRemoveEntities,
     c_set_entity_motion::ClientboundSetEntityMotion,
-    c_rotate_head::ClientboundRotateHead,
     c_block_update::ClientboundBlockUpdate,
     c_entity_event::ClientboundEntityEvent,
     c_set_entity_data::ClientboundSetEntityData,
@@ -782,7 +781,7 @@ pub async fn remove_entity(packet_data: &ClientboundRemoveEntities, conn: &mut M
     }
 }
 
-pub async fn entity_setpos(packet_data: &ClientboundMoveEntityPos, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState, mc_client: &mut Client) {
+pub async fn entity_setpos(packet_data: &ClientboundMoveEntityPos, mt_server_state: &mut MTServerState) {
     let ClientboundMoveEntityPos { entity_id, delta, on_ground: _ } = packet_data;
     let PositionDelta8 {xa, ya, za} = *delta;
 
@@ -797,10 +796,10 @@ pub async fn entity_setpos(packet_data: &ClientboundMoveEntityPos, conn: &mut Mi
         z: old_position.z + za as f64/409.6
     };
 
-    update_entity(*entity_id, conn, mc_client, mt_server_state).await;
+    mt_server_state.entities_update_scheduled.push(*entity_id);
 }
 
-pub async fn entity_teleport(packet_data: &ClientboundTeleportEntity, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState, mc_client: &mut Client) {
+pub async fn entity_teleport(packet_data: &ClientboundTeleportEntity, mt_server_state: &mut MTServerState) {
     let ClientboundTeleportEntity { id, change, relatives: _, on_ground: _ } = packet_data;
 
     let delta = Vec3 {
@@ -815,10 +814,10 @@ pub async fn entity_teleport(packet_data: &ClientboundTeleportEntity, conn: &mut
     metadata_item.position = change.pos;
     metadata_item.velocity = delta;
 
-    update_entity(*id, conn, mc_client, mt_server_state).await;
+    mt_server_state.entities_update_scheduled.push(*id);
 }
 
-pub async fn entity_setposrot(packet_data: &ClientboundMoveEntityPosRot, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState, mc_client: &mut Client) {
+pub async fn entity_setposrot(packet_data: &ClientboundMoveEntityPosRot, mt_server_state: &mut MTServerState) {
     let ClientboundMoveEntityPosRot { entity_id, delta, y_rot, x_rot, on_ground: _ } = packet_data;
     let PositionDelta8 {xa, ya, za} = *delta;
 
@@ -835,10 +834,10 @@ pub async fn entity_setposrot(packet_data: &ClientboundMoveEntityPosRot, conn: &
     };
     metadata_item.rotation = (*x_rot, *y_rot);
 
-    update_entity(*entity_id, conn, mc_client, mt_server_state).await;
+    mt_server_state.entities_update_scheduled.push(*entity_id);
 }
 
-pub async fn entity_setrot(packet_data: &ClientboundMoveEntityRot, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState, mc_client: &mut Client) {
+pub async fn entity_setrot(packet_data: &ClientboundMoveEntityRot, mt_server_state: &mut MTServerState) {
     let ClientboundMoveEntityRot { entity_id, y_rot, x_rot, on_ground: _ } = packet_data;
 
     let Some(metadata_item) = mt_server_state.entity_meta_map.get_mut(entity_id) else {
@@ -847,10 +846,10 @@ pub async fn entity_setrot(packet_data: &ClientboundMoveEntityRot, conn: &mut Mi
     };
     metadata_item.rotation = (*x_rot, *y_rot);
 
-    update_entity(*entity_id, conn, mc_client, mt_server_state).await;
+    mt_server_state.entities_update_scheduled.push(*entity_id);
 }
 
-pub async fn entity_setmotion(packet_data: &ClientboundSetEntityMotion, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState, mc_client: &mut Client) {
+pub async fn entity_setmotion(packet_data: &ClientboundSetEntityMotion, mt_server_state: &mut MTServerState) {
     let ClientboundSetEntityMotion { id, xa, ya, za } = packet_data;
 
     let Some(metadata_item) = mt_server_state.entity_meta_map.get_mut(id) else {
@@ -864,7 +863,7 @@ pub async fn entity_setmotion(packet_data: &ClientboundSetEntityMotion, conn: &m
         z: *za as f64
     };
 
-    update_entity(*id, conn, mc_client, mt_server_state).await;
+    mt_server_state.entities_update_scheduled.push(*id);
 }
 
 pub async fn entity_event(packet_data: &ClientboundEntityEvent, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
@@ -959,55 +958,6 @@ pub async fn set_entity_data(packet_data: &ClientboundSetEntityData, conn: &mut 
             _ => utils::logger(&format!("[Minecraft] Server sent SetEntityData with unsupported EntityDataValue ({:?})! Dropping this EntityDataItem.", value), 2),
         }
     }
-}
-
-pub async fn update_entity(serverside_id: u32, conn: &mut MinetestConnection, mc_client: &mut Client, mt_server_state: &MTServerState) {
-
-    let clientside_id = mt_server_state.entity_id_map.get_by_left(&serverside_id).unwrap();
-    let meta_entry = mt_server_state.entity_meta_map.get(&serverside_id).unwrap();
-    let mut p: v3f = utils::vec3_to_v3f(&meta_entry.position, 0.1);
-    let mut v: v3f = utils::vec3_to_v3f(&meta_entry.velocity, 0.0025);
-    let mut r: (f32, f32) = (
-        meta_entry.rotation.0 as f32,
-        meta_entry.rotation.1 as f32
-    );
-
-    let mut ecs = mc_client.ecs.lock();
-    let mut query = ecs
-    .query_filtered::<(&MinecraftEntityId, &Position, &LookDirection, &Physics), With<AbstractEntity>>();
-    for (&entity_id, position, look_direction, physics) in query.iter(&ecs) {
-        if entity_id.0 == serverside_id {
-            p = utils::vec3_to_v3f(position, 0.1);
-            // unit conversion: (1/8000)block/50ms -> block/second
-            v = utils::vec3_to_v3f(&physics.velocity, 0.0025);
-            r = (look_direction.x_rot, look_direction.y_rot);
-            break;
-        }
-    }
-
-    let clientbound_moveentity = ToClientCommand::ActiveObjectMessages(
-        Box::new(wire::command::ActiveObjectMessagesSpec{
-            objects: vec![wire::types::ActiveObjectMessage{
-                id: *clientside_id,
-                data: wire::types::ActiveObjectCommand::UpdatePosition(
-                    wire::types::AOCUpdatePosition {
-                        position: p,
-                        velocity: v,
-                        acceleration: V3F_ZERO,
-                        rotation: v3f {
-                            x: r.0,
-                            y: r.1,
-                            z: 0.0
-                        },
-                        do_interpolate: false,
-                        is_end_position: false,
-                        update_interval: 1.0
-                    }
-                )
-            }]
-        })
-    );
-    let _ = conn.send(clientbound_moveentity).await;
 }
 
 async fn set_entity_texture(id: u16, texture: String, conn: &MinetestConnection) {

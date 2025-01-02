@@ -101,6 +101,7 @@ pub fn free_id(serverside_id: u32, mt_server_state: &mut MTServerState) {
     // remove from maps
     let id_pair = mt_server_state.entity_id_map.remove_by_left(&serverside_id);
     mt_server_state.entity_meta_map.remove(&serverside_id);
+    mt_server_state.entities_update_scheduled.retain(|x| *x != serverside_id); // may be scheduled several times
     // add new range and re-optimize the ranges
     match id_pair {
         Some((_, clientside_id)) => {
