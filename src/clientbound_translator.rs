@@ -32,6 +32,7 @@ use azalea_client::chat::ChatPacket;
 use azalea::entity::{metadata::AbstractEntity, LookDirection, Position, Physics};
 use azalea::ecs::prelude::{With, Without};
 use azalea::world::{InstanceName, MinecraftEntityId};
+use azalea_language;
 
 use tokio::sync::mpsc::UnboundedReceiver;
 use azalea_client::Event;
@@ -1264,17 +1265,14 @@ pub async fn refresh_inv(mc_client: &Client, mt_conn: &mut MinetestConnection, m
     }
 }
 
+// can't figure out how to get "actual" subtitles, so these are just the audio keys mapped to subtitle keys
 pub async fn show_sound(packet_data: &ClientboundSound, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
     let ClientboundSound { sound, source: _, x: _, y: _, z: _, volume: _, pitch: _, seed: _ } = packet_data;
     utils::logger(&format!("[Minetest] New Subtitle: {:?}", sound), 1);
-    mt_server_state.subtitles.push((format!("{:?}", sound), Instant::now()));
-    /*
-    let formatted_str = mt_server_state.subtitles.join("\n");
-    let subtitle_update_command = ToClientCommand::Hudchange(
-        Box::new(wire::command::HudchangeSpec {
-            server_id: settings::SUBTITLE_ID,
-            stat: HudStat::Text(formatted_str),
-        })
-    );
-    let _ = conn.send(subtitle_update_command).await;*/
+    let key = sound.to_string().replace("minecraft:", "subtitles.");
+    let Some(subtitle_str) = azalea_language::get(&key) else {
+        mt_server_state.subtitles.push((key, Instant::now()));
+        return
+    };
+    mt_server_state.subtitles.push((String::from(subtitle_str), Instant::now()));
 }
