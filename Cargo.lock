@@ -824,7 +824,6 @@ dependencies = [
  "chrono",
  "config",
  "dirs",
- "intmap",
  "minetest-protocol",
  "parking_lot",
  "rand",
@@ -1895,12 +1894,6 @@ checksum = "a0c10553d664a4d0bcff9f4215d0aac67a639cc68ef660840afe309b807bc9f5"
 dependencies = [
  "generic-array",
 ]
-
-[[package]]
-name = "intmap"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee87fd093563344074bacf24faa0bb0227fb6969fb223e922db798516de924d6"
 
 [[package]]
 name = "ipnet"

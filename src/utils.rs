@@ -4,6 +4,7 @@
 
 use crate::settings;
 use crate::MTServerState;
+use crate::mt_definitions;
 
 use azalea::inventory::ItemStack;
 use minetest_protocol::CommandRef;
@@ -18,6 +19,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::io::Read;
 use rand::Rng;
+use mt_definitions::EntityMetadata;
 
 // modified version of the liang-barsky line clipping algo
 // adapted to work in 3d and also to return a simple boolean indicating if the line clips at all.
@@ -38,7 +40,6 @@ pub fn liang_barsky_3d(bb: AABB, line_a: Vec3, line_b: Vec3) -> bool {
         (-dz, line_a.z - bb.min_z.min(bb.max_z)),
         ( dz, bb.max_z.max(bb.min_z) - line_a.z),
     ];
-
     for &(p, q) in &clipping_edges {
         if p == 0.0 && q < 0.0 {
             return false;
@@ -60,7 +61,6 @@ pub fn liang_barsky_3d(bb: AABB, line_a: Vec3, line_b: Vec3) -> bool {
             }
         }
     }
-
     t0 < t1
 }
 
@@ -72,6 +72,63 @@ pub fn normalize_angle(angle: f32) -> f32 {
     normalized_angle
 }
 
+pub fn allocate_id(serverside_id: u32, mt_server_state: &mut MTServerState) -> u16 {
+    // pick smallest range
+    let i_smallest_range = mt_server_state.c_alloc_id_ranges
+        .iter()
+        .enumerate()
+        .min_by_key(|&(_, &(start, end))| end - start)
+        .map(|(index, _)| index)
+        .expect("Client exhausted all available entity IDs!");
+    // pick new ID
+    let clientside_id: u16 = mt_server_state.c_alloc_id_ranges[i_smallest_range].0;
+    // resize range
+    if mt_server_state.c_alloc_id_ranges[i_smallest_range].0 == mt_server_state.c_alloc_id_ranges[i_smallest_range].1 {
+        mt_server_state.c_alloc_id_ranges.remove(i_smallest_range);
+    } else {
+        mt_server_state.c_alloc_id_ranges[i_smallest_range].0 += 1;
+    }
+    // add ID pair to maps, return
+    mt_server_state.entity_id_map.insert(serverside_id, clientside_id);
+    mt_server_state.entity_meta_map.insert(serverside_id, EntityMetadata::default());
+    return clientside_id;
+}
+
+pub fn free_id(serverside_id: u32, mt_server_state: &mut MTServerState) {
+    // remove from maps
+    let id_pair = mt_server_state.entity_id_map.remove_by_left(&serverside_id);
+    mt_server_state.entity_meta_map.remove(&serverside_id);
+    // add new range and re-optimize the ranges
+    match id_pair {
+        Some((_, clientside_id)) => {
+            mt_server_state.c_alloc_id_ranges.push((clientside_id, clientside_id));
+            defrag_ranges(mt_server_state);
+        },
+        None => ()
+    }
+}
+
+fn defrag_ranges(mt_server_state: &mut MTServerState) {
+    mt_server_state.c_alloc_id_ranges.sort_by_key(|r| r.0);
+    let mut index_lim = mt_server_state.c_alloc_id_ranges.len()-1;
+    let mut p = mt_server_state.c_alloc_id_ranges[0];
+    let mut r_index: usize = 1;
+    loop {
+        if r_index > index_lim {
+            break;
+        }
+        let r = mt_server_state.c_alloc_id_ranges[r_index];
+        if r.0 == p.1+1 {
+            mt_server_state.c_alloc_id_ranges[r_index-1].1 = r.1;
+            mt_server_state.c_alloc_id_ranges.remove(r_index);
+            index_lim -= 1;
+            p = (p.0, r.1);
+        } else {
+            p = r;
+            r_index += 1;
+        }
+    }
+}
 
 pub fn texture_from_itemstack(item: &ItemStack, mt_server_state: &MTServerState) -> String {
     match item {

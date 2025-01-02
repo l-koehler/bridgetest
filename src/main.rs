@@ -14,13 +14,14 @@ mod textures;
 
 use azalea::container::ContainerHandle;
 use minetest_protocol::MinetestServer;
-use mt_definitions::Dimensions;
+use mt_definitions::{Dimensions, EntityMetadata};
 use azalea_client::inventory;
 use azalea::registry::BlockEntityKind;
 
 use std::sync::{Mutex, Arc};
-use intmap::IntMap;
+use bimap::BiMap;
 use alloc::vec::Vec;
+use azalea::Vec3;
 use std::collections::HashMap;
 use bimap::BiHashMap;
 use config::Config;
@@ -54,7 +55,17 @@ pub struct MTServerState {
     is_sneaking: bool,
     has_moved_since_sync: bool,
     keys_pressed: u32,
-    entity_id_pos_map: IntMap<mt_definitions::EntityResendableData>,
+    // 32 bit server-side ID <-> 16 bit client-side ID
+    entity_id_map: BiMap<u32, u16>,
+    // allocatable (free) ID ranges on the client
+    // adjacent free ranges are joined on entity removal, range is inclusive on both sides
+    // adding a entity will pick the lowest ID of the smallest range to prevent fragmentation
+    // starts with 0 non-allocatable because the player doesn't properly get a server-side ID
+    c_alloc_id_ranges: Vec<(u16, u16)>,
+    // position/velocity in ECS-format in case a entity scheduled for update causes a ECS miss
+    // mapped by the server-side ID
+    // also EntityKind for some other stuff
+    entity_meta_map: HashMap<u32, EntityMetadata>,
     // used for looking up wheter a block should open a right-click menu on click.
     // only contains positions that have some block entity
     // to be exact, when the user clicks on a block _face_ (touching two _blocks_), we need to send the server
@@ -97,7 +108,9 @@ async fn start_client_handler(settings: Config) {
         is_sneaking: false,
         has_moved_since_sync: false,
         keys_pressed: 0,
-        entity_id_pos_map: IntMap::new(),
+        entity_id_map: BiMap::new(),
+        c_alloc_id_ranges: vec![(1, u16::MAX)],
+        entity_meta_map: HashMap::new(),
         container_map: HashMap::new(),
         inventory_handle: None,
         next_click_no_attack: false,

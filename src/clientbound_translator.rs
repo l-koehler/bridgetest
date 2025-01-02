@@ -5,19 +5,19 @@
 
 extern crate alloc;
 
-use crate::mt_definitions::EntityResendableData;
 use crate::settings;
 use crate::utils;
 use crate::mt_definitions;
 use crate::commands;
 use crate::MTServerState;
-use azalea::BlockPos;
+
+use azalea::{BlockPos, Vec3};
 use azalea::core::delta::PositionDelta8;
 use azalea::core::position::ChunkBlockPos;
 use azalea::entity::{EntityDataValue, EntityDataItem};
 use minetest_protocol::wire::types::ItemStackMetadata;
 use minetest_protocol::wire::types::ObjectProperties;
-use mt_definitions::{HeartDisplay, FoodDisplay, Dimensions};
+use mt_definitions::{HeartDisplay, FoodDisplay, Dimensions, EntityMetadata, V3F_ZERO};
 use minetest_protocol::peer::peer::PeerError;
 
 use azalea::registry::EntityKind;
@@ -29,6 +29,9 @@ use minetest_protocol::wire::types::{v3s16, v3f, v2f, MapNodesBulk, MapNode, Map
 
 use azalea_client::{PlayerInfo, Client, inventory};
 use azalea_client::chat::ChatPacket;
+use azalea::entity::{metadata::AbstractEntity, LookDirection, Position, Physics};
+use azalea::ecs::prelude::{With, Without};
+use azalea::world::{InstanceName, MinecraftEntityId};
 
 use tokio::sync::mpsc::UnboundedReceiver;
 use azalea_client::Event;
@@ -557,7 +560,8 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLight, mt_c
 pub async fn add_entity(optional_packet: Option<&ClientboundAddEntity>, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
     let is_player: bool;
     let name: String;
-    let id: u16;
+    let c_id: u16;
+    let s_id: u32;
     let position: v3f;
     let velocity: v3f;
     let mesh: &str;
@@ -572,10 +576,11 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntity>, conn: &m
                 uuid,
                 entity_type, // TODO: textures and models depend on this thing
                 position: vec_pos,
-                x_rot: _, y_rot: _, y_head_rot: _, data: _, x_vel, y_vel, z_vel } = packet_data;
+                x_rot, y_rot, y_head_rot: _, data: _, x_vel, y_vel, z_vel } = packet_data;
             is_player = false;
             name = format!("UUID-{}", uuid);
-            id = *serverside_id as u16 + 1; // ensure 0 is always "free" for the local player, because the actual ID can't be known
+            c_id = utils::allocate_id(*serverside_id, mt_server_state);
+            s_id = *serverside_id;
             position = utils::vec3_to_v3f(vec_pos, 0.1);
             velocity = v3f::new(
                 *x_vel as f32/400.0,
@@ -593,14 +598,24 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntity>, conn: &m
                 visual = String::from("mesh");
                 (mesh, textures) = utils::get_entity_model(entity_type);
             }
-            
+            mt_server_state.entity_meta_map.insert(s_id, EntityMetadata {
+                position: *vec_pos,
+                velocity: Vec3 {
+                    x: *x_vel as f64,
+                    y: *y_vel as f64,
+                    z: *z_vel as f64
+                },
+                rotation: (*x_rot, *y_rot),
+                entity_kind
+            });
         },
         None => {
             // use the mt_server_state and lucky guesses
             is_player = true;
             visual = String::from("mesh");
             name = mt_server_state.this_player.0.clone();
-            id = 0; // ensured to be "free"
+            c_id = 0; // ensured to be "free" by the allocatable range starting at 1
+            s_id = 0;
             position = v3f{x: 0.0, y: 0.0, z: 0.0}; // player will be moved somewhere else later
             mesh = "entitymodel-villager.b3d"; // TODO
             textures = vec![String::from("entity-player-slim-steve.png")];
@@ -609,27 +624,14 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntity>, conn: &m
         }
     };
     
-    let entitydata = EntityResendableData {
-        position,
-        rotation: v3f::new(0.0, 0.0, 0.0),
-        velocity,
-        acceleration: v3f::new(0.0, 0.0, 0.0),
-        entity_kind
-    };
-    let insert_successful = mt_server_state.entity_id_pos_map.insert_checked(id as u64, entitydata);
-    if !insert_successful {
-        utils::logger(&format!("[Minetest] Failed to insert position for (adjusted) entity ID {}: ID already present, dropping the packet!", id), 2);
-        return
-    }
-    
     let added_object: AddedObject = AddedObject {
-        id,
+        id: c_id,
         typ: 101, // idk
         init_data: GenericInitData {
             version: 1, // used a packet sniffer, idk if there are other versions
             name,
             is_player, // possibly a lie, but thats not the clients problem anyways
-            id,
+            id: c_id,
             position,
             rotation: v3f{x: 0.0, y: 0.0, z: 0.0},
             hp: 100, // entity deaths handled by server
@@ -768,13 +770,12 @@ pub async fn remove_entity(packet_data: &ClientboundRemoveEntities, conn: &mut M
     let mut adjusted_id: u16;
     let mut entity_ids_adjusted: Vec<u16> = vec![];
     for entity_id in entity_ids {
-        adjusted_id = *entity_id as u16 + 1;
-        if mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
-            mt_server_state.entity_id_pos_map.remove(adjusted_id.into());
-            entity_ids_adjusted.push(adjusted_id);
-        } else {
-            utils::logger(&format!("[Minetest] Failed to remove entity with (adjusted) entity ID {}: ID not present. Skipping its removal!", adjusted_id), 2);
-        }
+        let Some(clientside_id) = mt_server_state.entity_id_map.get_by_left(entity_id) else {
+            utils::logger("[Minecraft] Server sent RemoveEntity with unknown ID, skipping", 2);
+            continue
+        };
+        entity_ids_adjusted.push(*clientside_id);
+        utils::free_id(*entity_id, mt_server_state);
     }
     if !entity_ids_adjusted.is_empty() {
         let clientbound_removeentity = ToClientCommand::ActiveObjectRemoveAdd(
@@ -789,150 +790,89 @@ pub async fn remove_entity(packet_data: &ClientboundRemoveEntities, conn: &mut M
     }
 }
 
-pub async fn entity_setpos(packet_data: &ClientboundMoveEntityPos, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+pub async fn entity_setpos(packet_data: &ClientboundMoveEntityPos, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState, mc_client: &mut Client) {
     let ClientboundMoveEntityPos { entity_id, delta, on_ground: _ } = packet_data;
     let PositionDelta8 {xa, ya, za} = *delta;
-    // delta: offset from the current position
 
-    // force conversion u32->u16->u64, because the overflow behavior will differ with u32->u64
-    let adjusted_id = *entity_id as u16 + 1;
-    if !mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
-        utils::logger(&format!("[Minetest] Failed to update data for (adjusted) entity ID {}: ID not yet present, dropping the packet!", adjusted_id), 2);
+    let Some(metadata_item) = mt_server_state.entity_meta_map.get(entity_id) else {
+        utils::logger("[Minecraft] Server sent MoveEntityPos for unknown ID, skipping", 2);
         return
-    }
-    let entitydata = mt_server_state.entity_id_pos_map.get_mut(adjusted_id.into()).unwrap();
-    let EntityResendableData {
-        position: old_position,
-        rotation,
-        velocity,
-        acceleration,
-        entity_kind
-    } = entitydata.clone();
+    };
+    let old_position = metadata_item.position;
+    mt_server_state.entity_meta_map.get_mut(entity_id).unwrap().position = Vec3 {
+        x: old_position.x + xa as f64/409.6,
+        y: old_position.y + ya as f64/409.6,
+        z: old_position.z + za as f64/409.6
+    };
 
-    let position = v3f {
-        x: old_position.x + xa as f32/4096.0,
-        y: old_position.y + ya as f32/4096.0,
-        z: old_position.z + za as f32/4096.0
-    };
-    *entitydata = EntityResendableData {
-        position, rotation,
-        velocity,
-        acceleration, entity_kind
-    };
-    send_entity_data(adjusted_id, entitydata, conn).await;
+    update_entity(*entity_id, conn, mc_client, mt_server_state).await;
 }
 
-pub async fn entity_teleport(packet_data: &ClientboundTeleportEntity, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
-    let ClientboundTeleportEntity { id: entity_id, change, relatives: _, on_ground: _ } = packet_data;
-    
-    
-    let adjusted_id = *entity_id as u16 + 1;
-    if !mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
-        utils::logger(&format!("[Minetest] Failed to update data for (adjusted) entity ID {}: ID not yet present, dropping the packet!", adjusted_id), 2);
-        return
-    }
-    let entitydata = mt_server_state.entity_id_pos_map.get_mut(adjusted_id.into()).unwrap();
-    let EntityResendableData {
-        position: _,
-        rotation: old_rotation,
-        velocity,
-        acceleration,
-        entity_kind
-    } = entitydata.clone();
-    *entitydata = EntityResendableData {
-        position: utils::vec3_to_v3f(&change.pos, 0.1),
-        rotation: v3f { x: change.look_direction.x_rot, y: change.look_direction.y_rot, z: old_rotation.z },
-        velocity, acceleration, entity_kind
+pub async fn entity_teleport(packet_data: &ClientboundTeleportEntity, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState, mc_client: &mut Client) {
+    let ClientboundTeleportEntity { id, change, relatives: _, on_ground: _ } = packet_data;
+
+    let delta = Vec3 {
+        x: change.delta.x as f64/40.0,
+        y: change.delta.y as f64/40.0,
+        z: change.delta.z as f64/40.0
     };
-    send_entity_data(adjusted_id, entitydata, conn).await;
+    let Some(metadata_item) = mt_server_state.entity_meta_map.get_mut(id) else {
+        utils::logger("[Minecraft] Server sent TeleportEntity for unknown ID, skipping", 2);
+        return
+    };
+    metadata_item.position = change.pos;
+    metadata_item.velocity = delta;
+
+    update_entity(*id, conn, mc_client, mt_server_state).await;
 }
 
-pub async fn entity_setposrot(packet_data: &ClientboundMoveEntityPosRot, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+pub async fn entity_setposrot(packet_data: &ClientboundMoveEntityPosRot, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState, mc_client: &mut Client) {
     let ClientboundMoveEntityPosRot { entity_id, delta, y_rot, x_rot, on_ground: _ } = packet_data;
     let PositionDelta8 {xa, ya, za} = *delta;
-    let adjusted_id = *entity_id as u16 + 1;
-    if !mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
-        utils::logger(&format!("[Minetest] Failed to update data for (adjusted) entity ID {}: ID not yet present, dropping the packet!", adjusted_id), 2);
-        return
-    }
-    let entitydata = mt_server_state.entity_id_pos_map.get_mut(adjusted_id.into()).unwrap();
-    let EntityResendableData {
-        position: old_position,
-        rotation: old_rotation,
-        velocity,
-        acceleration,
-        entity_kind,
-    } = entitydata.clone();
 
-    let position = v3f {
-        x: old_position.x + xa as f32/4096.0,
-        y: old_position.y + ya as f32/4096.0,
-        z: old_position.z + za as f32/4096.0
+    let Some(metadata_item) = mt_server_state.entity_meta_map.get(entity_id) else {
+        utils::logger("[Minecraft] Server sent MoveEntityPosRot for unknown ID, skipping", 2);
+        return
     };
-    if entity_kind != EntityKind::Player {
-        println!("Moving Chicken to (p+r): {:?}", position);
-    }
-    *entitydata = EntityResendableData {
-        position,
-        rotation: v3f { x: *x_rot as f32, y: *y_rot as f32, z: old_rotation.z },
-        velocity,
-        acceleration,
-        entity_kind
+    let old_position = metadata_item.position;
+    let metadata_item = mt_server_state.entity_meta_map.get_mut(entity_id).unwrap();
+    metadata_item.position = Vec3 {
+        x: old_position.x + xa as f64/409.6,
+        y: old_position.y + ya as f64/409.6,
+        z: old_position.z + za as f64/409.6
     };
-    send_entity_data(adjusted_id, entitydata, conn).await;
+    metadata_item.rotation = (*x_rot, *y_rot);
+
+    update_entity(*entity_id, conn, mc_client, mt_server_state).await;
 }
 
-pub async fn entity_setrot(packet_data: &ClientboundMoveEntityRot, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+pub async fn entity_setrot(packet_data: &ClientboundMoveEntityRot, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState, mc_client: &mut Client) {
     let ClientboundMoveEntityRot { entity_id, y_rot, x_rot, on_ground: _ } = packet_data;
-    let adjusted_id = *entity_id as u16 + 1;
-    if !mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
-        utils::logger(&format!("[Minetest] Failed to update data for (adjusted) entity ID {}: ID not yet present, dropping the packet!", adjusted_id), 2);
-        return
-    }
-    let entitydata = mt_server_state.entity_id_pos_map.get_mut(adjusted_id.into()).unwrap();
-    let EntityResendableData {
-        position,
-        rotation: old_rotation,
-        velocity,
-        acceleration,
-        entity_kind
-    } = entitydata.clone();
 
-    *entitydata = EntityResendableData {
-        rotation: v3f { x: *x_rot as f32, y: *y_rot as f32, z: old_rotation.z },
-        position, velocity, acceleration, entity_kind
+    let Some(metadata_item) = mt_server_state.entity_meta_map.get_mut(entity_id) else {
+        utils::logger("[Minecraft] Server sent MoveEntityRot for unknown ID, skipping", 2);
+        return
     };
-    send_entity_data(adjusted_id, entitydata, conn).await;
+    metadata_item.rotation = (*x_rot, *y_rot);
+
+    update_entity(*entity_id, conn, mc_client, mt_server_state).await;
 }
 
-pub async fn entity_setmotion(packet_data: &ClientboundSetEntityMotion, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+pub async fn entity_setmotion(packet_data: &ClientboundSetEntityMotion, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState, mc_client: &mut Client) {
     let ClientboundSetEntityMotion { id, xa, ya, za } = packet_data;
-    let adjusted_id = *id as u16 + 1;
-    if !mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
-        utils::logger(&format!("[Minetest] Failed to update data for (adjusted) entity ID {}: ID not yet present, dropping the packet!", adjusted_id), 2);
-        return
-    }
-    let entitydata = mt_server_state.entity_id_pos_map.get_mut(adjusted_id.into()).unwrap();
-    let EntityResendableData {
-        position,
-        rotation,
-        velocity: _,
-        acceleration,
-        entity_kind
-    } = entitydata.clone();
 
-    // unit: (1/8000)block/50ms -> block/second
-    let delta = v3f {
-        x: *xa as f32/400.0,
-        y: *ya as f32/400.0,
-        z: *za as f32/400.0
+    let Some(metadata_item) = mt_server_state.entity_meta_map.get_mut(id) else {
+        utils::logger("[Minecraft] Server sent SetEntityMotion for unknown ID, skipping", 2);
+        return
     };
-    *entitydata = EntityResendableData {
-        rotation, position,
-        velocity: delta,
-        acceleration, entity_kind
+
+    metadata_item.velocity = Vec3 {
+        x: *xa as f64,
+        y: *ya as f64,
+        z: *za as f64
     };
-    send_entity_data(adjusted_id, entitydata, conn).await;
+
+    update_entity(*id, conn, mc_client, mt_server_state).await;
 }
 
 pub async fn entity_rotatehead(packet_data: &ClientboundRotateHead, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
@@ -940,16 +880,13 @@ pub async fn entity_rotatehead(packet_data: &ClientboundRotateHead, conn: &mut M
 }
 
 pub async fn entity_event(packet_data: &ClientboundEntityEvent, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
-    return; // TODO finish this fn
+    return; // TODO finish this fn (also update to the new ID system)
     let ClientboundEntityEvent { entity_id, event_id } = packet_data;
-    let adjusted_id = *entity_id as u16 + 1;
-    if !mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
-        utils::logger(&format!("[Minetest] Failed to get entity kind for (adjusted) entity ID {}: ID not yet present, dropping the packet!", adjusted_id), 2);
-        return
-    }
-    let entitydata = mt_server_state.entity_id_pos_map.get_mut(adjusted_id.into()).unwrap();
-    let entity_kind = entitydata.entity_kind;
-    let bad_id_for_entity = format!("[Minecraft] Got entity event with ID {} referring to a entity of type {}, this event isn't implemented for that entity.", adjusted_id, entity_kind);
+    let clientside_id = mt_server_state.entity_id_map.get_by_left(entity_id).unwrap();
+
+    let meta_entry = mt_server_state.entity_meta_map.get_mut(entity_id).unwrap();
+    let entity_kind = meta_entry.entity_kind;
+    let bad_id_for_entity = format!("[Minecraft] Got entity event for entity ID {} referring to a entity of type {}, this event isn't implemented for that entity.", entity_id, entity_kind);
     // https://wiki.vg/Entity_statuses
     match event_id {
         0 => (), // Tipped Arrow particles
@@ -999,7 +936,7 @@ pub async fn entity_event(packet_data: &ClientboundEntityEvent, conn: &mut Minet
         19 => (), // reset rotation
         20 => (), // spawn explosion particles
         //TODO finish this (after implementing the particle system)
-        _ => utils::logger(&format!("[Minecraft] Got unsupported Entity Event (Event ID: {}, Entity ID: {})", event_id, adjusted_id), 2),
+        _ => utils::logger(&format!("[Minecraft] Got unsupported Entity Event (Event ID: {}, Entity ID: {})", event_id, entity_id), 2),
     }
 }
 
@@ -1007,13 +944,13 @@ pub async fn set_entity_data(packet_data: &ClientboundSetEntityData, conn: &mut 
     // Currently, the only data that will actually be used is EntityDataValue::ItemStack in EntityKind::Item
     // Everything else gets dropped.
     let ClientboundSetEntityData { id, packed_items } = packet_data;
-    let adjusted_id = *id as u16 + 1;
 
-    if !mt_server_state.entity_id_pos_map.contains_key(adjusted_id.into()) {
-        utils::logger(&format!("[Minetest] Failed to update data for (adjusted) entity ID {}: ID not yet present, dropping the packet!", adjusted_id), 2);
+    let Some(clientside_id) = mt_server_state.entity_id_map.get_by_left(id) else {
+        utils::logger("[Minecraft] Server sent SetEntityData for unknown ID, skipping", 2);
         return
-    }
-    let entity_kind = mt_server_state.entity_id_pos_map.get(adjusted_id.into()).unwrap().entity_kind;
+    };
+
+    let entity_kind = mt_server_state.entity_meta_map.get(id).unwrap().entity_kind;
     
     let mut metadata_item: &EntityDataItem;
     for i in 0..packed_items.len() {
@@ -1022,7 +959,7 @@ pub async fn set_entity_data(packet_data: &ClientboundSetEntityData, conn: &mut 
         match value {
             EntityDataValue::ItemStack(data) => {
                 match entity_kind {
-                    EntityKind::Item => set_entity_texture(adjusted_id, utils::texture_from_itemstack(data, mt_server_state), conn).await,
+                    EntityKind::Item => set_entity_texture(*clientside_id, utils::texture_from_itemstack(data, mt_server_state), conn).await,
                     _ => utils::logger("[Minecraft] Server sent SetEntityData with ItemStack, but this is only implemented for dropped items! Dropping this EntityDataItem.", 2)
                 }
             },
@@ -1031,52 +968,50 @@ pub async fn set_entity_data(packet_data: &ClientboundSetEntityData, conn: &mut 
     }
 }
 
-pub async fn send_entity_data(id: u16, entitydata: &EntityResendableData, conn: &mut MinetestConnection) {
+pub async fn update_entity(serverside_id: u32, conn: &mut MinetestConnection, mc_client: &mut Client, mt_server_state: &MTServerState) {
+
+    let clientside_id = mt_server_state.entity_id_map.get_by_left(&serverside_id).unwrap();
+    let meta_entry = mt_server_state.entity_meta_map.get(&serverside_id).unwrap();
+    let mut p: v3f = utils::vec3_to_v3f(&meta_entry.position, 0.1);
+    let mut v: v3f = utils::vec3_to_v3f(&meta_entry.velocity, 0.0025);
+    let mut r: (f32, f32) = (
+        meta_entry.rotation.0 as f32,
+        meta_entry.rotation.1 as f32
+    );
+
+    let mut ecs = mc_client.ecs.lock();
+    let mut query = ecs
+    .query_filtered::<(&MinecraftEntityId, &Position, &LookDirection, &Physics), With<AbstractEntity>>();
+    for (&entity_id, position, look_direction, physics) in query.iter(&ecs) {
+        if entity_id.0 == serverside_id {
+            p = utils::vec3_to_v3f(position, 0.1);
+            // unit conversion: (1/8000)block/50ms -> block/second
+            v = utils::vec3_to_v3f(&physics.velocity, 0.0025);
+            r = (look_direction.x_rot, look_direction.y_rot);
+            break;
+        }
+    }
+
     let clientbound_moveentity = ToClientCommand::ActiveObjectMessages(
         Box::new(wire::command::ActiveObjectMessagesSpec{
             objects: vec![wire::types::ActiveObjectMessage{
-                id,
+                id: *clientside_id,
                 data: wire::types::ActiveObjectCommand::UpdatePosition(
                     wire::types::AOCUpdatePosition {
-                        position: entitydata.position,
-                        velocity: entitydata.velocity,
-                        acceleration: entitydata.acceleration,
-                        rotation: entitydata.rotation,
+                        position: p,
+                        velocity: v,
+                        acceleration: V3F_ZERO,
+                        rotation: v3f {
+                            x: r.0,
+                            y: r.1,
+                            z: 0.0
+                        },
                         do_interpolate: false,
-                        is_end_position: true,
+                        is_end_position: false,
                         update_interval: 1.0
                     }
                 )
             }]
-        })
-    );
-    let _ = conn.send(clientbound_moveentity).await;
-}
-
-//FIXME
-// causes a segfault, wait for upstream (either minetest_protocol or minetest) to fix this.
-// until then, send one packet per entity
-pub async fn _send_multi_entity_data(data: Vec<(u16, EntityResendableData)>, conn: &mut MinetestConnection) {
-    let mut objects: Vec<wire::types::ActiveObjectMessage> = Vec::new();
-    for (id, entitydata) in data {
-        objects.push(wire::types::ActiveObjectMessage{
-            id,
-            data: wire::types::ActiveObjectCommand::UpdatePosition(
-                wire::types::AOCUpdatePosition {
-                    position: entitydata.position,
-                    velocity: entitydata.velocity,
-                    acceleration: entitydata.acceleration,
-                    rotation: entitydata.rotation,
-                    do_interpolate: false,
-                    is_end_position: true,
-                    update_interval: 1.0
-                }
-            )
-        })
-    }
-    let clientbound_moveentity = ToClientCommand::ActiveObjectMessages(
-        Box::new(wire::command::ActiveObjectMessagesSpec {
-            objects
         })
     );
     let _ = conn.send(clientbound_moveentity).await;

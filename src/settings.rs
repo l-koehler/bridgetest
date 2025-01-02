@@ -84,12 +84,12 @@ pub const HOTBAR_SIZE: i32 = 9;
 
 /*
  * 0: Display every recieved packet
- * 1: Display some extra status messages (and every SENT packet lol i suck at this)
- * 2: Display dropped packets/calls to unimplemented stuff (currently also everything, this program is utterly broken)
+ * 1: Display some extra status messages
+ * 2: Display dropped packets/calls to unimplemented stuff
  * 3: Only display fatal errors
  * +: Disable utils::logger entirely
  *
  * This is not in the config file yet, mostly due to concerns on
  * how to implement that without performance drop. (currently messages that don't get displayed get optimized out)
  */
-pub const DROP_LOG_BELOW: i8 = 3;
+pub const DROP_LOG_BELOW: i8 = 2;
