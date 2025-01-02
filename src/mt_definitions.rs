@@ -234,7 +234,7 @@ pub fn get_sky_stuff() -> [ToClientCommand; 5] {
             Box::new(command::SetSunSpec {
                 sun: types::SunParams {
                     visible: true,
-                    texture: String::from("misc-sun.png"),
+                    texture: String::from("environment-sun.png"),
                     tonemap: String::from(""),
                     sunrise: String::from("air.png"),
                     sunrise_visible: true,
@@ -246,7 +246,7 @@ pub fn get_sky_stuff() -> [ToClientCommand; 5] {
             Box::new(command::SetMoonSpec {
                 moon: types::MoonParams {
                     visible: true,
-                    texture: String::from("misc-moon_phases.png"),
+                    texture: String::from("environment-moon_phases.png"),
                     tonemap: String::from(""),
                     scale: 3.75
                 }
@@ -270,7 +270,7 @@ pub fn get_sky_stuff() -> [ToClientCommand; 5] {
         ),
         ToClientCommand::OverrideDayNightRatio(
             Box::new(command::OverrideDayNightRatioSpec {
-                do_override: true,
+                do_override: false,
                 day_night_ratio: 0
             })
         )
@@ -804,7 +804,6 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
     // for light stuff, use the "brightest" state
     // for everything else, do other stuff idk look at the code
     let this_block: azalea::registry::Block = (id as u32).try_into().expect("Got invalid ID!");
-    println!("{:?} {}" , this_block, texture_base_name);
     let mut walkable = true;
     let mut light_source = 0;
     let mut sunlight_propagates = 0;

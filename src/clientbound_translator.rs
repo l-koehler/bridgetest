@@ -244,13 +244,14 @@ pub async fn set_time(source_packet: &ClientboundSetTime, conn: &MinetestConnect
     // day_time seems to be the world age in ticks, so mod 24000 is the age of the day
     // age of the day is 0..23999
     // where 0 is 06:00, 6000 is 12:00, 12000 is 18:00, 18000 is 24:00 and 23999 is 05:59
+    // minecraft uses morning as 0, minetest uses midnight. accounted by -6000
 
-    let mt_time: u16 = (*day_time % 24000) as u16;
+    let mt_time: u16 = (*day_time-6000 % 24000) as u16;
     utils::logger(&format!("[Minetest] S->C TimeOfDay: {}", mt_time), 0);
     let settime_packet = ToClientCommand::TimeOfDay(
         Box::new(wire::command::TimeOfDaySpec {
             time_of_day: mt_time,
-            time_speed: Some(72.0) // time does pass, but we move it forward manually by resending this packet
+            time_speed: None // time does pass, but we move it forward manually by resending this packet
         })
     );
     let _ = conn.send(settime_packet).await;
