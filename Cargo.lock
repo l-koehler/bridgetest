@@ -2077,8 +2077,7 @@ checksum = "d60a6352e005f1f86008644a9fe336a66f74c94428182162cc69eb8c6fff458d"
 [[package]]
 name = "minetest-protocol"
 version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35c0afd824024b420e9f4306c21560427fb74a83c08ab27b0392c73b8d75f754"
+source = "git+https://github.com/l-koehler/minetest-rs.git#5dab73641421533b85ee7ada22b01e167bdf9bf2"
 dependencies = [
  "anyhow",
  "minetest-protocol-derive",
@@ -2093,8 +2092,7 @@ dependencies = [
 [[package]]
 name = "minetest-protocol-derive"
 version = "0.1.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7bdcd15cf450983af542133fc8e460f32dfa1c2feb752242e38d410ad90248d"
+source = "git+https://github.com/l-koehler/minetest-rs.git#5dab73641421533b85ee7ada22b01e167bdf9bf2"
 dependencies = [
  "proc-macro2",
  "quote",

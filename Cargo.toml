@@ -25,3 +25,6 @@ intmap = "2.0.0"
 parking_lot = "0.12.1"
 tokio-stream = "0.1.15"
 bimap = "0.6.3"
+
+[patch.crates-io]
+minetest-protocol = { git = 'https://github.com/l-koehler/minetest-rs.git' }
