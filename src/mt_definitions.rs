@@ -2,6 +2,7 @@
 // the functions are actually more like consts but
 // the "String" type cant be a constant so :shrug:
 
+use minecraft_data_rs::models::block::BoundingBox;
 use minetest_protocol::wire::command::ToClientCommand;
 use minetest_protocol::wire::command;
 use minetest_protocol::wire::types::{ v2f, v3f, v2s32, AlignStyle, BlockPos, ContentFeatures, DrawType, Inventory, ItemAlias, ItemDef, ItemType, ItemdefList, NodeBox, NodeDefManager, NodeMetadata, Option16, SColor, SimpleSoundSpec, TileAnimationParams, TileDef, InventoryEntry, InventoryList, ItemStackUpdate}; // AAAAAA
@@ -14,13 +15,10 @@ use alloc::boxed::Box;
 use config::Config;
 use bimap::BiHashMap;
 
-use std::path::{ Path, PathBuf };
-use std::fs;
-use std::io::Write;
+use std::path::PathBuf;
 
 use crate::{ utils, MTServerState };
 use crate::settings;
-use serde_json;
 
 use azalea::registry::{Block, EntityKind, MenuKind};
 use azalea::Vec3;
@@ -675,37 +673,19 @@ pub fn generate_itemdef(name: &str, item: models::item::Item, inventory_image: &
 // node def stuff
 
 pub async fn get_node_def_command(settings: &Config, mt_server_state: &mut MTServerState) -> ToClientCommand {
-    // ensure arcticdata_blocks exists
-    let data_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/");
-    if !Path::new(data_folder.join("arcticdata_blocks.json").as_path()).exists() {
-        let data_url = settings.get_string("arcticdata_blocks").expect("Failed to read config!");
-        utils::logger(&format!("arcticdata_blocks.json missing, downloading it from {}.", data_url), 2);
-        let resp = reqwest::get(data_url).await.expect("Failed to request texture pack!");
-        let arctic_block_data = resp.text().await.expect("Recieved invalid response! This might be caused by not supplying a direct download link.");
-        let mut json_file = fs::File::create(data_folder.join("arcticdata_blocks.json").as_path()).expect("Creating arcticdata_blocks.json failed!");
-        json_file.write_all(arctic_block_data.as_bytes()).expect("Writing data to arcticdata_blocks.json failed!");
-    }
-    // parse arcticdata_blocks.json
-    let arcticdata_blocks: std::collections::HashMap<String, serde_json::Value> = 
-    serde_json::from_str(&fs::read_to_string(data_folder.join("arcticdata_blocks.json"))
-    .expect("Failed to read arcticdata_blocks.json"))
-    .expect("Failed to parse arcticdata_blocks.json!");
+    let mc_data_api = Api::latest().expect("Failed to retrieve minecraft data! (check network?)");
     
-    let mut mc_name: String;
-    let mut texture_base_name: String;
     let mut id: u16;
     let mut content_features: Vec<(u16, ContentFeatures)> = Vec::new();
     let mut content_feature: ContentFeatures;
-    for block in arcticdata_blocks {
-        mc_name = block.0;
-        texture_base_name = mc_name.replace("minecraft:", "").replace(".png", "");
-        id = block.1.get("id").expect("Found a block without ID!").as_u64().unwrap() as u16;
+    for block in mc_data_api.blocks.blocks_array().unwrap() {
+        id = block.id as u16;
         // +128 because the MT engine has some builtin nodes below that.
         // generate_contentfeature ignores that and recieves the regular id,
         // everything else must adjust for this offset.
         let texture_pack_res: u16 = settings.get_int("texture_pack_res").expect("Failed to read config!")
         .try_into().expect("Texture pack resolutions above 2^16 are not supported. What are you even doing?");
-        content_feature = generate_contentfeature(id, &mc_name, block.1, texture_base_name, texture_pack_res, mt_server_state);
+        content_feature = generate_contentfeature(block, texture_pack_res, mt_server_state);
         content_features.push((id+128, content_feature));
     }
     
@@ -799,29 +779,23 @@ pub async fn get_node_def_command(settings: &Config, mt_server_state: &mut MTSer
     )
 }
 
-pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mut texture_base_name: String, texture_pack_res: u16, mt_server_state: &mut MTServerState) -> ContentFeatures {
+pub fn generate_contentfeature(block: models::block::Block, texture_pack_res: u16, mt_server_state: &mut MTServerState) -> ContentFeatures {
     // If *every* possible state is solid, then walkable=true
     // for light stuff, use the "brightest" state
     // for everything else, do other stuff idk look at the code
-    let this_block: azalea::registry::Block = (id as u32).try_into().expect("Got invalid ID!");
-    let mut walkable = true;
-    let mut light_source = 0;
-    let mut sunlight_propagates = 0;
+    let mut texture_base_name: String = block.name.clone();
+    let this_block: azalea::registry::Block = block.id.try_into().expect("Got invalid ID!");
+    // BoundingBox does not implement partialEq for some reason
+    let mut walkable = match block.bounding_box {
+        BoundingBox::Block => true,
+        BoundingBox::Empty => false
+    };
+    let mut light_source = block.emit_light;
+    let mut sunlight_propagates = block.filter_light;
     let mut liquid_range = 0;
     let mut liquid_viscosity = 0;
     let mut liquid_renewable = true;
     let mut animation = TileAnimationParams::None;
-    for state in block.get("states").unwrap().as_array().unwrap() {        
-        if !state.get("solid").unwrap().as_bool().unwrap() {
-            walkable = false;
-        };
-        if (state.get("lightEmission").unwrap().as_u64().unwrap() as u8) > light_source {
-            light_source = state.get("lightEmission").unwrap().as_u64().unwrap() as u8;
-        }
-        if state.get("propagatesSkylightDown").unwrap().as_bool().unwrap() {
-            sunlight_propagates = 15;
-        }
-    }
     
     // liquid stuff
     if this_block == Block::Water {
@@ -1098,7 +1072,7 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
     }
     ContentFeatures {
         version: 13, // https://github.com/minetest/minetest/blob/master/src/nodedef.h#L313
-        name: String::from(name),
+        name: block.name,
         groups: vec![
             (String::from("handy_dig"), 1),
         ],

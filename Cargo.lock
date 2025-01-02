@@ -829,7 +829,6 @@ dependencies = [
  "minetest-protocol",
  "rand",
  "reqwest 0.11.27",
- "serde_json",
  "sha1",
  "tokio",
  "tokio-stream",
