@@ -1,5 +1,9 @@
+use azalea::prelude::ContainerClientExt;
 use minetest_protocol::MinetestConnection;
 use azalea_client::Client;
+use azalea::inventory::components::MobEffectInstance;
+use azalea::ecs::prelude::With;
+
 use crate::MTServerState;
 use crate::clientbound_translator;
 use std::time::{Duration, Instant};
@@ -34,4 +38,6 @@ pub async fn server(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_ser
         );
         let _ = mt_conn.send(subtitle_update_command).await;
     }
+    // TODO update effects
+    
 }

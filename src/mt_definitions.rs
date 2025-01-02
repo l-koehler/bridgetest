@@ -7,6 +7,9 @@ use minetest_protocol::wire::command;
 use minetest_protocol::wire::types::{ v2f, v3f, v2s32, AlignStyle, BlockPos, ContentFeatures, DrawType, Inventory, ItemAlias, ItemDef, ItemType, ItemdefList, NodeBox, NodeDefManager, NodeMetadata, Option16, SColor, SimpleSoundSpec, TileAnimationParams, TileDef, InventoryEntry, InventoryList, ItemStackUpdate}; // AAAAAA
 use minetest_protocol::wire::types;
 
+use minecraft_data_rs::Api;
+use minecraft_data_rs::models;
+
 use alloc::boxed::Box;
 use config::Config;
 use bimap::BiHashMap;
@@ -560,34 +563,31 @@ pub const fn get_metadata_placeholder(x_pos: u16, y_pos: u16, z_pos: u16) -> (Bl
 // item def stuff
 
 pub async fn get_item_def_command(path_name_map: &BiHashMap<(PathBuf, String), String>, settings: &Config) -> ToClientCommand {
-    // ensure arcticdata_items exists
-    let data_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/");
-    if !Path::new(data_folder.join("arcticdata_items.json").as_path()).exists() {
-        let data_url = settings.get_string("arcticdata_items").expect("Failed to read config!");
-        utils::logger(&format!("arcticdata_items.json missing, downloading it from {}.", data_url), 2);
-        let resp = reqwest::get(data_url).await.expect("Failed to request texture pack!");
-        let arctic_items_data = resp.text().await.expect("Recieved invalid response! This might be caused by not supplying a direct download link.");
-        let mut json_file = fs::File::create(data_folder.join("arcticdata_items.json").as_path()).expect("Creating arcticdata_items.json failed!");
-        json_file.write_all(arctic_items_data.as_bytes()).expect("Writing data to arcticdata_items.json failed!");
-    }
-    // parse arcticdata_items.json
-    let arcticdata_items: std::collections::HashMap<String, serde_json::Value> = 
-    serde_json::from_str(&fs::read_to_string(data_folder.join("arcticdata_items.json"))
-    .expect("Failed to read arcticdata_items.json"))
-    .expect("Failed to parse arcticdata_items.json!");
+    let mc_data_api = Api::latest().expect("Failed to retrieve minecraft data! (check network?)");
+    
+    // we need food- and placeable IDs to predict right-click behavior of every item
+    let food_ids: Vec<u32> = mc_data_api.foods.foods().unwrap().into_keys().collect();
+    // assume placeable when a object with the same name exists as a block
+    let block_names: Vec<String> = mc_data_api.blocks.blocks_array().unwrap().iter()
+        .map(|item| item.name.clone())
+        .collect();
+    let placeable_ids: Vec<u32> = mc_data_api.items.items_array().unwrap().iter()
+        .filter(|item| block_names.contains(&item.name))
+        .map(|item|item.id)
+        .collect();
     
     let mut mc_name: String;
     let mut texture_name: String;
     let mut item_definitions: Vec<ItemDef> = Vec::new();
-    for item in arcticdata_items {
-        mc_name = item.0;
+    for item in mc_data_api.items.items_array().unwrap() {
+        mc_name = item.name.clone();
         if path_name_map.contains_right(&format!("item-{}.png", mc_name.replace("minecraft:", ""))) {
             texture_name = format!("item-{}.png", mc_name.replace("minecraft:", ""));
         } else {
             texture_name = format!("block-{}.png", mc_name.replace("minecraft:", ""));
         };
         utils::logger(&format!("[Itemdefs] Mapped {} to the texture {}", mc_name, texture_name), 0);
-        item_definitions.push(generate_itemdef(&mc_name, item.1, &texture_name));
+        item_definitions.push(generate_itemdef(&mc_name, item, &texture_name, food_ids.clone(), placeable_ids.clone()));
     }
     
     let alias_definitions: Vec<ItemAlias> = vec![ItemAlias {name: String::from(""), convert_to: String::from("")}];
@@ -603,17 +603,16 @@ pub async fn get_item_def_command(path_name_map: &BiHashMap<(PathBuf, String), S
     )
 }
 
-pub fn generate_itemdef(name: &str, item: serde_json::Value, inventory_image: &str) -> ItemDef {
-    let stack_max: i16 = item.get("maxStackSize").unwrap().as_i64().unwrap_or(1) as i16;
-    let block_id: String = item.get("blockId").unwrap().to_string();
-    let max_durability: i64 = item.get("maxDamage").unwrap().as_i64().unwrap_or(0);
-    let is_edible: bool = item.get("edible").unwrap().as_bool().unwrap_or(false);
+pub fn generate_itemdef(name: &str, item: models::item::Item, inventory_image: &str, food_ids: Vec<u32>, placeable_ids: Vec<u32>) -> ItemDef {
+    let stack_max: i16 = item.stack_size as i16;
+    let max_durability = item.max_durability;
+    let is_edible: bool = food_ids.contains(&item.id);
     let mut groups: Vec<(String, i16)> = Vec::new();
 
     let mut item_type: ItemType = ItemType::Craft;
-    if max_durability != 0 {
+    if max_durability.is_some() {
         item_type = ItemType::Tool;
-    } else if block_id != "minecraft:air" {
+    } else if placeable_ids.contains(&item.id) {
         item_type = ItemType::Node;
     }
     
@@ -639,7 +638,10 @@ pub fn generate_itemdef(name: &str, item: serde_json::Value, inventory_image: &s
             ItemType::Node => format!("[inventorycube{{{}{{{}{{{}", inventory_image, inventory_image, inventory_image),
             _ => String::from(inventory_image)
         },
-        wield_image: String::from(inventory_image),
+        wield_image: match item_type {
+            ItemType::Node => format!("[inventorycube{{{}{{{}{{{}", inventory_image, inventory_image, inventory_image),
+            _ => String::from(inventory_image)
+        },
         wield_scale: v3f {
             x: 1.0,
             y: 1.0,
@@ -702,7 +704,7 @@ pub async fn get_node_def_command(settings: &Config, mt_server_state: &mut MTSer
         // generate_contentfeature ignores that and recieves the regular id,
         // everything else must adjust for this offset.
         let texture_pack_res: u16 = settings.get_int("texture_pack_res").expect("Failed to read config!")
-        .try_into().expect("Texture pack resolutions above u16 are not supported. What are you even doing?");
+        .try_into().expect("Texture pack resolutions above 2^16 are not supported. What are you even doing?");
         content_feature = generate_contentfeature(id, &mc_name, block.1, texture_base_name, texture_pack_res, mt_server_state);
         content_features.push((id+128, content_feature));
     }
@@ -802,6 +804,7 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
     // for light stuff, use the "brightest" state
     // for everything else, do other stuff idk look at the code
     let this_block: azalea::registry::Block = (id as u32).try_into().expect("Got invalid ID!");
+    println!("{:?} {}" , this_block, texture_base_name);
     let mut walkable = true;
     let mut light_source = 0;
     let mut sunlight_propagates = 0;
@@ -840,13 +843,38 @@ pub fn generate_contentfeature(id: u16, name: &str, block: serde_json::Value, mu
     // some blocks just use the texture of other blocks
     if ![Block::BambooFence, Block::BambooFenceGate].contains(&this_block) {
         texture_base_name = texture_base_name.replace("_fence", "_planks");
-    } else {
-        texture_base_name = texture_base_name.replace("_carpet", "_block");
+        texture_base_name = texture_base_name.replace("_gate", "_planks");
     }
+    if !texture_base_name.contains("stone") {
+        texture_base_name = texture_base_name.replace("_slab", "_planks");
+        texture_base_name = texture_base_name.replace("_stairs", "_planks");
+    }
+    texture_base_name = texture_base_name.replace("_carpet", "_block");
+    texture_base_name = texture_base_name.replace("_wall_banner", "_concrete");
+    texture_base_name = texture_base_name.replace("_bulb", "_block");
+    if texture_base_name.contains("brick") {
+        texture_base_name = texture_base_name.replace("_wall", "s");
+    }
+    if [Block::StoneButton, Block::StonePressurePlate].contains(&this_block) {
+        texture_base_name = texture_base_name.replace("_button", "");
+        texture_base_name = texture_base_name.replace("_pressure_plate", "");
+    } else {
+        texture_base_name = texture_base_name.replace("_button", "_block");
+        texture_base_name = texture_base_name.replace("_pressure_plate", "_block");
+    }
+    
     // dripstone cant be implemented properly with the current metadata system
     if this_block == Block::PointedDripstone {
         texture_base_name = String::from("pointed_dripstone_down_middle")
     }
+    // crops neither
+    texture_base_name += match this_block {
+        Block::Bamboo => "_stalk",
+        Block::Cocoa | Block::NetherWart => "_stage2",
+        Block::Carrots | Block::Beetroots | Block::SweetBerryBush | Block::Potatoes => "_stage3",
+        Block::Wheat => "_stage7",
+        _ => "",
+    };
 
     // drawtype is a little complicated, there isn't a field in the json for that.
     /*

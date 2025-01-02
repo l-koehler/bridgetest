@@ -22,9 +22,13 @@ use mt_definitions::EntityMetadata;
 
 // modified version of the liang-barsky line clipping algo
 // adapted to work in 3d and also to return a simple boolean indicating if the line clips at all.
-pub fn liang_barsky_3d(bb: AABB, line_a: Vec3, line_b: Vec3) -> bool {
+// also makes the bounding box a little higher to account for some weird graphics
+pub fn liang_barsky_3d(mut bb: AABB, line_a: Vec3, line_b: Vec3) -> bool {
     let mut t0 = 0.0;
     let mut t1 = 1.0;
+
+    bb.max_y += 1.0;
+    bb.min_y -= 0.5;
 
     let dx = line_b.x - line_a.x;
     let dy = line_b.y - line_a.y;

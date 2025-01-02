@@ -759,7 +759,6 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntity>, conn: &m
 
 pub async fn remove_entity(packet_data: &ClientboundRemoveEntities, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
     let ClientboundRemoveEntities { entity_ids } = packet_data;
-    let mut adjusted_id: u16;
     let mut entity_ids_adjusted: Vec<u16> = vec![];
     for entity_id in entity_ids {
         let Some(clientside_id) = mt_server_state.entity_id_map.get_by_left(entity_id) else {
@@ -873,7 +872,7 @@ pub async fn entity_event(packet_data: &ClientboundEntityEvent, conn: &mut Minet
         utils::logger("[Minecraft] Server sent EntityEvent for unknown ID, skipping", 2);
         return
     };
-    
+
     let entity_kind = metadata_item.entity_kind;
     let bad_id_for_entity = format!("[Minecraft] Got entity event for entity ID {} referring to a entity of type {}, this event isn't implemented for that entity.", entity_id, entity_kind);
     // https://wiki.vg/Entity_statuses
@@ -926,9 +925,9 @@ pub async fn entity_event(packet_data: &ClientboundEntityEvent, conn: &mut Minet
         20 => (), // spawn explosion particles
         21 => (), // guardian attack sound effect
         22 | 23 => (), // enable/disable reduced debug screen info (TODO basic_debug flag in minetest)
-        24..28 => (), // OP permission level 0..4
+        24..29 => (), // OP permission level 0..4
         29 | 30 => (), // shield block / break sounds
-        47..52 => (), // equipment break sound (mainhand, offhand, head..feet slot)
+        47..53 => (), // equipment break sound (mainhand, offhand, head..feet slot)
         _ => utils::logger(&format!("[Minecraft] Got unsupported Entity Event (Event ID: {}, Entity ID: {})", event_id, entity_id), 2),
     }
 }

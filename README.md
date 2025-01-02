@@ -33,9 +33,6 @@ You need nightly rust to build some dependencies (`rustup default nightly`).
   with `azalea-auth` but most people who might use this probably do not  
   have a minecraft account. TODO later  
 
-* [ArcticData](https://github.com/Articdive/ArticData) only supports 1.20.4, but there isn't enough  
-  difference between 1.21.4 and 1.20.4 to make this a big problem IMO.  
-
 * Any Anticheats are ~~likely~~ near-certain to ban you.  
   (if they don't, you probably found a bug in the anticheat? the traffic sent  
   by this proxy is looking basically the same as that from any bot.)  
