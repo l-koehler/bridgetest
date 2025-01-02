@@ -21,7 +21,6 @@ use azalea::registry::BlockEntityKind;
 use std::sync::{Mutex, Arc};
 use bimap::BiMap;
 use alloc::vec::Vec;
-use azalea::Vec3;
 use std::collections::HashMap;
 use bimap::BiHashMap;
 use config::Config;

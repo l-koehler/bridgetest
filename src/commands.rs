@@ -42,8 +42,7 @@ pub async fn mt_auto(command: ToServerCommand, mt_conn: &mut MinetestConnection,
         ToServerCommand::Interact(specbox) => serverbound_translator::interact_generic(mt_conn, mc_client, specbox, mt_server_state).await,
         ToServerCommand::Playeritem(specbox) => serverbound_translator::set_mainhand(mc_client, specbox),
         ToServerCommand::InventoryAction(specbox) => serverbound_translator::inventory_generic(mc_client, mt_conn, specbox, mt_server_state).await,
-        // Breaks yaw/pitch somehow, no clue why
-        //ToServerCommand::Gotblocks(specbox) => serverbound_translator::gotblocks(mc_client, specbox, mt_conn, mt_server_state.current_dimension).await,
+        ToServerCommand::Gotblocks(_) => (), // Gotblocks just confirms to the server that blocks were received
         _ => utils::logger(&format!("[Minetest] Got unimplemented command, dropping {}", command.command_name()), 2) // Drop packet if unable to match
     }
 }
@@ -79,7 +78,6 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
             ClientboundGamePacket::MoveEntityRot(entityrot_packet) => clientbound_translator::entity_setrot(&entityrot_packet, mt_conn, mt_server_state, mc_client).await,
             ClientboundGamePacket::SetEntityMotion(entitymotion_packet) => clientbound_translator::entity_setmotion(&entitymotion_packet, mt_conn, mt_server_state, mc_client).await,
             ClientboundGamePacket::RemoveEntities(removeentity_packet) => clientbound_translator::remove_entity(&removeentity_packet, mt_conn, mt_server_state).await,
-            ClientboundGamePacket::RotateHead(rotatehead_packet) => clientbound_translator::entity_rotatehead(&rotatehead_packet, mt_conn, mt_server_state).await,
             
             ClientboundGamePacket::EntityEvent(event_packet) => clientbound_translator::entity_event(&event_packet, mt_conn, mt_server_state).await,
             ClientboundGamePacket::SetEntityData(data_packet) => clientbound_translator::set_entity_data(&data_packet, mt_conn, mt_server_state).await,

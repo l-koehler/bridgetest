@@ -12,7 +12,6 @@ use minetest_protocol::CommandDirection;
 use minetest_protocol::wire::types::{v3f, MapNode};
 use azalea_client::Event;
 use azalea::core::{aabb::AABB, position::Vec3};
-use azalea::protocol::packets::game::ClientboundGamePacket;
 use azalea::registry::{EntityKind, Registry};
 use azalea_block::BlockState;
 use std::path::Path;

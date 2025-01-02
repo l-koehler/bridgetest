@@ -15,8 +15,11 @@ use azalea::{BlockPos, Vec3};
 use azalea::core::delta::PositionDelta8;
 use azalea::core::position::ChunkBlockPos;
 use azalea::entity::{EntityDataValue, EntityDataItem};
+use minetest_protocol::wire::types::AbsBlockPos;
 use minetest_protocol::wire::types::ItemStackMetadata;
+use minetest_protocol::wire::types::NodeMetadata;
 use minetest_protocol::wire::types::ObjectProperties;
+use minetest_protocol::wire::types::StringVar;
 use mt_definitions::{HeartDisplay, FoodDisplay, Dimensions, EntityMetadata, V3F_ZERO};
 use minetest_protocol::peer::peer::PeerError;
 
@@ -30,8 +33,8 @@ use minetest_protocol::wire::types::{v3s16, v3f, v2f, MapNodesBulk, MapNode, Map
 use azalea_client::{PlayerInfo, Client, inventory};
 use azalea_client::chat::ChatPacket;
 use azalea::entity::{metadata::AbstractEntity, LookDirection, Position, Physics};
-use azalea::ecs::prelude::{With, Without};
-use azalea::world::{InstanceName, MinecraftEntityId};
+use azalea::ecs::prelude::With;
+use azalea::world::MinecraftEntityId;
 use azalea_language;
 
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -473,7 +476,6 @@ pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut Unbounde
                 }
             },
             t = mt_conn.recv() => {
-                utils::logger("[Minetest] Got Packet while handling ChunkBatch, processing it. Possibly dropping Chunks.", 2);
                 // Check if the client disconnected
                 match t {
                     Ok(_) => (),
@@ -562,9 +564,7 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntity>, conn: &m
     let is_player: bool;
     let name: String;
     let c_id: u16;
-    let s_id: u32;
     let position: v3f;
-    let velocity: v3f;
     let mesh: &str;
     let textures: Vec<String>;
     let visual: String;
@@ -581,13 +581,7 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntity>, conn: &m
             is_player = false;
             name = format!("UUID-{}", uuid);
             c_id = utils::allocate_id(*serverside_id, mt_server_state);
-            s_id = *serverside_id;
             position = utils::vec3_to_v3f(vec_pos, 0.1);
-            velocity = v3f::new(
-                *x_vel as f32/400.0,
-                *y_vel as f32/400.0,
-                *z_vel as f32/400.0
-            );
             entity_kind = *entity_type;
             if *entity_type == EntityKind::Item {
                 visual = String::from("sprite");
@@ -599,7 +593,7 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntity>, conn: &m
                 visual = String::from("mesh");
                 (mesh, textures) = utils::get_entity_model(entity_type);
             }
-            mt_server_state.entity_meta_map.insert(s_id, EntityMetadata {
+            mt_server_state.entity_meta_map.insert(*serverside_id, EntityMetadata {
                 position: *vec_pos,
                 velocity: Vec3 {
                     x: *x_vel as f64,
@@ -616,12 +610,9 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntity>, conn: &m
             visual = String::from("mesh");
             name = mt_server_state.this_player.0.clone();
             c_id = 0; // ensured to be "free" by the allocatable range starting at 1
-            s_id = 0;
             position = v3f{x: 0.0, y: 0.0, z: 0.0}; // player will be moved somewhere else later
             mesh = "entitymodel-villager.b3d"; // TODO
             textures = vec![String::from("entity-player-slim-steve.png")];
-            entity_kind = EntityKind::Player;
-            velocity = v3f::new(0.0, 0.0, 0.0);
         }
     };
     
@@ -687,7 +678,7 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntity>, conn: &m
                             is_visible: true,
                             makes_footstep_sound: true,
                             automatic_rotate: 0.0,
-                            mesh: String::from(mesh), // it didnt have sane defaults qwq
+                            mesh: String::from(mesh),
                             colors: vec![
                                 SColor {
                                     r: 255,
@@ -876,17 +867,14 @@ pub async fn entity_setmotion(packet_data: &ClientboundSetEntityMotion, conn: &m
     update_entity(*id, conn, mc_client, mt_server_state).await;
 }
 
-pub async fn entity_rotatehead(packet_data: &ClientboundRotateHead, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
-    // TODO
-}
-
 pub async fn entity_event(packet_data: &ClientboundEntityEvent, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
-    return; // TODO finish this fn (also update to the new ID system)
     let ClientboundEntityEvent { entity_id, event_id } = packet_data;
-    let clientside_id = mt_server_state.entity_id_map.get_by_left(entity_id).unwrap();
-
-    let meta_entry = mt_server_state.entity_meta_map.get_mut(entity_id).unwrap();
-    let entity_kind = meta_entry.entity_kind;
+    let Some(metadata_item) = mt_server_state.entity_meta_map.get(entity_id) else {
+        utils::logger("[Minecraft] Server sent EntityEvent for unknown ID, skipping", 2);
+        return
+    };
+    
+    let entity_kind = metadata_item.entity_kind;
     let bad_id_for_entity = format!("[Minecraft] Got entity event for entity ID {} referring to a entity of type {}, this event isn't implemented for that entity.", entity_id, entity_kind);
     // https://wiki.vg/Entity_statuses
     match event_id {
@@ -894,7 +882,7 @@ pub async fn entity_event(packet_data: &ClientboundEntityEvent, conn: &mut Minet
         1 => {
             match entity_kind {
                 EntityKind::Rabbit => (), // Rabbit Jump animation
-                EntityKind::SpawnerMinecart => (), // Reset cooldown to 200 ticks
+                EntityKind::SpawnerMinecart => (), // Reset cooldown to 200 ticks, only relevant to server
                 _ => utils::logger(&bad_id_for_entity, 2)
             }
         }
@@ -936,7 +924,11 @@ pub async fn entity_event(packet_data: &ClientboundEntityEvent, conn: &mut Minet
         18 => (), // spawn heart particles
         19 => (), // reset rotation
         20 => (), // spawn explosion particles
-        //TODO finish this (after implementing the particle system)
+        21 => (), // guardian attack sound effect
+        22 | 23 => (), // enable/disable reduced debug screen info (TODO basic_debug flag in minetest)
+        24..28 => (), // OP permission level 0..4
+        29 | 30 => (), // shield block / break sounds
+        47..52 => (), // equipment break sound (mainhand, offhand, head..feet slot)
         _ => utils::logger(&format!("[Minecraft] Got unsupported Entity Event (Event ID: {}, Entity ID: {})", event_id, entity_id), 2),
     }
 }
@@ -1060,19 +1052,44 @@ pub async fn blockupdate(packet_data: &ClientboundBlockUpdate, conn: &mut Minete
 pub async fn destruction_overlay(packet_data: &ClientboundBlockDestruction, conn: &mut MinetestConnection) {
     // TODO finish this thing as soon as i figure out how to send overlays
     let ClientboundBlockDestruction { id: _, pos, progress } = packet_data;
-    let new_overlay = match progress {
-        0 => "block-destroy_stage_0.png",
-        1 => "block-destroy_stage_1.png",
-        2 => "block-destroy_stage_2.png",
-        3 => "block-destroy_stage_3.png",
-        4 => "block-destroy_stage_4.png",
-        5 => "block-destroy_stage_5.png",
-        6 => "block-destroy_stage_6.png",
-        7 => "block-destroy_stage_7.png",
-        8 => "block-destroy_stage_8.png",
-        9 => "block-destroy_stage_9.png",
+    // use metadata and ASCII instead of proper overlay textures (TODO look how actual minetest games do this)
+    // https://github.com/minetest/minetest/issues/9019
+    let infotext = match *progress {
+        0 => "",
+        1 => "[##................]",
+        2 => "[####..............]",
+        3 => "[######............]",
+        4 => "[########..........]",
+        5 => "[##########........]",
+        6 => "[############......]",
+        7 => "[##############....]",
+        8 => "[################..]",
+        9 => "[##################]",
         _ => ""
     };
+    let destructioninfo = ToClientCommand::NodemetaChanged (
+        Box::new(wire::command::NodemetaChangedSpec {
+            list: wire::types::AbsNodeMetadataList {
+                metadata: vec![(
+                    AbsBlockPos {pos: v3s16 {
+                        x: pos.x as i16,
+                        y: pos.y as i16,
+                        z: pos.z as i16
+                    }},
+                    NodeMetadata {
+                        stringvars: vec![StringVar {
+                            name: String::from("infotext"),
+                            value: infotext.into(),
+                            is_private: false
+                        }],
+                        inventory: wire::types::Inventory {entries: Vec::new()}
+                    }
+                )]
+            }
+        })
+    );
+    let _ = conn.send(destructioninfo).await;
+    
 }
 
 pub async fn open_screen(packet_data: &ClientboundOpenScreen, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
