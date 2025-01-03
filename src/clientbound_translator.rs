@@ -250,7 +250,7 @@ pub async fn set_time(source_packet: &ClientboundSetTime, conn: &MinetestConnect
     let settime_packet = ToClientCommand::TimeOfDay(
         Box::new(wire::command::TimeOfDaySpec {
             time_of_day: mt_time,
-            time_speed: None // time does pass, but we move it forward manually by resending this packet
+            time_speed: Some(1.0) // time does pass, but we move it forward manually by resending this packet
         })
     );
     let _ = conn.send(settime_packet).await;

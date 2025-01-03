@@ -112,7 +112,7 @@ async fn start_client_handler(settings: Config) {
         has_moved_since_sync: false,
         keys_pressed: 0,
         entity_id_map: BiMap::new(),
-        c_alloc_id_ranges: vec![(1, u16::MAX)],
+        c_alloc_id_ranges: vec![(2, u16::MAX)], // 0 reserved for player, 1 causes issues
         entity_meta_map: HashMap::new(),
         entities_update_scheduled: Vec::new(),
         container_map: HashMap::new(),

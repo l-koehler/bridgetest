@@ -621,7 +621,7 @@ pub fn generate_itemdef(name: &str, item: models::item::Item, inventory_image: &
     }
     
     let simplesound_placeholder: SimpleSoundSpec = SimpleSoundSpec {
-        name: String::from("[[ERROR]]"),
+        name: String::from(""),
         gain: 1.0,
         pitch: 1.0,
         fade: 1.0,
@@ -702,7 +702,7 @@ pub async fn get_node_def_command(settings: &Config, mt_server_state: &mut MTSer
         align_style: AlignStyle::Node
     };
     let simplesound_placeholder: SimpleSoundSpec = SimpleSoundSpec {
-        name: String::from("[[ERROR]]"),
+        name: String::from(""),
         gain: 1.0,
         pitch: 1.0,
         fade: 1.0,
@@ -1011,7 +1011,7 @@ pub fn generate_contentfeature(block: models::block::Block, texture_pack_res: u1
     };
     
     let simplesound_placeholder: SimpleSoundSpec = SimpleSoundSpec {
-        name: String::from("[[ERROR]]"),
+        name: String::from(""),
         gain: 1.0,
         pitch: 1.0,
         fade: 1.0,
