@@ -108,30 +108,33 @@ pub async fn set_spawn(source_packet: &ClientboundSetDefaultSpawnPosition, mt_se
     mt_server_state.respawn_pos = (dest_x, dest_y, dest_z);
 }
 
-pub async fn death(conn: &MinetestConnection, mt_server_state: &mut MTServerState) {
-    // FIXME: entirely broken, no clue why.
+pub async fn death(conn: &MinetestConnection, mt_server_state: &mut MTServerState, mc_client: &Client) {
     let respawn_pos = mt_server_state.respawn_pos;
+
+    let deathscreen = ToClientCommand::Deathscreen(
+        Box::new(wire::command::DeathscreenSpec {
+            set_camera_point_target: false,
+            camera_point_target: V3F_ZERO
+        })
+    );
+
+    // this event is basically the click on the "respawn" button
+    // needed to update position
+    mc_client.ecs.lock().send_event(azalea::respawn::PerformRespawnEvent{entity:mc_client.entity});
     let setpos_packet = ToClientCommand::MovePlayer(
         Box::new(wire::command::MovePlayerSpec {
-            pos: v3f {x: respawn_pos.0, y: respawn_pos.1, z: respawn_pos.2},
+            pos: v3f {
+                x: mc_client.position().x as f32,
+                y: mc_client.position().y as f32,
+                z: mc_client.position().z as f32
+            },
             pitch: 0.0,
             yaw: 0.0
         })
     );
     let _ = conn.send(setpos_packet).await;
-/*
-    let deathscreen = ToClientCommand::Deathscreen(
-        Box::new(wire::command::DeathscreenSpec {
-            set_camera_point_target: true,
-            camera_point_target: v3f {
-                x: respawn_pos.0,
-                y: respawn_pos.1,MinecraftEntityId
-                z: respawn_pos.2
-            }
-        })
-    );
-
-    let _ = conn.send(deathscreen).await;*/
+    mt_server_state.mt_clientside_pos = (respawn_pos.0*10.0, respawn_pos.1*10.0, respawn_pos.2*10.0);
+    let _ = conn.send(deathscreen).await;
 
     set_health(&ClientboundSetHealth { health: 20.0, food: 20, saturation: 0.0 }, conn, mt_server_state).await;
 }
@@ -260,9 +263,9 @@ pub async fn set_player_pos(source_packet: &ClientboundPlayerPosition, conn: &Mi
 
     let ClientboundPlayerPosition { id: _, change, relative: _ } = source_packet;
     
-    let dest_x = (change.pos.x as f32) * 10.0;
-    let dest_y = (change.pos.y as f32) * 10.0;
-    let dest_z = (change.pos.z as f32) * 10.0;
+    let dest_x = change.pos.x as f32 * 10.0;
+    let dest_y = change.pos.y as f32 * 10.0;
+    let dest_z = change.pos.z as f32 * 10.0;
     
     let setpos_packet = ToClientCommand::MovePlayer(
         Box::new(wire::command::MovePlayerSpec {
