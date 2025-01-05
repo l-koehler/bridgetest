@@ -49,6 +49,7 @@ pub struct MTServerState {
     client_rotation: (f32, f32), // yaw/pitch
     mt_clientside_player_inv: inventory::Player,
     mt_last_known_health: u16, // used to determine if a HP change should trigger a damage effect flash
+    mc_last_air_supply: u32, // used to determine if the air supply bar should change
     respawn_pos: (f32, f32, f32),
     current_dimension: Dimensions,
     is_sneaking: bool,
@@ -106,6 +107,7 @@ async fn start_client_handler(settings: Config) {
             offhand: inventory::ItemStack::default()
         },
         mt_last_known_health: 0,
+        mc_last_air_supply: 0,
         respawn_pos: (0.0, 0.0, 0.0),
         current_dimension: Dimensions::Overworld,
         is_sneaking: false,

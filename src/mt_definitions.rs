@@ -421,9 +421,9 @@ pub fn add_airbar() -> ToClientCommand {
     ToClientCommand::Hudadd(
         Box::new(command::HudaddSpec {
             server_id: settings::AIRBAR_ID,
-            typ: 1,
+            typ: 2,
             pos: v2f {
-                x: 1.0,
+                x: 0.5,
                 y: 1.0
             },
             name: String::from(""),
@@ -431,17 +431,17 @@ pub fn add_airbar() -> ToClientCommand {
                 x: 0.0,
                 y: 0.0
             },
-            text: String::from("-\n-"),
+            text: String::from("gui-sprites-hud-air.png"),
             number: 0, // default to not show this element
-            item: 20,
+            item: 0,   // item count also gets changed when needed
             dir: 0,
             align: v2f {
                 x: 0.0,
                 y: 0.0
             },
             offset: v2f {
-                x: -70.0,
-                y: -40.0
+                x: 45.0,
+                y: -113.0
             },
             world_pos: Some(
                 v3f {
@@ -450,9 +450,16 @@ pub fn add_airbar() -> ToClientCommand {
                     z: 0.0,
                 },
             ),
-            size: None,
+            size: Some(
+                v2s32 {
+                    x: 24,
+                    y: 24
+                }
+            ),
             z_index: Some(0),
-            text2: None,
+            text2: Some(
+                String::from("gui-sprites-hud-air_bursting.png"),
+            ),
             style: Some(0)
         })
     )

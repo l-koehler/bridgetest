@@ -32,9 +32,6 @@ use minetest_protocol::wire::types::{v3s16, v3f, v2f, MapNodesBulk, MapNode, Map
 
 use azalea_client::{PlayerInfo, Client, inventory};
 use azalea_client::chat::ChatPacket;
-use azalea::entity::{metadata::AbstractEntity, LookDirection, Position, Physics};
-use azalea::ecs::prelude::With;
-use azalea::world::MinecraftEntityId;
 use azalea_language;
 
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -142,7 +139,7 @@ pub async fn death(conn: &MinetestConnection, mt_server_state: &mut MTServerStat
 pub async fn edit_healthbar(mode: HeartDisplay, num: u32, conn: &MinetestConnection) {
     // num is from 0 to 20
     // above 20: no change will be made to the number of hearts
-    let hearth_texture: &str = match mode {
+    let heart_texture: &str = match mode {
         HeartDisplay::Absorb => "heart-absorbing_full.png",
         HeartDisplay::Frozen => "heart-frozen_full.png",
         HeartDisplay::Normal => "heart-full.png",
@@ -156,11 +153,11 @@ pub async fn edit_healthbar(mode: HeartDisplay, num: u32, conn: &MinetestConnect
         HeartDisplay::Vehicle => "heart-vehicle_full.png",
         HeartDisplay::NoChange => ""
     };
-    if !hearth_texture.is_empty() {
+    if !heart_texture.is_empty() {
         let set_bar_texture = ToClientCommand::Hudchange(
             Box::new(wire::command::HudchangeSpec {
                 server_id: settings::HEALTHBAR_ID,
-                stat: HudStat::Text(String::from(hearth_texture))
+                stat: HudStat::Text(String::from(heart_texture))
             })
         );
         let _ = conn.send(set_bar_texture).await;
@@ -202,20 +199,27 @@ pub async fn edit_foodbar(mode: FoodDisplay, num: u32, conn: &MinetestConnection
     }
 }
 
-pub async fn edit_airbar(num: u32, conn: &MinetestConnection) {
-    // num 0..20, bar invisible if air is full.
-    let mut bubble_count: u32 = num;
-    // if the bar is full, don't display it
-    if num > 19 {
-        bubble_count = 0;
-    }
-
-    let set_bar_number = ToClientCommand::Hudchange(
+pub async fn edit_airbar(num: u32, conn: &MinetestConnection, prev_num: u32) {
+    // num is count of half bubbles (between 0 and 20)
+    // we reformat it to look good despite formspec
+    let number = num - (num % 2);
+    let item = num + (num % 2);
+    let p_item = prev_num + (prev_num % 2);
+    let set_bar_number: ToClientCommand = ToClientCommand::Hudchange(
         Box::new(wire::command::HudchangeSpec {
             server_id: settings::AIRBAR_ID,
-            stat: HudStat::Number(bubble_count)
+            stat: HudStat::Number(number)
         })
     );
+    if item != p_item { // item count only needs to get updated every other change
+        let set_bar_item: ToClientCommand = ToClientCommand::Hudchange(
+            Box::new(wire::command::HudchangeSpec {
+                server_id: settings::AIRBAR_ID,
+                stat: HudStat::Item(item)
+            })
+        );
+        let _ = conn.send(set_bar_item).await;
+    };
     let _ = conn.send(set_bar_number).await;
 }
 

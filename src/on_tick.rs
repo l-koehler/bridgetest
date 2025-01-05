@@ -45,11 +45,11 @@ pub async fn server(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_ser
     // update all entities that moved this tick
     mt_server_state.entities_update_scheduled.sort();
     mt_server_state.entities_update_scheduled.dedup();
-    let mut ecs = mc_client.ecs.lock();
-    let mut query = ecs
-    .query_filtered::<(&MinecraftEntityId, &Position, &LookDirection, &Physics), With<AbstractEntity>>();
     let mut chunks: Vec<Vec<wire::types::ActiveObjectMessage>> = Vec::new();
     let mut aom_vector: Vec<wire::types::ActiveObjectMessage> = Vec::new();
+    let mut ecs = mc_client.ecs.lock();
+    let mut query = ecs
+        .query_filtered::<(&MinecraftEntityId, &Position, &LookDirection, &Physics), With<AbstractEntity>>();
     // check each entity in the ECS
     for (&entity_id, position, look_direction, physics) in query.iter(&ecs) {
         // this lets me remove() after checking if entity_id is present without iterating again
@@ -81,6 +81,7 @@ pub async fn server(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_ser
             }
         }
     };
+    drop(ecs); // we need to drop the ECS as soon a possible to not cause locks
     // for each entity not in the ECS (weird unloading bs can happen)
     for serverside_id in mt_server_state.entities_update_scheduled.drain(..) {
         let clientside_id = mt_server_state.entity_id_map.get_by_left(&serverside_id).unwrap();
@@ -124,4 +125,17 @@ pub async fn server(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_ser
         );
         let _ = mt_conn.send(clientbound_moveentity).await;
     }
+
+    // sync air supply to client
+    let air_supply: azalea::entity::metadata::AirSupply = mc_client.component();
+    // format of air_supply: 0 - 299
+    // 0 -> 0 bubbles displayed
+    // 299 -> 20 bubbles
+    let approx_bubble_count: u32 = {
+        air_supply.abs() as f32 / 14.95
+    }.round() as u32;
+    if approx_bubble_count != mt_server_state.mc_last_air_supply {
+        clientbound_translator::edit_airbar(approx_bubble_count, mt_conn, mt_server_state.mc_last_air_supply).await;
+        mt_server_state.mc_last_air_supply = approx_bubble_count;
+    };
 }
