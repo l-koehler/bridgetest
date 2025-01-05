@@ -55,7 +55,7 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
     let _place_pressed = (keys_pressed & (1 << 8)) != 0;
     let _zoom_pressed  = (keys_pressed & (1 << 9)) != 0;
 
-    if (direction_keys, aux1_pressed, jump_pressed) != (0, 0, false) {
+    if (direction_keys, aux1_pressed, jump_pressed) != (0, 32, false) {
         mt_server_state.has_moved_since_sync = true;
     }
     
@@ -74,11 +74,10 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
             (0, 0, 1, _, _) => mc_client.walk(azalea::WalkDirection::Backward),
             (0, _, _, 1, 0) => mc_client.walk(azalea::WalkDirection::Left),
             (0, _, _, 0, 1) => mc_client.walk(azalea::WalkDirection::Right),
-            // I can't get sprinting to work, but it should be perfectly fine.
-            // TODO: Check this later
-            (1, 1, 0, 1, 0) => mc_client.sprint(azalea::SprintDirection::ForwardLeft),
-            (1, 1, 0, 0, 1) => mc_client.sprint(azalea::SprintDirection::ForwardRight),
-            (1, 1, 0, _, _) => mc_client.sprint(azalea::SprintDirection::Forward),
+            // bitmasking behavior makes this 32/0 instad of 1/0
+            (32, 1, 0, 1, 0) => mc_client.sprint(azalea::SprintDirection::ForwardLeft),
+            (32, 1, 0, 0, 1) => mc_client.sprint(azalea::SprintDirection::ForwardRight),
+            (32, 1, 0, _, _) => mc_client.sprint(azalea::SprintDirection::Forward),
             _ => mc_client.walk(azalea::WalkDirection::None),
         }
         mt_server_state.keys_pressed = keys_pressed;
