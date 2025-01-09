@@ -516,13 +516,14 @@ pub fn get_defaultpriv() -> ToClientCommand {
     )
 }
 
-pub fn get_movementspec() -> ToClientCommand {
+// 4.317 or 5.612
+pub fn get_movementspec(speed: f32) -> ToClientCommand {
     ToClientCommand::Movement(
         Box::new(command::MovementSpec {
             acceleration_default: 2.9,
             acceleration_air: 1.2,
             acceleration_fast: 10.0,
-            speed_walk: 4.317,
+            speed_walk: speed, //4.317,
             speed_crouch: 1.295,
             speed_fast: 5.612,
             speed_climb: 2.35,
@@ -568,7 +569,7 @@ pub const fn get_metadata_placeholder(x_pos: u16, y_pos: u16, z_pos: u16) -> (Bl
 // item def stuff
 
 pub async fn get_item_def_command(path_name_map: &BiHashMap<(PathBuf, String), String>, settings: &Config) -> ToClientCommand {
-    let mc_data_api = Api::latest().expect("Failed to retrieve minecraft data! (check network?)");
+    let mc_data_api: Api = utils::compatible_data_api();
     
     // we need food- and placeable IDs to predict right-click behavior of every item
     let food_ids: Vec<u32> = mc_data_api.foods.foods().unwrap().into_keys().collect();
@@ -680,7 +681,7 @@ pub fn generate_itemdef(name: &str, item: models::item::Item, inventory_image: &
 // node def stuff
 
 pub async fn get_node_def_command(settings: &Config, mt_server_state: &mut MTServerState) -> ToClientCommand {
-    let mc_data_api = Api::latest().expect("Failed to retrieve minecraft data! (check network?)");
+    let mc_data_api = utils::compatible_data_api();
     
     let mut id: u16;
     let mut content_features: Vec<(u16, ContentFeatures)> = Vec::new();

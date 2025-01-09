@@ -7,6 +7,8 @@ use crate::MTServerState;
 use crate::mt_definitions;
 
 use azalea::inventory::ItemStack;
+use minecraft_data_rs::models::version::Version;
+use minecraft_data_rs::{api, Api};
 use minetest_protocol::CommandRef;
 use minetest_protocol::CommandDirection;
 use minetest_protocol::wire::types::{v3f, MapNode};
@@ -428,4 +430,26 @@ pub fn mc_packet_name(command: &Event) -> &str {
         Event::KeepAlive(_) => "KeepAlive",
         Event::Disconnect(_) => "Disconnect",
     }
+}
+
+// select data API (from https://github.com/PrismarineJS/minecraft-data) based on azalea version
+// Basically Api::latest() but compatible with azalea
+
+pub fn compatible_data_api() -> Api {
+    let Ok(versions) = api::versions() else {
+        panic!("Failed to retrieve minecraft data versions!");
+    };
+    assert!(versions.len() != 0);
+    let azalea_ver = azalea::protocol::packets::PROTOCOL_VERSION;
+    let mut closest_match: Option<Version> = None;
+    for version in versions {
+        let closest_match_proto = match closest_match {
+            Some(ref v)  => v.version,
+            None => 0
+        };
+        if azalea_ver >= version.version && version.version > closest_match_proto {
+            closest_match = Some(version);
+        };
+    };
+    return Api::new(closest_match.expect("Found no version possibly matching azalea!"))
 }

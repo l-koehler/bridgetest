@@ -86,9 +86,11 @@ pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_s
     mc_client.set_jumping(jump_pressed);
 
     if mt_server_state.is_sneaking != sneak_pressed {
+        mt_server_state.is_sneaking = sneak_pressed
         // player started/stopped sneaking, update the mc client
         // TODO: not added to azalea yet, check if this is still accurate:
         // https://github.com/azalea-rs/azalea/commits/sneaking
+        // currently just changes client-side speed, but resyncing makes the player move at normal speed regardless
     };
     
     if !mt_server_state.next_click_no_attack && dig_pressed && !mt_server_state.previous_dig_held {

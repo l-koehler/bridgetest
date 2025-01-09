@@ -1,7 +1,7 @@
 use minetest_protocol::wire::types::v3f;
 use minetest_protocol::MinetestConnection;
 use azalea_client::Client;
-use crate::utils;
+use crate::{mt_definitions, utils};
 use azalea::ecs::prelude::With;
 use azalea::entity::{metadata::AbstractEntity, LookDirection, Position, Physics};
 use azalea::world::MinecraftEntityId;
@@ -138,4 +138,22 @@ pub async fn server(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_ser
         clientbound_translator::edit_airbar(approx_bubble_count, mt_conn, mt_server_state.mc_last_air_supply).await;
         mt_server_state.mc_last_air_supply = approx_bubble_count;
     };
+
+    // check for sprinting/sneaking, change client movement speed if needed
+    let sprinting: azalea::entity::metadata::Sprinting = mc_client.component();
+    if sprinting.0 && mt_server_state.is_sneaking {mt_server_state.is_sneaking = false}
+    // TODO: soul sand, cobwebs etc may also change player speed
+    let current_speed: f32 = match (sprinting.0, mt_server_state.is_sneaking) {
+        (false, false) => 4.317,
+        (false, true) => 1.295,
+        (true, false) => 5.612,
+        (true, true) => {
+            mt_server_state.is_sneaking = false;
+            5.612
+        }
+    };
+    if current_speed != mt_server_state.mt_current_speed {
+        mt_server_state.mt_current_speed = current_speed;
+        let _ = mt_conn.send(mt_definitions::get_movementspec(current_speed)).await;
+    }
 }

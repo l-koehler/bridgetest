@@ -33,6 +33,7 @@ use std::time::Instant;
 #[tokio::main]
 async fn main() {
     let settings: Config = load_config();
+    utils::compatible_data_api();
     textures::validate_texture_pack(&settings).await;
     start_client_handler(settings).await;
 }
@@ -53,6 +54,7 @@ pub struct MTServerState {
     respawn_pos: (f32, f32, f32),
     current_dimension: Dimensions,
     is_sneaking: bool,
+    mt_current_speed: f32,
     has_moved_since_sync: bool,
     keys_pressed: u32,
     // 32 bit server-side ID <-> 16 bit client-side ID
@@ -111,6 +113,7 @@ async fn start_client_handler(settings: Config) {
         respawn_pos: (0.0, 0.0, 0.0),
         current_dimension: Dimensions::Overworld,
         is_sneaking: false,
+        mt_current_speed: 4.317,
         has_moved_since_sync: false,
         keys_pressed: 0,
         entity_id_map: BiMap::new(),
