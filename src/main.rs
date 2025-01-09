@@ -33,7 +33,6 @@ use std::time::Instant;
 #[tokio::main]
 async fn main() {
     let settings: Config = load_config();
-    utils::compatible_data_api();
     textures::validate_texture_pack(&settings).await;
     start_client_handler(settings).await;
 }
