@@ -963,7 +963,7 @@ pub fn generate_contentfeature(block: azalea::registry::Block, texture_pack_res:
         
         _ => DrawType::Normal,
     };
-    let walkable = matches!(drawtype, DrawType::AirLike | DrawType::GlassLike | DrawType::Mesh);
+    let walkable = matches!(drawtype, DrawType::AirLike | DrawType::GlassLike | DrawType::Mesh | DrawType::Normal);
     
     let rightclickable = match block {
         // opens inventory
