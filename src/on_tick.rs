@@ -1,5 +1,6 @@
-use minetest_protocol::wire::types::v3f;
-use minetest_protocol::MinetestConnection;
+use luanti_protocol::types::v3f;
+use luanti_protocol::LuantiConnection;
+use luanti_protocol::commands::server_to_client::{ActiveObjectMessage, ToClientCommand};
 use azalea_client::Client;
 use crate::{mt_definitions, utils};
 use azalea::ecs::prelude::With;
@@ -10,11 +11,10 @@ use crate::MTServerState;
 use crate::clientbound_translator;
 use crate::mt_definitions::V3F_ZERO;
 use std::time::{Duration, Instant};
-use minetest_protocol::wire::command::ToClientCommand;
-use minetest_protocol::wire;
+use luanti_protocol::types;
 use crate::settings;
 
-pub async fn server(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_server_state: &mut MTServerState) {
+pub async fn server(mt_conn: &mut LuantiConnection, mc_client: &Client, mt_server_state: &mut MTServerState) {
     if mt_server_state.has_moved_since_sync {
         clientbound_translator::sync_client_pos(mc_client, mt_conn, mt_server_state).await;
         mt_server_state.has_moved_since_sync = false;
@@ -33,20 +33,21 @@ pub async fn server(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_ser
     if formatted_str != mt_server_state.prev_subtitle_string {
         // if the subtitle actually changed, update the client
         mt_server_state.prev_subtitle_string = formatted_str.clone();
-        let subtitle_update_command = ToClientCommand::Hudchange(
-            Box::new(wire::command::HudchangeSpec {
-                server_id: settings::SUBTITLE_ID,
-                stat: wire::types::HudStat::Text(formatted_str),
-            })
-        );
-        let _ = mt_conn.send(subtitle_update_command).await;
+        // luanti migration - FIXME
+        //let subtitle_update_command = ToClientCommand::Hudchange(
+        //    Box::new(luanti_protocol:: {
+        //        server_id: settings::SUBTITLE_ID,
+        //        stat: types::HudStat::Text(formatted_str),
+        //    })
+        //);
+        //mt_conn.send(subtitle_update_command).unwrap();
     }
     
     // update all entities that moved this tick
     mt_server_state.entities_update_scheduled.sort();
     mt_server_state.entities_update_scheduled.dedup();
-    let mut chunks: Vec<Vec<wire::types::ActiveObjectMessage>> = Vec::new();
-    let mut aom_vector: Vec<wire::types::ActiveObjectMessage> = Vec::new();
+    let mut chunks: Vec<Vec<ActiveObjectMessage>> = Vec::new();
+    let mut aom_vector: Vec<ActiveObjectMessage> = Vec::new();
     let mut ecs = mc_client.ecs.lock();
     let mut query = ecs
         .query_filtered::<(&MinecraftEntityId, &Position, &LookDirection, &Physics), With<AbstractEntity>>();
@@ -57,10 +58,10 @@ pub async fn server(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_ser
         let index_in_sched = mt_server_state.entities_update_scheduled.iter().position(|n| *n == entity_id.0);
         if index_in_sched.is_some() {
             mt_server_state.entities_update_scheduled.remove(index_in_sched.unwrap());
-            aom_vector.push(wire::types::ActiveObjectMessage{
+            aom_vector.push(ActiveObjectMessage{
                 id: *mt_server_state.entity_id_map.get_by_left(&entity_id.0).unwrap(),
-                data: wire::types::ActiveObjectCommand::UpdatePosition(
-                    wire::types::AOCUpdatePosition {
+                data: types::ActiveObjectCommand::UpdatePosition(
+                    types::AOCUpdatePosition {
                         position: utils::vec3_to_v3f(position, 0.1),
                         velocity: utils::vec3_to_v3f(&physics.velocity, 0.0025),
                         acceleration: V3F_ZERO,
@@ -92,10 +93,10 @@ pub async fn server(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_ser
             meta_entry.rotation.0 as f32,
             meta_entry.rotation.1 as f32
         );
-        aom_vector.push(wire::types::ActiveObjectMessage{
+        aom_vector.push(ActiveObjectMessage {
             id: *clientside_id,
-            data: wire::types::ActiveObjectCommand::UpdatePosition(
-                wire::types::AOCUpdatePosition {
+            data: types::ActiveObjectCommand::UpdatePosition(
+                types::AOCUpdatePosition {
                     position,
                     velocity,
                     acceleration: V3F_ZERO,
@@ -119,11 +120,11 @@ pub async fn server(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_ser
     // send at most 20/packet
     for aom_vector in chunks {
         let clientbound_moveentity = ToClientCommand::ActiveObjectMessages(
-            Box::new(wire::command::ActiveObjectMessagesSpec{
+            Box::new(luanti_protocol::commands::server_to_client::ActiveObjectMessagesCommand {
                 objects: aom_vector
             })
         );
-        let _ = mt_conn.send(clientbound_moveentity).await;
+        mt_conn.send(clientbound_moveentity).unwrap();
     }
 
     // sync air supply to client
@@ -154,6 +155,6 @@ pub async fn server(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_ser
     };
     if current_speed != mt_server_state.mt_current_speed {
         mt_server_state.mt_current_speed = current_speed;
-        let _ = mt_conn.send(mt_definitions::get_movementspec(current_speed)).await;
+        mt_conn.send(mt_definitions::get_movementspec(current_speed)).unwrap();
     }
 }

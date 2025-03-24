@@ -13,11 +13,11 @@ use crate::MTServerState; // ok this is stupid to do whatever it works (i need g
 use crate::settings;
 use crate::on_tick;
 
-use minetest_protocol::peer::peer::PeerError;
-use minetest_protocol::wire::command::CommandProperties;
-use minetest_protocol::wire::command::ToServerCommand;
-use minetest_protocol::MinetestConnection;
-use minetest_protocol::MinetestServer;
+use luanti_protocol::peer::PeerError;
+use luanti_protocol::commands::CommandProperties;
+use luanti_protocol::commands::client_to_server::ToServerCommand;
+use luanti_protocol::LuantiConnection;
+use luanti_protocol::LuantiServer;
 
 use azalea_client::Event;
 use config::Config;
@@ -25,7 +25,7 @@ use tokio_stream::wrappers::IntervalStream;
 use tokio_stream::StreamExt;
 use std::time::Duration;
 
-pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestConnection, mut mt_server_state: MTServerState, settings: Config) {
+pub async fn client_handler(_mt_server: LuantiServer, mut mt_conn: LuantiConnection, mut mt_server_state: MTServerState, settings: Config) {
     /*
      * The first few packets (handshake) are outside the main loop, because
      * at this point the minecraft client isn't initialized yet.
@@ -68,34 +68,34 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     let path_name_map = textures::generate_map();
     let announcement = textures::get_announcement(&path_name_map);
     
-    let _ = mt_conn.send(announcement).await;
+    mt_conn.send(announcement).unwrap();
     mt_server_state.path_name_map = path_name_map;
 
     utils::logger("[Minetest] S->C Itemdef", 1);
-    let _ = mt_conn.send(mt_definitions::get_item_def_command(&mt_server_state.path_name_map).await).await;
+    mt_conn.send(mt_definitions::get_item_def_command(&mt_server_state.path_name_map).await).unwrap();
     utils::logger("[Minetest] S->C Nodedef", 1);
-    let _ = mt_conn.send(mt_definitions::get_node_def_command(&settings, &mut mt_server_state).await).await;
+    mt_conn.send(mt_definitions::get_node_def_command(&settings, &mut mt_server_state).await).unwrap();
     
     utils::logger("[Minetest] S->C Movement", 1);
-    let _ = mt_conn.send(mt_definitions::get_movementspec(4.317)).await;
+    mt_conn.send(mt_definitions::get_movementspec(4.317)).unwrap();
     
     utils::logger("[Minetest] S->C SetPriv", 1);
-    let _ = mt_conn.send(mt_definitions::get_defaultpriv()).await;
+    mt_conn.send(mt_definitions::get_defaultpriv()).unwrap();
     
     utils::logger("[Minetest] S->C AddHud Healthbar", 1);
-    let _ = mt_conn.send(mt_definitions::add_healthbar()).await;
+    mt_conn.send(mt_definitions::add_healthbar()).unwrap();
     utils::logger("[Minetest] S->C AddHud Foodbar", 1);
-    let _ = mt_conn.send(mt_definitions::add_foodbar()).await;
+    mt_conn.send(mt_definitions::add_foodbar()).unwrap();
     utils::logger("[Minetest] S->C AddHud Airbar", 1);
-    let _ = mt_conn.send(mt_definitions::add_airbar()).await;
+    mt_conn.send(mt_definitions::add_airbar()).unwrap();
     utils::logger("[Minetest] S->C AddHud Subtitles", 1);
-    let _ = mt_conn.send(mt_definitions::add_subtitlebox()).await;
+    mt_conn.send(mt_definitions::add_subtitlebox()).unwrap();
     
     utils::logger("[Minetest] S->C Formspec", 1);
-    let _ = mt_conn.send(mt_definitions::get_inventory_formspec(settings::PLAYER_INV_FORMSPEC)).await;
+    mt_conn.send(mt_definitions::get_inventory_formspec(settings::PLAYER_INV_FORMSPEC)).unwrap();
     
     utils::logger("[Minetest] S->C CsmRestrictions", 1);
-    let _ = mt_conn.send(mt_definitions::get_csmrestrictions()).await;
+    mt_conn.send(mt_definitions::get_csmrestrictions()).unwrap();
     
     utils::logger("Awaiting ClientReady", 1);
     loop {
@@ -103,7 +103,7 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
         let command = t.unwrap();
         match command {
             ToServerCommand::RequestMedia(packet) => {
-                let _ = mt_conn.send(textures::handle_request(&mt_server_state, packet)).await;
+                mt_conn.send(textures::handle_request(&mt_server_state, packet)).unwrap();
             },
             ToServerCommand::ClientReady(_) => break,
             _ => utils::logger(&format!("[Minetest] Dropping unexpected packet! Got serverbound \"{}\", expected \"ClientReady\"!", command.command_name()), 2)
@@ -111,16 +111,16 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     }
     
     utils::logger("[Minetest] S->C Hotbar Definition", 1);
-    let _ = mt_conn.send(mt_definitions::set_hotbar_size()).await;
-    let _ = mt_conn.send(mt_definitions::set_hotbar_texture()).await;
-    let _ = mt_conn.send(mt_definitions::set_hotbar_selected()).await;
+    mt_conn.send(mt_definitions::set_hotbar_size()).unwrap();
+    mt_conn.send(mt_definitions::set_hotbar_texture()).unwrap();
+    mt_conn.send(mt_definitions::set_hotbar_selected()).unwrap();
     
     utils::logger("[Minetest] S->C Inventory", 1);
-    let _ = mt_conn.send(mt_definitions::empty_inventory()).await;
+    mt_conn.send(mt_definitions::empty_inventory()).unwrap();
     
     utils::logger("[Minetest] S->C SetSky, SetSun, SetMoon, SetStars, OverrideDayNightRatio ", 1);
     for thing in mt_definitions::get_sky_stuff() {
-        let _ = mt_conn.send(thing).await;
+        mt_conn.send(thing).unwrap();
     }
     
     utils::logger("[Minetest] S->C ActiveObjectRemoveAdd LocalPlayer", 1);
@@ -136,7 +136,7 @@ pub async fn client_handler(_mt_server: MinetestServer, mut mt_conn: MinetestCon
     let mut stream = IntervalStream::new(tokio::time::interval(Duration::from_millis(50)));
     loop {
         tokio::select! {
-            // recieve data over the MinetestConnection
+            // recieve data over the LuantiConnection
             t = mt_conn.recv() => {
                 // Check if the client disconnected
                 match t {

@@ -11,10 +11,10 @@ use azalea_client::Client;
 use azalea_client::inventory::Inventory;
 use azalea::container::ContainerClientExt;
 
-use minetest_protocol::MinetestConnection;
-use minetest_protocol::wire::command::{TSChatMessageSpec, PlayerposSpec, InteractSpec, PlayeritemSpec, InventoryActionSpec};
-use minetest_protocol::wire::types::{v3s16, InventoryAction, PlayerPos, PointedThing};
-use minetest_protocol::wire::types;
+use luanti_protocol::LuantiConnection;
+use luanti_protocol::commands::client_to_server::{TSChatMessageSpec, PlayerPosCommand, InteractSpec, PlayeritemSpec, InventoryActionSpec};
+use luanti_protocol::types::{v3s16, InventoryAction, PlayerPos, PointedThing};
+use luanti_protocol::types;
 use crate::MTServerState;
 
 use std::sync::{Arc, Mutex};
@@ -26,13 +26,13 @@ pub fn send_message(mc_client: &Client, specbox: Box<TSChatMessageSpec>) {
     mc_client.chat(&message);
 }
 
-pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerposSpec>, mt_server_state: &mut MTServerState) {
+pub async fn playerpos(mc_client: &mut Client, specbox: Box<PlayerPosCommand>, mt_server_state: &mut MTServerState) {
     // the player moved, if a handle to the inventory is kept we may now drop it.
     // this is needed as (unlike the minecraft client) the minetest client does not seem to send packets on container close
     mt_server_state.inventory_handle = None;
 
-    let PlayerposSpec { player_pos } = *specbox;
-    let PlayerPos { position, speed: _, pitch, yaw, keys_pressed, fov: _, wanted_range: _ } = player_pos;
+    let PlayerPosCommand { player_pos } = *specbox;
+    let PlayerPos { position, speed: _, pitch, yaw, keys_pressed, fov: _, wanted_range: _, camera_inverted: _, movement_speed: _, movement_direction: _ } = player_pos;
 
     mc_client.set_direction(yaw, pitch);
     mt_server_state.client_rotation = (yaw, pitch);
@@ -163,7 +163,7 @@ pub fn set_mainhand(mc_client: &mut Client, specbox: Box<PlayeritemSpec>) {
 }
 
 // This function only validates the interaction, then splits by node/object
-pub async fn interact_generic(conn: &mut MinetestConnection, mc_client: &mut Client, specbox: Box<InteractSpec>, mt_server_state: &mut MTServerState) {
+pub async fn interact_generic(conn: &mut LuantiConnection, mc_client: &mut Client, specbox: Box<InteractSpec>, mt_server_state: &mut MTServerState) {
     let InteractSpec { action, item_index: _, pointed_thing, player_pos: _ } = *specbox;
     match pointed_thing {
         PointedThing::Nothing => (), // TODO might still be relevant in some cases (eating), check that
@@ -186,7 +186,7 @@ fn stop_digging(mc_client: &mut Client) {
     mc_client.start_mining(azalea::BlockPos { x: 0, y: 1000, z: 0 })
 }
 
-async fn node_rightclick(conn: &mut MinetestConnection, mc_client: &mut Client, under: azalea::BlockPos, above: azalea::BlockPos, mt_server_state: &mut MTServerState) {
+async fn node_rightclick(conn: &mut LuantiConnection, mc_client: &mut Client, under: azalea::BlockPos, above: azalea::BlockPos, mt_server_state: &mut MTServerState) {
     let under_key: (i32, i32, i32) = (under.x, under.y, under.z);
     if mt_server_state.container_map.contains_key(&under_key) {
         let diff =
@@ -200,7 +200,7 @@ async fn node_rightclick(conn: &mut MinetestConnection, mc_client: &mut Client, 
     }
 }
 
-async fn interact_node(conn: &mut MinetestConnection, action: types::InteractAction, under_surface: v3s16, above_surface: v3s16, mc_client: &mut Client, mt_server_state: &mut MTServerState) {
+async fn interact_node(conn: &mut LuantiConnection, action: types::InteractAction, under_surface: v3s16, above_surface: v3s16, mc_client: &mut Client, mt_server_state: &mut MTServerState) {
     let under_blockpos = azalea::BlockPos { x: under_surface.x.into(), y: under_surface.y.into(), z: under_surface.z.into() };
     let above_blockpos = azalea::BlockPos { x: above_surface.x.into(), y: above_surface.y.into(), z: above_surface.z.into() };
     match action {
@@ -218,7 +218,7 @@ async fn interact_node(conn: &mut MinetestConnection, action: types::InteractAct
 }
 
 // inventory actions and crafting
-pub async fn inventory_generic(mc_client: &mut Client, mt_conn: &mut MinetestConnection, specbox: Box<InventoryActionSpec>, mt_server_state: &mut MTServerState) {
+pub async fn inventory_generic(mc_client: &mut Client, mt_conn: &mut LuantiConnection, specbox: Box<InventoryActionSpec>, mt_server_state: &mut MTServerState) {
     let InventoryActionSpec { action } = *specbox;
     match action {
         InventoryAction::Drop { count, from_inv: _, from_list, from_i }
@@ -391,7 +391,7 @@ pub fn move_item(from_list: String, from_i: i16, to_list: String, to_i: Option<i
     }
 }
 
-pub async fn craft_item(mc_client: &mut Client, mt_conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+pub async fn craft_item(mc_client: &mut Client, mt_conn: &mut LuantiConnection, mt_server_state: &mut MTServerState) {
     // we are not deleting the inventory handle, as the user might click craft repeatedly
     match &mt_server_state.inventory_handle {
         Some(arc_mtx_cht) => {

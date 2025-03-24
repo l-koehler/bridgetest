@@ -11,14 +11,11 @@ use crate::clientbound_translator;
 use crate::MTServerState;
 extern crate alloc;
 
-use minetest_protocol::wire::command::CommandProperties;
-use minetest_protocol::wire::command::ToServerCommand;
-use minetest_protocol::MinetestConnection;
-use minetest_protocol::wire::command::ToClientCommand;
-use minetest_protocol::wire::command::HelloSpec;
-use minetest_protocol::wire::command::AuthAcceptSpec;
-use minetest_protocol::wire::command::InitSpec;
-use minetest_protocol::wire::types;
+use luanti_protocol::commands::CommandProperties;
+use luanti_protocol::commands::{client_to_server, client_to_server::ToServerCommand};
+use luanti_protocol::commands::{server_to_client, server_to_client::ToClientCommand};
+use luanti_protocol::LuantiConnection;
+use luanti_protocol::types;
 
 use azalea_client::{Client, Account};
 
@@ -29,9 +26,8 @@ use azalea::protocol::packets::game::ClientboundGamePacket;
 use config::Config;
 use std::net::SocketAddr;
 
-pub async fn mt_auto(command: ToServerCommand, mt_conn: &mut MinetestConnection, mc_client: &mut azalea::Client, mt_server_state: &mut MTServerState) {
+pub async fn mt_auto(command: ToServerCommand, mt_conn: &mut LuantiConnection, mc_client: &mut azalea::Client, mt_server_state: &mut MTServerState) {
     match command {
-        ToServerCommand::Null(_) => (), // Drop NULL
         ToServerCommand::Init(_) => utils::logger("[Minetest] Client sent Init, but handshake already done!", 2),
         ToServerCommand::Init2(_) => utils::logger("[Minetest] Client sent Init2 (preferred language), this is not implemented and will be ignored.", 2),
         ToServerCommand::ModchannelJoin(_) => utils::logger("[Minetest] Client sent ModchannelJoin, this does not exist in MC", 2),
@@ -47,7 +43,7 @@ pub async fn mt_auto(command: ToServerCommand, mt_conn: &mut MinetestConnection,
     }
 }
 
-pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnection, mc_client: &mut azalea::Client, mt_server_state: &mut MTServerState, mc_conn: &mut UnboundedReceiver<Event>) {
+pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut LuantiConnection, mc_client: &mut azalea::Client, mt_server_state: &mut MTServerState, mc_conn: &mut UnboundedReceiver<Event>) {
     let cloned_command = command.clone();
     let command_name = utils::mc_packet_name(&cloned_command);
     match command {
@@ -94,7 +90,7 @@ pub async fn mc_auto(command: azalea_client::Event, mt_conn: &mut MinetestConnec
     };
 }
 
-pub async fn on_minecraft_tick(mt_conn: &mut MinetestConnection, mc_client: &Client, mt_server_state: &mut MTServerState) {
+pub async fn on_minecraft_tick(mt_conn: &mut LuantiConnection, mc_client: &Client, mt_server_state: &mut MTServerState) {
     // resync client position if the difference is above .5
     // needed because client-side physics arent exact.
     if mt_server_state.has_moved_since_sync {
@@ -107,9 +103,9 @@ pub async fn on_minecraft_tick(mt_conn: &mut MinetestConnection, mc_client: &Cli
     clientbound_translator::refresh_inv(mc_client, mt_conn, mt_server_state).await;
 }
 
-pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState, settings: &Config) -> (azalea::Client, UnboundedReceiver<azalea::Event>) {
+pub async fn handshake(command: ToServerCommand, conn: &mut LuantiConnection, mt_server_state: &mut MTServerState, settings: &Config) -> (azalea::Client, UnboundedReceiver<azalea::Event>) {
     // command is guaranteed to be ToServerCommand::Init(Box<InitSpec>)
-    let init_command: Box<InitSpec>;
+    let init_command: Box<client_to_server::InitSpec>;
     if let ToServerCommand::Init(extracted_box) = command {
         init_command = extracted_box;
     } else {
@@ -129,8 +125,8 @@ pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection, 
 
     // Send S->C Hello
     let hello_command = ToClientCommand::Hello(
-        Box::new(HelloSpec {
-            serialization_ver: 29, // as per https://docs.rs/minetest-protocol/0.1.4/src/minetest_protocol/wire/types.rs.html#2256-2262
+        Box::new(server_to_client::HelloSpec {
+            serialization_ver: 29, // as per https://docs.rs/minetest-protocol/0.1.4/src/luanti_protocol/wire/types.rs.html#2256-2262
             compression_mode: 1,
             proto_ver: 44,
             auth_mechs: types::AuthMechsBitset {
@@ -141,7 +137,7 @@ pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection, 
             username_legacy: player_name.clone(),
         })
     );
-    let _ = conn.send(hello_command).await;
+    conn.send(hello_command).unwrap();
     utils::logger("[Minetest] S->C Hello", 1);
     // Wait for a C->S FirstSrp
     // TODO: this is right now just assuming the response is part of the authentication
@@ -149,7 +145,7 @@ pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection, 
     utils::show_mt_command(&second_response);
     // Send S->C AuthAccept
     let auth_accept_command = ToClientCommand::AuthAccept(
-        Box::new(AuthAcceptSpec {
+        Box::new(server_to_client::AuthAcceptSpec {
             player_pos: types::v3f {
                 // TODO: Sane defaults are impossible here
                 // Teleport the player as soon as DefaultSpawnLocation is recieved or something?
@@ -162,7 +158,7 @@ pub async fn handshake(command: ToServerCommand, conn: &mut MinetestConnection, 
             sudo_auth_methods: 0,
         })
     );
-    let _ = conn.send(auth_accept_command).await;
+    conn.send(auth_accept_command).unwrap();
     utils::logger("[Minetest] S->C AuthAccept", 1);
     utils::logger("[Minecraft] Logging in...", 1);
 

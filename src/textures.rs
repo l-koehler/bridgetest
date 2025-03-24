@@ -1,8 +1,8 @@
 // code to get media to the client
 use bimap::BiHashMap;
-use minetest_protocol::wire::command::{ToClientCommand, RequestMediaSpec};
-use minetest_protocol::wire::{self, command};
-use minetest_protocol::wire::types::{MediaAnnouncement, MediaFileData};
+use luanti_protocol::commands::client_to_server;
+use luanti_protocol::commands::{server_to_client, server_to_client::ToClientCommand};
+use luanti_protocol::types::{MediaAnnouncement, MediaFileData};
 use std::path::{PathBuf, Path};
 use std::fs;
 use config::Config;
@@ -66,7 +66,7 @@ pub fn get_announcement(path_name_map: &BiHashMap<(PathBuf, String), String>) ->
         });
     }
     ToClientCommand::AnnounceMedia(
-        Box::new(command::AnnounceMediaSpec {
+        Box::new(server_to_client::AnnounceMediaSpec {
             files: announcement_vec,
             remote_servers: String::from("") // IDK what this means or does, but it works if left alone. (meee :3)
         })
@@ -86,8 +86,8 @@ fn get_sha1_base64(path: &PathBuf) -> String {
     buffer_hash_b64
 }
 
-pub fn handle_request(mt_server_state: &MTServerState, specbox: Box<RequestMediaSpec>) -> ToClientCommand {
-    let RequestMediaSpec { files } = *specbox;
+pub fn handle_request(mt_server_state: &MTServerState, specbox: Box<client_to_server::RequestMediaSpec>) -> ToClientCommand {
+    let client_to_server::RequestMediaSpec { files } = *specbox;
     let mut file_data: Vec<MediaFileData> = Vec::new();
     for file_name in files {
         if !mt_server_state.path_name_map.contains_right(&file_name) {
@@ -167,7 +167,7 @@ pub fn handle_request(mt_server_state: &MTServerState, specbox: Box<RequestMedia
         }
     }
     ToClientCommand::Media(
-        Box::new(wire::command::MediaSpec {
+        Box::new(server_to_client::MediaSpec {
             num_bunches: 1,
             bunch_index: 0,
             files: file_data

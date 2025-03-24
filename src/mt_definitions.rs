@@ -2,10 +2,10 @@
 // the functions are actually more like consts but
 // the "String" type cant be a constant so :shrug:
 
-use minetest_protocol::wire::command::ToClientCommand;
-use minetest_protocol::wire::command;
-use minetest_protocol::wire::types::{ v2f, v3f, v2s32, AlignStyle, BlockPos, ContentFeatures, DrawType, Inventory, ItemAlias, ItemDef, ItemType, ItemdefList, NodeBox, NodeDefManager, NodeMetadata, Option16, SColor, SimpleSoundSpec, TileAnimationParams, TileDef, InventoryEntry, InventoryList, ItemStackUpdate}; // AAAAAA
-use minetest_protocol::wire::types;
+use luanti_protocol::commands::{client_to_server, client_to_server::ToServerCommand};
+use luanti_protocol::commands::{server_to_client, server_to_client::ToClientCommand};
+use luanti_protocol::types::{ v2f, v3f, v2s32, AlignStyle, BlockPos, NodeBox, ContentFeatures, DrawType, Inventory, SimpleSoundSpec, TileAnimationParams, TileDef, InventoryEntry, InventoryList, ItemStackUpdate};
+use luanti_protocol::types;
 
 use minecraft_data_rs::Api;
 use minecraft_data_rs::models;
@@ -129,7 +129,7 @@ list[current_player;main;3.5,1;1,1;]",
 
 pub fn set_hotbar_size() -> ToClientCommand {
     ToClientCommand::HudSetParam(
-        Box::new(command::HudSetParamSpec {
+        Box::new(server_to_client::HudSetParamSpec {
             value: types::HudSetParam::SetHotBarItemCount(settings::HOTBAR_SIZE)
         })
     )
@@ -137,7 +137,7 @@ pub fn set_hotbar_size() -> ToClientCommand {
 
 pub fn set_hotbar_texture() -> ToClientCommand {
     ToClientCommand::HudSetParam(
-        Box::new(command::HudSetParamSpec {
+        Box::new(server_to_client::HudSetParamSpec {
             value: types::HudSetParam::SetHotBarImage(String::from("gui-sprites-hud-hotbar.png"))
         })
     )
@@ -145,15 +145,16 @@ pub fn set_hotbar_texture() -> ToClientCommand {
 
 pub fn set_hotbar_selected() -> ToClientCommand {
     ToClientCommand::HudSetParam(
-        Box::new(command::HudSetParamSpec {
+        Box::new(server_to_client::HudSetParamSpec {
             value: types::HudSetParam::SetHotBarSelectedImage(String::from("gui-sprites-hud-hotbar_selection.png"))
         })
     )
 }
 
-pub fn get_sky_stuff() -> [ToClientCommand; 5] {
+pub fn get_sky_stuff() -> [ToClientCommand; 4] {
     [
-        ToClientCommand::SetSky(
+        //FIXME: luanti migration
+        /*ToClientCommand::SetSky(
             Box::new(command::SetSkySpec {
                 params: types::SkyboxParams {
                     bgcolor: SColor {
@@ -225,9 +226,9 @@ pub fn get_sky_stuff() -> [ToClientCommand; 5] {
                     body_orbit_tilt: Some(-1024.0),
                 }
             })
-        ),
+        ),*/
         ToClientCommand::SetSun(
-            Box::new(command::SetSunSpec {
+            Box::new(server_to_client::SetSunSpec {
                 sun: types::SunParams {
                     visible: true,
                     texture: String::from("environment-sun.png"),
@@ -239,7 +240,7 @@ pub fn get_sky_stuff() -> [ToClientCommand; 5] {
             })
         ),
         ToClientCommand::SetMoon(
-            Box::new(command::SetMoonSpec {
+            Box::new(server_to_client::SetMoonSpec {
                 moon: types::MoonParams {
                     visible: true,
                     texture: String::from("environment-moon_phases.png"),
@@ -249,11 +250,11 @@ pub fn get_sky_stuff() -> [ToClientCommand; 5] {
             })
         ),
         ToClientCommand::SetStars(
-            Box::new(command::SetStarsSpec {
+            Box::new(server_to_client::SetStarsSpec {
                 stars: types::StarParams {
                     visible: true,
                     count: 1000,
-                    starcolor: SColor {
+                    starcolor: types::SColor {
                         r: 105,
                         g: 235,
                         b: 235,
@@ -265,7 +266,7 @@ pub fn get_sky_stuff() -> [ToClientCommand; 5] {
             })
         ),
         ToClientCommand::OverrideDayNightRatio(
-            Box::new(command::OverrideDayNightRatioSpec {
+            Box::new(server_to_client::OverrideDayNightRatioSpec {
                 do_override: false,
                 day_night_ratio: 0
             })
@@ -275,7 +276,7 @@ pub fn get_sky_stuff() -> [ToClientCommand; 5] {
 
 pub fn empty_inventory() -> ToClientCommand {
     ToClientCommand::Inventory(
-        Box::new(command::InventorySpec {
+        Box::new(server_to_client::InventorySpec {
             inventory: Inventory {
                 entries: vec![
                     InventoryEntry::Update {
@@ -321,7 +322,7 @@ pub fn empty_inventory() -> ToClientCommand {
 
 pub fn add_healthbar() -> ToClientCommand {
     ToClientCommand::Hudadd(
-        Box::new(command::HudaddSpec {
+        Box::new(server_to_client::HudaddSpec {
             server_id: settings::HEALTHBAR_ID,
             typ: 2,
             pos: v2f {
@@ -369,7 +370,7 @@ pub fn add_healthbar() -> ToClientCommand {
 
 pub fn add_foodbar() -> ToClientCommand {
     ToClientCommand::Hudadd(
-        Box::new(command::HudaddSpec {
+        Box::new(server_to_client::HudaddSpec {
             server_id: settings::FOODBAR_ID,
             typ: 2,
             pos: v2f {
@@ -417,7 +418,7 @@ pub fn add_foodbar() -> ToClientCommand {
 
 pub fn add_airbar() -> ToClientCommand {
     ToClientCommand::Hudadd(
-        Box::new(command::HudaddSpec {
+        Box::new(server_to_client::HudaddSpec {
             server_id: settings::AIRBAR_ID,
             typ: 2,
             pos: v2f {
@@ -465,7 +466,7 @@ pub fn add_airbar() -> ToClientCommand {
 
 pub fn add_subtitlebox() -> ToClientCommand { 
     ToClientCommand::Hudadd(
-        Box::new(command::HudaddSpec {
+        Box::new(server_to_client::HudaddSpec {
             server_id: settings::SUBTITLE_ID,
             typ: 1,
             pos: v2f {
@@ -505,7 +506,7 @@ pub fn add_subtitlebox() -> ToClientCommand {
 
 pub fn get_defaultpriv() -> ToClientCommand {
     ToClientCommand::Privileges(
-        Box::new(command::PrivilegesSpec {
+        Box::new(server_to_client::PrivilegesSpec {
             privileges: vec![
                 String::from("interact"),
                 String::from("shout"),
@@ -517,7 +518,7 @@ pub fn get_defaultpriv() -> ToClientCommand {
 // 4.317 or 5.612
 pub fn get_movementspec(speed: f32) -> ToClientCommand {
     ToClientCommand::Movement(
-        Box::new(command::MovementSpec {
+        Box::new(server_to_client::MovementSpec {
             acceleration_default: 2.9,
             acceleration_air: 1.2,
             acceleration_fast: 10.0,
@@ -536,7 +537,7 @@ pub fn get_movementspec(speed: f32) -> ToClientCommand {
 
 pub fn get_inventory_formspec(formspec: &str) -> ToClientCommand {
     ToClientCommand::InventoryFormspec(
-        Box::new(command::InventoryFormspecSpec{
+        Box::new(server_to_client::InventoryFormspecSpec{
             formspec: String::from(formspec),
         })
     )
@@ -544,18 +545,18 @@ pub fn get_inventory_formspec(formspec: &str) -> ToClientCommand {
 
 pub fn get_csmrestrictions() -> ToClientCommand {
     ToClientCommand::CsmRestrictionFlags(
-        Box::new(command::CsmRestrictionFlagsSpec {
+        Box::new(server_to_client::CsmRestrictionFlagsSpec {
             csm_restriction_flags: 0,
             csm_restriction_noderange: 0
         })
     )
 }
 
-pub const fn get_metadata_placeholder(x_pos: u16, y_pos: u16, z_pos: u16) -> (BlockPos, NodeMetadata) {
+pub const fn get_metadata_placeholder(x_pos: u16, y_pos: u16, z_pos: u16) -> (BlockPos, types::NodeMetadata) {
     let blockpos = BlockPos {
         raw: (16*z_pos + y_pos)*16 + x_pos,
     };
-    let metadata = NodeMetadata {
+    let metadata = types::NodeMetadata {
         stringvars: vec![],
         inventory: Inventory {
             entries: vec![]
@@ -596,8 +597,8 @@ pub async fn get_item_def_command(path_name_map: &BiHashMap<(PathBuf, String), S
     
     let alias_definitions: Vec<ItemAlias> = vec![ItemAlias {name: String::from(""), convert_to: String::from("")}];
 
-    ToClientCommand::Itemdef(
-        Box::new(command::ItemdefSpec {
+    ToClientCommand::Itemdef (
+        Box::new(ToClientCommand::ItemdefSpec {
             item_def: ItemdefList {
                 itemdef_manager_version: 0, // https://github.com/minetest/minetest/blob/master/src/itemdef.cpp#L616
                  defs: item_definitions,
@@ -654,14 +655,14 @@ pub fn generate_itemdef(name: &str, item: models::item::Item, inventory_image: &
         stack_max,
         usable: (item_type == ItemType::Node || item_type == ItemType::Tool || is_edible),
         liquids_pointable: false,
-        tool_capabilities: Option16::None,
+        tool_capabilities: types::Option16::None,
         groups,
         node_placement_prediction: String::from(""),
         sound_place: simplesound_placeholder.clone(),
         sound_place_failed: simplesound_placeholder,
         range: 5.0,
         palette_image: String::from(""),
-        color: SColor {
+        color: types::SColor {
             r: 100,
             g: 70,
             b: 85,
@@ -738,7 +739,7 @@ pub async fn get_node_def_command(settings: &Config, mt_server_state: &mut MTSer
         waving: 0,
         connect_sides: 0,
         connects_to_ids: Vec::new(),
-        post_effect_color: SColor {
+        post_effect_color: types::SColor {
             r: 100,
             g: 70,
             b: 85,
@@ -764,9 +765,9 @@ pub async fn get_node_def_command(settings: &Config, mt_server_state: &mut MTSer
         liquid_range: 0,
         drowning: 0,
         floodable: false,
-        node_box: NodeBox::Regular,
-        selection_box: NodeBox::Regular,
-        collision_box: NodeBox::Regular,
+        node_box: types::NodeBox::Regular,
+        selection_box: types::NodeBox::Regular,
+        collision_box: types::NodeBox::Regular,
         sound_footstep: simplesound_placeholder.clone(),
         sound_dig: simplesound_placeholder.clone(),
         sound_dug: simplesound_placeholder.clone(),
@@ -780,8 +781,8 @@ pub async fn get_node_def_command(settings: &Config, mt_server_state: &mut MTSer
     }));
     
     ToClientCommand::Nodedef(
-        Box::new(command::NodedefSpec {
-            node_def: NodeDefManager {
+        Box::new(server_to_client::NodedefSpec {
+            node_def: types::NodeDefManager {
                 content_features,
             }
         })
@@ -887,15 +888,20 @@ pub fn generate_contentfeature(block: azalea::registry::Block, texture_pack_res:
         Block::Bamboo      => DrawType::PlantLike,
         Block::DeadBush    => DrawType::PlantLike,
         Block::ShortGrass  => DrawType::PlantLike,
-        Block::TallGrass   => DrawType::PlantLike,
         Block::Fern        => DrawType::PlantLike,
-        Block::LargeFern   => DrawType::PlantLike,
         Block::HangingRoots => DrawType::PlantLike,
         Block::SweetBerryBush => DrawType::PlantLike,
         Block::Seagrass    => DrawType::PlantLike,
-        Block::TallSeagrass => DrawType::PlantLike,
         Block::PointedDripstone => DrawType::PlantLike, // totally a plant, whatever
-        
+
+        // works surprisingly fine for tall flowers
+        Block::SugarCane   => DrawType::FireLike,
+        Block::TallGrass   => DrawType::FireLike,
+        Block::LargeFern   => DrawType::FireLike,
+        Block::TallSeagrass => DrawType::FireLike,
+        Block::RoseBush    => DrawType::FireLike,
+        Block::Peony       => DrawType::FireLike,
+
         Block::LilyPad     => DrawType::SignLike, // is flat without param2
         Block::MossCarpet  => DrawType::SignLike,
         Block::WhiteCarpet => DrawType::SignLike,
@@ -1122,7 +1128,7 @@ pub fn generate_contentfeature(block: azalea::registry::Block, texture_pack_res:
         waving: 0,
         connect_sides: 0,
         connects_to_ids: Vec::new(),
-        post_effect_color: SColor {
+        post_effect_color: types::SColor {
             r: 100,
             g: 70,
             b: 85,

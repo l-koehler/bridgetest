@@ -15,25 +15,27 @@ use azalea::{BlockPos, Vec3};
 use azalea::core::delta::PositionDelta8;
 use azalea::core::position::ChunkBlockPos;
 use azalea::entity::{EntityDataValue, EntityDataItem};
-use minetest_protocol::wire::types::AbsBlockPos;
-use minetest_protocol::wire::types::ItemStackMetadata;
-use minetest_protocol::wire::types::NodeMetadata;
-use minetest_protocol::wire::types::ObjectProperties;
-use minetest_protocol::wire::types::StringVar;
+use luanti_protocol::services::server;
+use luanti_protocol::types::AbsBlockPos;
+use luanti_protocol::types::ItemStackMetadata;
+use luanti_protocol::types::NodeMetadata;
+use luanti_protocol::types::ObjectProperties;
+use luanti_protocol::types::StringVar;
 use mt_definitions::{HeartDisplay, FoodDisplay, Dimensions, EntityMetadata, V3F_ZERO};
-use minetest_protocol::peer::peer::PeerError;
+use luanti_protocol::peer::PeerError;
 
 use azalea::registry::EntityKind;
-use minetest_protocol::wire::command::ToClientCommand;
-use minetest_protocol::wire::types::HudStat;
-use minetest_protocol::MinetestConnection;
-use minetest_protocol::wire;
-use minetest_protocol::wire::types::{v3s16, v3f, v2f, MapNodesBulk, MapNode, MapBlock, NodeMetadataList, AddedObject, GenericInitData, ActiveObjectCommand, SColor, aabb3f, v2s16, InventoryEntry, InventoryList, ItemStackUpdate, ItemStack };
+use luanti_protocol::commands::server_to_client::ToClientCommand;
+use luanti_protocol::commands::server_to_client;
+use luanti_protocol::LuantiConnection;
+use luanti_protocol::wire;
+use luanti_protocol::types::{v3s16, v3f, v2f, MapNodesBulk, MapNode, MapBlock, NodeMetadataList, AddedObject, GenericInitData, ActiveObjectCommand, SColor, aabb3f, v2s16, InventoryEntry, InventoryList, ItemStackUpdate, ItemStack };
 
 use azalea_client::{PlayerInfo, Client, inventory};
 use azalea_client::chat::ChatPacket;
 use azalea_language;
 
+use sha1::digest::typenum::Abs;
 use tokio::sync::mpsc::UnboundedReceiver;
 use azalea_client::Event;
 use azalea::protocol::packets::game::{ClientboundGamePacket,
@@ -105,11 +107,11 @@ pub async fn set_spawn(source_packet: &ClientboundSetDefaultSpawnPosition, mt_se
     mt_server_state.respawn_pos = (dest_x, dest_y, dest_z);
 }
 
-pub async fn death(conn: &MinetestConnection, mt_server_state: &mut MTServerState, mc_client: &Client) {
+pub async fn death(conn: &LuantiConnection, mt_server_state: &mut MTServerState, mc_client: &Client) {
     let respawn_pos = mt_server_state.respawn_pos;
 
     let deathscreen = ToClientCommand::Deathscreen(
-        Box::new(wire::command::DeathscreenSpec {
+        Box::new(server_to_client::DeathscreenSpec {
             set_camera_point_target: false,
             camera_point_target: V3F_ZERO
         })
@@ -119,7 +121,7 @@ pub async fn death(conn: &MinetestConnection, mt_server_state: &mut MTServerStat
     // needed to update position
     mc_client.ecs.lock().send_event(azalea::respawn::PerformRespawnEvent{entity:mc_client.entity});
     let setpos_packet = ToClientCommand::MovePlayer(
-        Box::new(wire::command::MovePlayerSpec {
+        Box::new(server_to_client::MovePlayerSpec {
             pos: v3f {
                 x: mc_client.position().x as f32,
                 y: mc_client.position().y as f32,
@@ -129,14 +131,14 @@ pub async fn death(conn: &MinetestConnection, mt_server_state: &mut MTServerStat
             yaw: 0.0
         })
     );
-    let _ = conn.send(setpos_packet).await;
+    conn.send(setpos_packet).unwrap();
     mt_server_state.mt_clientside_pos = (respawn_pos.0*10.0, respawn_pos.1*10.0, respawn_pos.2*10.0);
-    let _ = conn.send(deathscreen).await;
+    conn.send(deathscreen).unwrap();
 
     set_health(&ClientboundSetHealth { health: 20.0, food: 20, saturation: 0.0 }, conn, mt_server_state).await;
 }
 
-pub async fn edit_healthbar(mode: HeartDisplay, num: u32, conn: &MinetestConnection) {
+pub async fn edit_healthbar(mode: HeartDisplay, num: u32, conn: &LuantiConnection) {
     // num is from 0 to 20
     // above 20: no change will be made to the number of hearts
     let heart_texture: &str = match mode {
@@ -154,39 +156,43 @@ pub async fn edit_healthbar(mode: HeartDisplay, num: u32, conn: &MinetestConnect
         HeartDisplay::NoChange => ""
     };
     if !heart_texture.is_empty() {
-        let set_bar_texture = ToClientCommand::Hudchange(
+        //FIXME: luanti migration
+        /*let set_bar_texture = ToClientCommand::Hudchange(
             Box::new(wire::command::HudchangeSpec {
                 server_id: settings::HEALTHBAR_ID,
                 stat: HudStat::Text(String::from(heart_texture))
             })
         );
-        let _ = conn.send(set_bar_texture).await;
+        conn.send(set_bar_texture).unwrap();*/
     }
     if num < 21 {
-        let set_bar_number = ToClientCommand::Hudchange(
+        //FIXME: luanti migration
+        /*let set_bar_number = ToClientCommand::Hudchange(
             Box::new(wire::command::HudchangeSpec {
                 server_id: settings::HEALTHBAR_ID,
                 stat: HudStat::Number(num)
             })
         );
-        let _ = conn.send(set_bar_number).await;
+        conn.send(set_bar_number).unwrap();*/
     }
 }
 
-pub async fn edit_foodbar(mode: FoodDisplay, num: u32, conn: &MinetestConnection) {
+pub async fn edit_foodbar(mode: FoodDisplay, num: u32, conn: &LuantiConnection) {
     let food_texture: &str = match mode {
         FoodDisplay::Normal => "hud-food_full.png",
         FoodDisplay::Hunger => "hud-food_full_hunger.png",
         FoodDisplay::NoChange => ""
     };
     if !food_texture.is_empty() {
+        //FIXME: luanti migration
+        /*
         let set_bar_texture = ToClientCommand::Hudchange(
             Box::new(wire::command::HudchangeSpec {
                 server_id: settings::FOODBAR_ID,
                 stat: HudStat::Text(String::from(food_texture))
             })
         );
-        let _ = conn.send(set_bar_texture).await;
+        conn.send(set_bar_texture).unwrap();
     }
     if num < 21 {
         let set_bar_number = ToClientCommand::Hudchange(
@@ -195,16 +201,19 @@ pub async fn edit_foodbar(mode: FoodDisplay, num: u32, conn: &MinetestConnection
                 stat: HudStat::Number(num)
             })
         );
-        let _ = conn.send(set_bar_number).await;
+        conn.send(set_bar_number).unwrap();
+        */
     }
 }
 
-pub async fn edit_airbar(num: u32, conn: &MinetestConnection, prev_num: u32) {
+pub async fn edit_airbar(num: u32, conn: &LuantiConnection, prev_num: u32) {
     // num is count of half bubbles (between 0 and 20)
     // we reformat it to look good despite formspec
     let number = num - (num % 2);
     let item = num + (num % 2);
     let p_item = prev_num + (prev_num % 2);
+    //FIXME: luanti migration
+    /*
     let set_bar_number: ToClientCommand = ToClientCommand::Hudchange(
         Box::new(wire::command::HudchangeSpec {
             server_id: settings::AIRBAR_ID,
@@ -218,12 +227,12 @@ pub async fn edit_airbar(num: u32, conn: &MinetestConnection, prev_num: u32) {
                 stat: HudStat::Item(item)
             })
         );
-        let _ = conn.send(set_bar_item).await;
+        conn.send(set_bar_item).unwrap();
     };
-    let _ = conn.send(set_bar_number).await;
+    conn.send(set_bar_number).unwrap();*/
 }
 
-pub async fn set_health(source_packet: &ClientboundSetHealth, conn: &MinetestConnection, mt_server_state: &mut MTServerState) {
+pub async fn set_health(source_packet: &ClientboundSetHealth, conn: &LuantiConnection, mt_server_state: &mut MTServerState) {
     let ClientboundSetHealth { health, food, saturation:_ } = source_packet;
     // health: 0..20
     let new_health: u16 = *health as u16;
@@ -235,17 +244,17 @@ pub async fn set_health(source_packet: &ClientboundSetHealth, conn: &MinetestCon
     mt_server_state.mt_last_known_health = new_health;
 
     let sethealth_packet = ToClientCommand::Hp(
-        Box::new(wire::command::HpSpec {
+        Box::new(luanti_protocol::commands::server_to_client::HpSpec {
             hp: new_health,
             damage_effect,
         })
     );
-    let _ = conn.send(sethealth_packet).await;
+    conn.send(sethealth_packet).unwrap();
     edit_healthbar(HeartDisplay::NoChange, new_health.into(), conn).await;
     edit_foodbar(FoodDisplay::NoChange, *food, conn).await;
 }
 
-pub async fn set_time(source_packet: &ClientboundSetTime, conn: &MinetestConnection) {
+pub async fn set_time(source_packet: &ClientboundSetTime, conn: &LuantiConnection) {
     let ClientboundSetTime { game_time: _, day_time, tick_day_time: _ } = source_packet; // likely wrong to ignore tick_day_time FIXME
     // day_time seems to be the world age in ticks, so mod 24000 is the age of the day
     // age of the day is 0..23999
@@ -255,15 +264,15 @@ pub async fn set_time(source_packet: &ClientboundSetTime, conn: &MinetestConnect
     let mt_time: u16 = (*day_time-6000 % 24000) as u16;
     utils::logger(&format!("[Minetest] S->C TimeOfDay: {}", mt_time), 0);
     let settime_packet = ToClientCommand::TimeOfDay(
-        Box::new(wire::command::TimeOfDaySpec {
+        Box::new(server_to_client::TimeOfDaySpec {
             time_of_day: mt_time,
             time_speed: Some(1.0) // time does pass, but we move it forward manually by resending this packet
         })
     );
-    let _ = conn.send(settime_packet).await;
+    conn.send(settime_packet).unwrap();
 }
 
-pub async fn set_player_pos(source_packet: &ClientboundPlayerPosition, conn: &MinetestConnection, mt_server_state: &mut MTServerState) {
+pub async fn set_player_pos(source_packet: &ClientboundPlayerPosition, conn: &LuantiConnection, mt_server_state: &mut MTServerState) {
 
     let ClientboundPlayerPosition { id: _, change, relative: _ } = source_packet;
     
@@ -272,17 +281,17 @@ pub async fn set_player_pos(source_packet: &ClientboundPlayerPosition, conn: &Mi
     let dest_z = change.pos.z as f32 * 10.0;
     
     let setpos_packet = ToClientCommand::MovePlayer(
-        Box::new(wire::command::MovePlayerSpec {
+        Box::new(server_to_client::MovePlayerSpec {
             pos: v3f {x: dest_x, y: dest_y, z: dest_z},
             pitch: change.look_direction.x_rot, yaw: change.look_direction.y_rot,
         })
     );
-    let _ = conn.send(setpos_packet).await;
+    conn.send(setpos_packet).unwrap();
     mt_server_state.mt_clientside_pos = (dest_x, dest_y, dest_z);
     mt_server_state.client_rotation = (change.look_direction.y_rot, change.look_direction.x_rot);
 }
 
-pub async fn sync_client_pos(mc_client: &Client, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+pub async fn sync_client_pos(mc_client: &Client, conn: &mut LuantiConnection, mt_server_state: &mut MTServerState) {
     let vec_serverpos = mc_client.position();
     let serverpos = (vec_serverpos.x as f32, vec_serverpos.y as f32, vec_serverpos.z as f32);
     let clientpos = mt_server_state.mt_clientside_pos;
@@ -299,18 +308,18 @@ pub async fn sync_client_pos(mc_client: &Client, conn: &mut MinetestConnection, 
     if distance > settings::POS_DIFF_TOLERANCE {
         utils::logger(&format!("[Minetest] Re-Syncing Player Position: {} difference.", distance), 1);
         let setpos_packet = ToClientCommand::MovePlayer(
-            Box::new(wire::command::MovePlayerSpec {
+            Box::new(server_to_client::MovePlayerSpec {
                 pos: v3f { x: serverpos.0*10.0, y: serverpos.1*10.0, z: serverpos.2*10.0 },
                 pitch: mt_server_state.client_rotation.1,
                 yaw: mt_server_state.client_rotation.0
             })
         );
-        let _ = conn.send(setpos_packet).await;
+        conn.send(setpos_packet).unwrap();
         mt_server_state.mt_clientside_pos = serverpos;
     }
 }
 
-pub async fn update_inventory(conn: &mut MinetestConnection, to_change: Vec<(&str, Vec<inventory::ItemStack>)>) {
+pub async fn update_inventory(conn: &mut LuantiConnection, to_change: Vec<(&str, Vec<inventory::ItemStack>)>) {
     let mut entries: Vec<InventoryEntry> = vec![];
     let mut changed_fields: Vec<&str> = vec![];
     for field in to_change {
@@ -349,18 +358,18 @@ pub async fn update_inventory(conn: &mut MinetestConnection, to_change: Vec<(&st
         entries.push(InventoryEntry::KeepList(String::from(field)))
     }
     let update_inventory_packet = ToClientCommand::Inventory(
-        Box::new(wire::command::InventorySpec {
-            inventory: wire::types::Inventory {
+        Box::new(server_to_client::InventorySpec {
+            inventory: luanti_protocol::types::Inventory {
                 entries
             }
         })
     );
-    let _ = conn.send(update_inventory_packet).await;
+    conn.send(update_inventory_packet).unwrap();
 }
 
-pub async fn send_message(conn: &mut MinetestConnection, message: ChatPacket) {
+pub async fn send_message(conn: &mut LuantiConnection, message: ChatPacket) {
     let chat_packet = ToClientCommand::TCChatMessage(
-        Box::new(wire::command::TCChatMessageSpec {
+        Box::new(server_to_client::TCChatMessageSpec {
             version: 1, // idk what this or message_type do
             message_type: 1, // but it works, dont touch it
             sender: message.username().unwrap_or(String::from("")),
@@ -368,13 +377,13 @@ pub async fn send_message(conn: &mut MinetestConnection, message: ChatPacket) {
             timestamp: chrono::Utc::now().timestamp().try_into().unwrap_or(0),
         })
     );
-    let _ = conn.send(chat_packet).await;
+    conn.send(chat_packet).unwrap();
 }
 
-pub async fn send_sys_message(conn: &mut MinetestConnection, message: &ClientboundSystemChat) {
+pub async fn send_sys_message(conn: &mut LuantiConnection, message: &ClientboundSystemChat) {
     if let azalea::FormattedText::Text(component) = &message.content {
         let chat_packet = ToClientCommand::TCChatMessage(
-            Box::new(wire::command::TCChatMessageSpec {
+            Box::new(server_to_client::TCChatMessageSpec {
                 version: 1, // idk what this or message_type do
                 message_type: 1, // but it works, dont touch it
                 sender: String::from("System"),
@@ -382,12 +391,12 @@ pub async fn send_sys_message(conn: &mut MinetestConnection, message: &Clientbou
                 timestamp: chrono::Utc::now().timestamp().try_into().unwrap_or(0),
             })
         );
-        let _ = conn.send(chat_packet).await;
+        conn.send(chat_packet).unwrap();
     }
 }
 
 
-pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &MinetestConnection, state_arr: [BlockState; 4096], cave_air_glow: bool) {
+pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &LuantiConnection, state_arr: [BlockState; 4096], cave_air_glow: bool) {
     // Fills a 16^3 area with a vector of map nodes, where param0 is a MC-compatible ID.
     // remember that this is limited to 16 blocks of heigth, while a MC chunk goes from -64 to 320
     // y_pos of 0 -> actual y filled from 0 to 16
@@ -423,7 +432,7 @@ pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &Min
     }
     
     let addblockcommand = ToClientCommand::Blockdata(
-        Box::new(wire::command::BlockdataSpec {
+        Box::new(server_to_client::BlockdataSpec {
             pos: v3s16 { x: x_pos, y: y_pos, z: z_pos },
             block: MapBlock {
                  is_underground: (y_pos <= 4), // below 64, likely?
@@ -440,23 +449,23 @@ pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &Min
             network_specific_version: 2 // what does this meeeean qwq
         })
     );
-    let _ = conn.send(addblockcommand).await;
+    conn.send(addblockcommand).unwrap();
 }
 
-pub async fn add_player(player_data: PlayerInfo, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+pub async fn add_player(player_data: PlayerInfo, conn: &mut LuantiConnection, mt_server_state: &mut MTServerState) {
     let new_user: String = player_data.profile.name.to_string();
     mt_server_state.players.push(new_user);
     let add_player_command = ToClientCommand::UpdatePlayerList(
-        Box::new(wire::command::UpdatePlayerListSpec {
+        Box::new(server_to_client::UpdatePlayerListSpec {
             typ: 0,
             players: mt_server_state.players.clone(),
         })
     );
-    let _ = conn.send(add_player_command).await;
+    conn.send(add_player_command).unwrap();
     utils::logger("[Minetest] S->C UpdatePlayerList", 1);
 }
 
-pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut UnboundedReceiver<Event>, mt_server_state: &mut MTServerState, mc_client: &mut Client) {
+pub async fn chunkbatch(mt_conn: &mut LuantiConnection, mc_conn: &mut UnboundedReceiver<Event>, mt_server_state: &mut MTServerState, mc_client: &mut Client) {
     utils::logger("[Minetest] Forwarding ChunkBatch...", 1);
     loop {
         tokio::select! {
@@ -508,7 +517,7 @@ pub async fn chunkbatch(mt_conn: &mut MinetestConnection, mc_conn: &mut Unbounde
     }
 }
 
-pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLight, mt_conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLight, mt_conn: &mut LuantiConnection, mt_server_state: &mut MTServerState) {
     let y_bounds = mt_definitions::get_y_bounds(&mt_server_state.current_dimension);
     let is_nether = matches!(mt_server_state.current_dimension, Dimensions::Nether);
     // Parse packet
@@ -567,7 +576,7 @@ pub async fn send_level_chunk(packet_data: &ClientboundLevelChunkWithLight, mt_c
 }
 
 // if no packet is passed, add the player using data from the server state
-pub async fn add_entity(optional_packet: Option<&ClientboundAddEntity>, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+pub async fn add_entity(optional_packet: Option<&ClientboundAddEntity>, conn: &mut LuantiConnection, mt_server_state: &mut MTServerState) {
     let is_player: bool;
     let name: String;
     let c_id: u16;
@@ -636,7 +645,7 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntity>, conn: &m
             hp: 100, // entity deaths handled by server
             messages: vec![
                 ActiveObjectCommand::SetProperties(
-                    wire::types::AOCSetProperties {
+                    luanti_protocol::types::AOCSetProperties {
                         newprops: ObjectProperties {
                             version: 4,
                             hp_max: 100,
@@ -723,12 +732,12 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntity>, conn: &m
                     },
                 ),
                 ActiveObjectCommand::SetTextureMod(
-                    wire::types::AOCSetTextureMod {
+                    luanti_protocol::types::AOCSetTextureMod {
                         modifier: String::from("")
                     }
                 ),
                 ActiveObjectCommand::SetAnimation(
-                    wire::types::AOCSetAnimation {
+                    luanti_protocol::types::AOCSetAnimation {
                         range: v2f { x: 0.0, y: 0.0 },
                         speed: 0.0,
                         blend: 0.0,
@@ -736,14 +745,14 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntity>, conn: &m
                     }
                 ),
                 ActiveObjectCommand::UpdateArmorGroups(
-                    wire::types::AOCUpdateArmorGroups {
+                    luanti_protocol::types::AOCUpdateArmorGroups {
                         ratings: vec![
                             (String::from("immortal"), 1)
                         ]
                     }
                 ),
                 ActiveObjectCommand::AttachTo(
-                    wire::types::AOCAttachTo {
+                    luanti_protocol::types::AOCAttachTo {
                         parent_id: 0,
                         bone: String::from(""),
                         position: v3f { x: 0.0, y: 0.0, z: 0.0 },
@@ -756,15 +765,15 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntity>, conn: &m
     };
     
     let clientbound_addentity = ToClientCommand::ActiveObjectRemoveAdd(
-        Box::new(wire::command::ActiveObjectRemoveAddSpec {
+        Box::new(server_to_client::ActiveObjectRemoveAddSpec {
             removed_object_ids: vec![],
             added_objects: vec![added_object],
         })
     );
-    let _ = conn.send(clientbound_addentity).await;
+    conn.send(clientbound_addentity).unwrap();
 }
 
-pub async fn remove_entity(packet_data: &ClientboundRemoveEntities, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+pub async fn remove_entity(packet_data: &ClientboundRemoveEntities, conn: &mut LuantiConnection, mt_server_state: &mut MTServerState) {
     let ClientboundRemoveEntities { entity_ids } = packet_data;
     let mut entity_ids_adjusted: Vec<u16> = vec![];
     for entity_id in entity_ids {
@@ -777,12 +786,12 @@ pub async fn remove_entity(packet_data: &ClientboundRemoveEntities, conn: &mut M
     }
     if !entity_ids_adjusted.is_empty() {
         let clientbound_removeentity = ToClientCommand::ActiveObjectRemoveAdd(
-            Box::new(wire::command::ActiveObjectRemoveAddSpec {
+            Box::new(server_to_client::ActiveObjectRemoveAddSpec {
                 removed_object_ids: entity_ids_adjusted,
                 added_objects: vec![],
             })
         );
-        let _ = conn.send(clientbound_removeentity).await;
+        conn.send(clientbound_removeentity).unwrap();
     } else {
         utils::logger("[Minetest] Skipping RemoveEntitiesPacket, no entities to remove!", 2);
     }
@@ -873,7 +882,7 @@ pub async fn entity_setmotion(packet_data: &ClientboundSetEntityMotion, mt_serve
     mt_server_state.entities_update_scheduled.push(*id);
 }
 
-pub async fn entity_event(packet_data: &ClientboundEntityEvent, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
+pub async fn entity_event(packet_data: &ClientboundEntityEvent, conn: &mut LuantiConnection, mt_server_state: &MTServerState) {
     let ClientboundEntityEvent { entity_id, event_id } = packet_data;
     let Some(metadata_item) = mt_server_state.entity_meta_map.get(entity_id) else {
         utils::logger("[Minecraft] Server sent EntityEvent for unknown ID, skipping", 2);
@@ -939,7 +948,7 @@ pub async fn entity_event(packet_data: &ClientboundEntityEvent, conn: &mut Minet
     }
 }
 
-pub async fn set_entity_data(packet_data: &ClientboundSetEntityData, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
+pub async fn set_entity_data(packet_data: &ClientboundSetEntityData, conn: &mut LuantiConnection, mt_server_state: &MTServerState) {
     // Currently, the only data that will actually be used is EntityDataValue::ItemStack in EntityKind::Item
     // Everything else gets dropped.
     let ClientboundSetEntityData { id, packed_items } = packet_data;
@@ -967,99 +976,60 @@ pub async fn set_entity_data(packet_data: &ClientboundSetEntityData, conn: &mut 
     }
 }
 
-async fn set_entity_texture(id: u16, texture: String, conn: &MinetestConnection) {
+async fn set_entity_texture(id: u16, texture: String, conn: &LuantiConnection) {
     /*
      * Strictly speaking, this does not *set* a texture.
      * It only works when the previous texture was "".
      * Currently, it *should* only be called when that's the case,
      * but that won't stay so forever (or even always hold true
-     * currently, I don't know what MC does). FIXME (later)
+     * currently, I don't know what MC does). FIXME: (later)
      */
     let update_texture_packet = ToClientCommand::ActiveObjectMessages(
-        Box::new(wire::command::ActiveObjectMessagesSpec {
-            objects: vec![wire::types::ActiveObjectMessage{
+        Box::new(server_to_client::ActiveObjectMessagesCommand {
+            objects: vec![server_to_client::ActiveObjectMessage {
                 id,
-                data: wire::types::ActiveObjectCommand::SetTextureMod(
-                    wire::types::AOCSetTextureMod {
+                data: luanti_protocol::types::ActiveObjectCommand::SetTextureMod(
+                    luanti_protocol::types::AOCSetTextureMod {
                         modifier: texture
                    }
                 )
             }]
         })
     );
-    let _ = conn.send(update_texture_packet).await;
+    conn.send(update_texture_packet).unwrap();
 }
 
 // block placement/destruction
-pub async fn blockupdate(packet_data: &ClientboundBlockUpdate, conn: &mut MinetestConnection, mt_server_state: &MTServerState) {
+pub async fn blockupdate(packet_data: &ClientboundBlockUpdate, conn: &mut LuantiConnection, mt_server_state: &MTServerState) {
     let ClientboundBlockUpdate { pos, block_state } = packet_data;
     let cave_air_glow = mt_server_state.current_dimension == Dimensions::Nether;
     let BlockPos { x, y, z } = pos;
     let addnodecommand = ToClientCommand::Addnode(
-        Box::new(wire::command::AddnodeSpec {
+        Box::new(server_to_client::AddnodeSpec {
             pos: v3s16 { x: *x as i16, y: *y  as i16, z: *z as i16 },
             node: utils::state_to_node(*block_state, cave_air_glow),
             keep_metadata: false
         })
     );
-    let _ = conn.send(addnodecommand).await;
+    conn.send(addnodecommand).unwrap();
 }
 
 // block destruction overlay stuff
-pub async fn destruction_overlay(packet_data: &ClientboundBlockDestruction, conn: &mut MinetestConnection) {
-    // TODO finish this thing as soon as i figure out how to send overlays
-    let ClientboundBlockDestruction { id: _, pos, progress } = packet_data;
-    // use metadata and ASCII instead of proper overlay textures (TODO look how actual minetest games do this)
-    // https://github.com/minetest/minetest/issues/9019
-    let infotext = match *progress {
-        0 => "",
-        1 => "[##................]",
-        2 => "[####..............]",
-        3 => "[######............]",
-        4 => "[########..........]",
-        5 => "[##########........]",
-        6 => "[############......]",
-        7 => "[##############....]",
-        8 => "[################..]",
-        9 => "[##################]",
-        _ => ""
-    };
-    let destructioninfo = ToClientCommand::NodemetaChanged (
-        Box::new(wire::command::NodemetaChangedSpec {
-            list: wire::types::AbsNodeMetadataList {
-                metadata: vec![(
-                    AbsBlockPos {pos: v3s16 {
-                        x: pos.x as i16,
-                        y: pos.y as i16,
-                        z: pos.z as i16
-                    }},
-                    NodeMetadata {
-                        stringvars: vec![StringVar {
-                            name: String::from("infotext"),
-                            value: infotext.into(),
-                            is_private: false
-                        }],
-                        inventory: wire::types::Inventory {entries: Vec::new()}
-                    }
-                )]
-            }
-        })
-    );
-    let _ = conn.send(destructioninfo).await;
-    
+pub async fn destruction_overlay(_packet_data: &ClientboundBlockDestruction, _conn: &mut LuantiConnection) {
+    // TODO: finish this thing as soon as i figure out how to send overlays
 }
 
-pub async fn open_screen(packet_data: &ClientboundOpenScreen, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+pub async fn open_screen(packet_data: &ClientboundOpenScreen, conn: &mut LuantiConnection, mt_server_state: &mut MTServerState) {
     let ClientboundOpenScreen { container_id: _, menu_type, title } = packet_data;
     let form_spec = mt_definitions::get_container_formspec(menu_type, &title.to_string());
     utils::logger("[Minetest] Showing Formspec for opened container", 1);
     let formspec_command = ToClientCommand::ShowFormspec(
-        Box::new(wire::command::ShowFormspecSpec {
+        Box::new(server_to_client::ShowFormspecSpec {
             form_spec,
             form_name: String::from("current-container-form")
         })
     );
-    let _ = conn.send(formspec_command).await;
+    conn.send(formspec_command).unwrap();
     // Update container size (unused, kept in case it does turn out to be needed)
     // mt_server_state.container_size = match menu_type {
     //     MenuKind::Generic9x1 => 9,
@@ -1091,7 +1061,7 @@ pub async fn open_screen(packet_data: &ClientboundOpenScreen, conn: &mut Minetes
 }
 
 
-pub async fn block_entity_data(packet_data: &ClientboundBlockEntityData, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+pub async fn block_entity_data(packet_data: &ClientboundBlockEntityData, conn: &mut LuantiConnection, mt_server_state: &mut MTServerState) {
     let ClientboundBlockEntityData { pos, block_entity_type, tag: _ } = packet_data;
     if mt_server_state.container_map.insert((pos.x, pos.y, pos.z), *block_entity_type) != None {
         utils::logger(&format!("[Minecraft] Overwriting Block Entity at {:?}", pos), 2);
@@ -1099,7 +1069,7 @@ pub async fn block_entity_data(packet_data: &ClientboundBlockEntityData, conn: &
     // TODO: Add the tag to the block metadata if it is relevant to the client
 }
 
-pub async fn refresh_inv(mc_client: &Client, mt_conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+pub async fn refresh_inv(mc_client: &Client, mt_conn: &mut LuantiConnection, mt_server_state: &mut MTServerState) {
     let mut to_update: Vec<(&str,Vec<inventory::ItemStack>)> = vec![];
     match mc_client.menu() {
         inventory::Menu::Player(serverside_inventory) => {
@@ -1240,7 +1210,7 @@ pub async fn refresh_inv(mc_client: &Client, mt_conn: &mut MinetestConnection, m
 }
 
 // can't figure out how to get "actual" subtitles, so these are just the audio keys mapped to subtitle keys
-pub async fn show_sound(packet_data: &ClientboundSound, conn: &mut MinetestConnection, mt_server_state: &mut MTServerState) {
+pub async fn show_sound(packet_data: &ClientboundSound, conn: &mut LuantiConnection, mt_server_state: &mut MTServerState) {
     let ClientboundSound { sound, source: _, x: _, y: _, z: _, volume: _, pitch: _, seed: _ } = packet_data;
     utils::logger(&format!("[Minetest] New Subtitle: {:?}", sound), 1);
     let key = sound.to_string().replace("minecraft:", "subtitles.");

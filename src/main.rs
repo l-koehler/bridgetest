@@ -11,7 +11,7 @@ mod on_tick;
 mod textures;
 
 use azalea::container::ContainerHandle;
-use minetest_protocol::MinetestServer;
+use luanti_protocol::LuantiServer;
 use mt_definitions::{Dimensions, EntityMetadata};
 use azalea_client::inventory;
 use azalea::registry::BlockEntityKind;
@@ -89,7 +89,7 @@ async fn start_client_handler(settings: Config) {
     // Create/Host a Minetest Server
     let mt_server_addr: String = settings.get_string("mt_server_addr").expect("Failed to read config!");
     utils::logger(&format!("[Minetest] Creating Server ({})...", mt_server_addr), 1);
-    let mut mt_server = MinetestServer::new(mt_server_addr.parse().unwrap());
+    let mut mt_server = LuantiServer::new(mt_server_addr.parse().unwrap());
     // Define a server state with stuff to keep track of
     // Sane defaults aren't possible, all this will be overwritten before getting read anyways
     let mt_server_state = MTServerState {

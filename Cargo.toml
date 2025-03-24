@@ -15,7 +15,7 @@ base64 = "0.21.7"
 chrono = "0.4.34"
 config = "0.14.0"
 dirs = "5.0.1"
-minetest-protocol = "0.1.4"
+luanti-protocol = { git = 'https://github.com/kawogi/luanti-rs.git' }
 reqwest = { version = "0.11.24", features = ["blocking", "json"] }
 sha1 = "0.10.6"
 tokio = "1.36.0"
@@ -24,6 +24,3 @@ rand = "0.8.5"
 tokio-stream = "0.1.15"
 bimap = "0.6.3"
 minecraft-data-rs = "0.8.1"
-
-[patch.crates-io]
-minetest-protocol = { git = 'https://github.com/l-koehler/minetest-rs.git' }
