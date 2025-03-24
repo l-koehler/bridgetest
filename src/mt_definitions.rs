@@ -2,7 +2,6 @@
 // the functions are actually more like consts but
 // the "String" type cant be a constant so :shrug:
 
-use minecraft_data_rs::models::block::BoundingBox;
 use minetest_protocol::wire::command::ToClientCommand;
 use minetest_protocol::wire::command;
 use minetest_protocol::wire::types::{ v2f, v3f, v2s32, AlignStyle, BlockPos, ContentFeatures, DrawType, Inventory, ItemAlias, ItemDef, ItemType, ItemdefList, NodeBox, NodeDefManager, NodeMetadata, Option16, SColor, SimpleSoundSpec, TileAnimationParams, TileDef, InventoryEntry, InventoryList, ItemStackUpdate}; // AAAAAA
@@ -11,7 +10,6 @@ use minetest_protocol::wire::types;
 use minecraft_data_rs::Api;
 use minecraft_data_rs::models;
 
-use alloc::boxed::Box;
 use config::Config;
 use bimap::BiHashMap;
 
@@ -568,7 +566,7 @@ pub const fn get_metadata_placeholder(x_pos: u16, y_pos: u16, z_pos: u16) -> (Bl
 
 // item def stuff
 
-pub async fn get_item_def_command(path_name_map: &BiHashMap<(PathBuf, String), String>, settings: &Config) -> ToClientCommand {
+pub async fn get_item_def_command(path_name_map: &BiHashMap<(PathBuf, String), String>) -> ToClientCommand {
     let mc_data_api: Api = utils::compatible_data_api();
     
     // we need food- and placeable IDs to predict right-click behavior of every item
@@ -681,20 +679,23 @@ pub fn generate_itemdef(name: &str, item: models::item::Item, inventory_image: &
 // node def stuff
 
 pub async fn get_node_def_command(settings: &Config, mt_server_state: &mut MTServerState) -> ToClientCommand {
-    let mc_data_api = utils::compatible_data_api();
-    
-    let mut id: u16;
     let mut content_features: Vec<(u16, ContentFeatures)> = Vec::new();
     let mut content_feature: ContentFeatures;
-    for block in mc_data_api.blocks.blocks_array().unwrap() {
-        id = block.id as u16;
-        // +128 because the MT engine has some builtin nodes below that.
-        // generate_contentfeature ignores that and recieves the regular id,
-        // everything else must adjust for this offset.
-        let texture_pack_res: u16 = settings.get_int("texture_pack_res").expect("Failed to read config!")
-        .try_into().expect("Texture pack resolutions above 2^16 are not supported. What are you even doing?");
+    let texture_pack_res: u16 = settings.get_int("texture_pack_res").expect("Failed to read config!") as u16;
+
+    // Azalea provides no nicer way to iterate over blocks, as far as I know.
+    for mc_id in 0..std::mem::variant_count::<azalea::registry::Block>() {
+        if !azalea::registry::Block::is_valid_id(mc_id as u32) {
+            unreachable!();
+        }
+        // SAFETY: We checked that with is_valid_id above
+        // As we are essentially indexing the enum here, `variant_count::<Block>()-1` should be valid. 
+        let block = unsafe {
+            azalea::registry::Block::from_u32_unchecked(mc_id as u32)
+        };
+        let mt_id = mc_id as u16 + 128;
         content_feature = generate_contentfeature(block, texture_pack_res, mt_server_state);
-        content_features.push((id+128, content_feature));
+        content_features.push((mt_id, content_feature));
     }
     
     // add a special block without MC equivalent: glowing_air. this block will replace cave_air in the nether.
@@ -787,42 +788,35 @@ pub async fn get_node_def_command(settings: &Config, mt_server_state: &mut MTSer
     )
 }
 
-pub fn generate_contentfeature(block: models::block::Block, texture_pack_res: u16, mt_server_state: &mut MTServerState) -> ContentFeatures {
+pub fn generate_contentfeature(block: azalea::registry::Block, texture_pack_res: u16, mt_server_state: &mut MTServerState) -> ContentFeatures {
     // If *every* possible state is solid, then walkable=true
     // for light stuff, use the "brightest" state
     // for everything else, do other stuff idk look at the code
-    let mut texture_base_name: String = block.name.clone();
-    let this_block: azalea::registry::Block = block.id.try_into().expect("Got invalid ID!");
-    // BoundingBox does not implement partialEq for some reason
-    let mut walkable = match block.bounding_box {
-        BoundingBox::Block => true,
-        BoundingBox::Empty => false
-    };
-    let mut light_source = block.emit_light;
-    let mut sunlight_propagates = block.filter_light;
+    let mut texture_base_name: String = block.to_string().replace("minecraft:", "");
+    
     let mut liquid_range = 0;
     let mut liquid_viscosity = 0;
     let mut liquid_renewable = true;
     let mut animation = TileAnimationParams::None;
     
     // liquid stuff
-    if this_block == Block::Water {
+    if block == Block::Water {
         liquid_renewable = true;
         liquid_viscosity = 0; // determines how much the liquid slows the player down
         liquid_range = 7;
         texture_base_name.push_str("_still"); // water.png does not exist, mc uses water_still.png and water_flow.png
-    } else if this_block == Block::Lava {
+    } else if block == Block::Lava {
         liquid_renewable = false;
         liquid_viscosity = 1;
         liquid_range = 4;
         texture_base_name.push_str("_still");
     }
     // animated textures
-    if [Block::Water, Block::Lava, Block::Seagrass, Block::TallSeagrass, Block::NetherPortal, Block::EndPortal, Block::MagmaBlock].contains(&this_block) {
+    if [Block::Water, Block::Lava, Block::Seagrass, Block::TallSeagrass, Block::NetherPortal, Block::EndPortal, Block::MagmaBlock].contains(&block) {
         animation = TileAnimationParams::VerticalFrames { aspect_w: texture_pack_res, aspect_h: texture_pack_res, length: 2.0 }
     }
     // some blocks just use the texture of other blocks
-    if ![Block::BambooFence, Block::BambooFenceGate].contains(&this_block) {
+    if ![Block::BambooFence, Block::BambooFenceGate].contains(&block) {
         texture_base_name = texture_base_name.replace("_fence", "_planks");
         texture_base_name = texture_base_name.replace("_gate", "_planks");
     }
@@ -836,7 +830,7 @@ pub fn generate_contentfeature(block: models::block::Block, texture_pack_res: u1
     if texture_base_name.contains("brick") {
         texture_base_name = texture_base_name.replace("_wall", "s");
     }
-    if [Block::StoneButton, Block::StonePressurePlate].contains(&this_block) {
+    if [Block::StoneButton, Block::StonePressurePlate].contains(&block) {
         texture_base_name = texture_base_name.replace("_button", "");
         texture_base_name = texture_base_name.replace("_pressure_plate", "");
     } else {
@@ -845,11 +839,11 @@ pub fn generate_contentfeature(block: models::block::Block, texture_pack_res: u1
     }
     
     // dripstone cant be implemented properly with the current metadata system
-    if this_block == Block::PointedDripstone {
+    if block == Block::PointedDripstone {
         texture_base_name = String::from("pointed_dripstone_down_middle")
     }
     // crops neither
-    texture_base_name += match this_block {
+    texture_base_name += match block {
         Block::Bamboo => "_stalk",
         Block::Cocoa | Block::NetherWart => "_stage2",
         Block::Carrots | Block::Beetroots | Block::SweetBerryBush | Block::Potatoes => "_stage3",
@@ -857,7 +851,6 @@ pub fn generate_contentfeature(block: models::block::Block, texture_pack_res: u1
         _ => "",
     };
 
-    // drawtype is a little complicated, there isn't a field in the json for that.
     /*
      * PlantLike: Texture rendered along both diagonal horizontal lines.
      * Normal: Texture rendered on each of the 6 faces.
@@ -866,7 +859,7 @@ pub fn generate_contentfeature(block: models::block::Block, texture_pack_res: u1
      */
     // azalea_registry::blockkind would be ideal, but is unused and thus unusable in azalea.
     // so i need to make this ugly thing matching each block with a non-normal drawtype
-    let drawtype = match this_block {
+    let drawtype = match block {
         Block::Water       => DrawType::Liquid,
         Block::Lava        => DrawType::Liquid,
         
@@ -970,8 +963,9 @@ pub fn generate_contentfeature(block: models::block::Block, texture_pack_res: u1
         
         _ => DrawType::Normal,
     };
+    let walkable = matches!(drawtype, DrawType::AirLike | DrawType::GlassLike | DrawType::Mesh);
     
-    let rightclickable = match this_block {
+    let rightclickable = match block {
         // opens inventory
         Block::Chest => true,
         Block::EnderChest => true,
@@ -1018,6 +1012,32 @@ pub fn generate_contentfeature(block: models::block::Block, texture_pack_res: u1
         _ => false
     };
     
+    let light_source = match block {
+        Block::Beacon | Block::Conduit | Block::EndGateway | Block::EndPortal | Block::Fire | Block::SeaPickle |
+            Block::OchreFroglight | Block::VerdantFroglight | Block::PearlescentFroglight | Block::Glowstone | Block::JackOLantern |
+            Block::Lantern | Block::Lava | Block::LavaCauldron | Block::Campfire | Block::RedstoneLamp | Block::RespawnAnchor |
+            Block::SeaLantern | Block::Shroomlight => 15,
+        Block::EndRod | Block::Torch => 14,
+        Block::BlastFurnace | Block::Furnace | Block::Smoker => 13,
+        Block::Candle => 12,
+        Block::NetherPortal => 11,
+        Block::CryingObsidian | Block::SoulCampfire | Block::SoulFire | Block::SoulLantern | Block::SoulTorch => 10,
+        Block::EnchantingTable | Block::EnderChest | Block::GlowLichen => 7,
+        Block::SculkCatalyst => 6,
+        Block::AmethystCluster => 5,
+        Block::LargeAmethystBud => 4,
+        Block::MagmaBlock => 3,
+        Block::MediumAmethystBud => 2,
+        // TODO level 1 skipped, boring :(
+        _ => 0,
+    };
+    let sunlight_propagates = match drawtype.clone() {
+        DrawType::AirLike => 15,
+        DrawType::GlassLike => 15,
+        DrawType::Liquid => 10,
+        _ => 0
+    };
+
     let simplesound_placeholder: SimpleSoundSpec = SimpleSoundSpec {
         name: String::from(""),
         gain: 1.0,
@@ -1080,13 +1100,13 @@ pub fn generate_contentfeature(block: models::block::Block, texture_pack_res: u1
     }
     ContentFeatures {
         version: 13, // https://github.com/minetest/minetest/blob/master/src/nodedef.h#L313
-        name: block.name,
+        name: block.to_string().replace("minecraft:", ""),
         groups: vec![
             (String::from("handy_dig"), 1),
         ],
         param_type: 0,
         param_type_2: 0,
-        drawtype,
+        drawtype: drawtype.clone(),
         mesh: String::from(""),
         visual_scale: 1.0,
         unused_six: 6, // unused? idk what does this even do
@@ -1114,10 +1134,10 @@ pub fn generate_contentfeature(block: models::block::Block, texture_pack_res: u1
         light_source, // TODO test the effect of this
         is_ground_content: false,
         walkable,
-        pointable: true,
-        diggable: !matches!(this_block, Block::Bedrock),
+        pointable: drawtype != DrawType::AirLike,
+        diggable: block != Block::Bedrock && drawtype != DrawType::Liquid && drawtype != DrawType::AirLike,
         climbable: false,
-        buildable_to: (rightclickable == false), // TODO this is a oversimplification and likely needs its own match abomination
+        buildable_to: !rightclickable, // TODO this is a oversimplification and likely needs its own match abomination
         rightclickable,
         damage_per_second: 0,
         liquid_type_bc: 0,

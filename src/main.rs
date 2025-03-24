@@ -1,6 +1,4 @@
-// assorted stuff
-
-extern crate alloc;
+#![feature(variant_count)]
 
 mod translator;
 mod utils;
@@ -20,7 +18,6 @@ use azalea::registry::BlockEntityKind;
 
 use std::sync::{Mutex, Arc};
 use bimap::BiMap;
-use alloc::vec::Vec;
 use std::collections::HashMap;
 use bimap::BiHashMap;
 use config::Config;

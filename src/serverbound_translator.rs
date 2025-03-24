@@ -11,7 +11,6 @@ use azalea_client::Client;
 use azalea_client::inventory::Inventory;
 use azalea::container::ContainerClientExt;
 
-use alloc::boxed::Box;
 use minetest_protocol::MinetestConnection;
 use minetest_protocol::wire::command::{TSChatMessageSpec, PlayerposSpec, InteractSpec, PlayeritemSpec, InventoryActionSpec};
 use minetest_protocol::wire::types::{v3s16, InventoryAction, PlayerPos, PointedThing};
