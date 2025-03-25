@@ -1,6 +1,6 @@
 use luanti_protocol::types::v3f;
 use luanti_protocol::LuantiConnection;
-use luanti_protocol::commands::server_to_client::{ActiveObjectMessage, ToClientCommand};
+use luanti_protocol::commands::server_to_client::{self, ActiveObjectMessage, ToClientCommand};
 use azalea_client::Client;
 use crate::{mt_definitions, utils};
 use azalea::ecs::prelude::With;
@@ -33,14 +33,13 @@ pub async fn server(mt_conn: &mut LuantiConnection, mc_client: &Client, mt_serve
     if formatted_str != mt_server_state.prev_subtitle_string {
         // if the subtitle actually changed, update the client
         mt_server_state.prev_subtitle_string = formatted_str.clone();
-        // luanti migration - FIXME
-        //let subtitle_update_command = ToClientCommand::Hudchange(
-        //    Box::new(luanti_protocol:: {
-        //        server_id: settings::SUBTITLE_ID,
-        //        stat: types::HudStat::Text(formatted_str),
-        //    })
-        //);
-        //mt_conn.send(subtitle_update_command).unwrap();
+        let subtitle_update_command = ToClientCommand::Hudchange(
+            Box::new(server_to_client::HudchangeCommand {
+                server_id: settings::SUBTITLE_ID,
+                stat: server_to_client::HudStat::Text(formatted_str),
+            })
+        );
+        mt_conn.send(subtitle_update_command).unwrap();
     }
     
     // update all entities that moved this tick

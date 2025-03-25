@@ -156,24 +156,22 @@ pub async fn edit_healthbar(mode: HeartDisplay, num: u32, conn: &LuantiConnectio
         HeartDisplay::NoChange => ""
     };
     if !heart_texture.is_empty() {
-        //FIXME: luanti migration
-        /*let set_bar_texture = ToClientCommand::Hudchange(
-            Box::new(wire::command::HudchangeSpec {
+        let set_bar_texture = ToClientCommand::Hudchange(
+            Box::new(server_to_client::HudchangeCommand {
                 server_id: settings::HEALTHBAR_ID,
-                stat: HudStat::Text(String::from(heart_texture))
+                stat: server_to_client::HudStat::Text(String::from(heart_texture))
             })
         );
-        conn.send(set_bar_texture).unwrap();*/
+        conn.send(set_bar_texture).unwrap();
     }
     if num < 21 {
-        //FIXME: luanti migration
-        /*let set_bar_number = ToClientCommand::Hudchange(
-            Box::new(wire::command::HudchangeSpec {
+        let set_bar_number = ToClientCommand::Hudchange(
+            Box::new(server_to_client::HudchangeCommand {
                 server_id: settings::HEALTHBAR_ID,
-                stat: HudStat::Number(num)
+                stat: server_to_client::HudStat::Number(num)
             })
         );
-        conn.send(set_bar_number).unwrap();*/
+        conn.send(set_bar_number).unwrap();
     }
 }
 
@@ -184,25 +182,22 @@ pub async fn edit_foodbar(mode: FoodDisplay, num: u32, conn: &LuantiConnection) 
         FoodDisplay::NoChange => ""
     };
     if !food_texture.is_empty() {
-        //FIXME: luanti migration
-        /*
         let set_bar_texture = ToClientCommand::Hudchange(
-            Box::new(wire::command::HudchangeSpec {
+            Box::new(server_to_client::HudchangeCommand {
                 server_id: settings::FOODBAR_ID,
-                stat: HudStat::Text(String::from(food_texture))
+                stat: server_to_client::HudStat::Text(String::from(food_texture))
             })
         );
         conn.send(set_bar_texture).unwrap();
     }
     if num < 21 {
         let set_bar_number = ToClientCommand::Hudchange(
-            Box::new(wire::command::HudchangeSpec {
+            Box::new(server_to_client::HudchangeCommand {
                 server_id: settings::FOODBAR_ID,
-                stat: HudStat::Number(num)
+                stat: server_to_client::HudStat::Number(num)
             })
         );
         conn.send(set_bar_number).unwrap();
-        */
     }
 }
 
@@ -212,24 +207,22 @@ pub async fn edit_airbar(num: u32, conn: &LuantiConnection, prev_num: u32) {
     let number = num - (num % 2);
     let item = num + (num % 2);
     let p_item = prev_num + (prev_num % 2);
-    //FIXME: luanti migration
-    /*
     let set_bar_number: ToClientCommand = ToClientCommand::Hudchange(
-        Box::new(wire::command::HudchangeSpec {
+        Box::new(server_to_client::HudchangeCommand {
             server_id: settings::AIRBAR_ID,
-            stat: HudStat::Number(number)
+            stat: server_to_client::HudStat::Number(number)
         })
     );
     if item != p_item { // item count only needs to get updated every other change
         let set_bar_item: ToClientCommand = ToClientCommand::Hudchange(
-            Box::new(wire::command::HudchangeSpec {
+            Box::new(server_to_client::HudchangeCommand {
                 server_id: settings::AIRBAR_ID,
-                stat: HudStat::Item(item)
+                stat: server_to_client::HudStat::Item(item)
             })
         );
         conn.send(set_bar_item).unwrap();
     };
-    conn.send(set_bar_number).unwrap();*/
+    conn.send(set_bar_number).unwrap();
 }
 
 pub async fn set_health(source_packet: &ClientboundSetHealth, conn: &LuantiConnection, mt_server_state: &mut MTServerState) {

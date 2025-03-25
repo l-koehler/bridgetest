@@ -4,7 +4,8 @@
 
 use luanti_protocol::commands::{client_to_server, client_to_server::ToServerCommand};
 use luanti_protocol::commands::{server_to_client, server_to_client::ToClientCommand};
-use luanti_protocol::types::{ v2f, v3f, v2s32, AlignStyle, BlockPos, NodeBox, ContentFeatures, DrawType, Inventory, SimpleSoundSpec, TileAnimationParams, TileDef, InventoryEntry, InventoryList, ItemStackUpdate};
+use luanti_protocol::types::{ v2f, v3f, v2s32, AlignStyle, BlockPos, NodeBox, ContentFeatures, DrawType, Inventory, SimpleSoundSpec, TileAnimationParams, TileDef, InventoryEntry, InventoryList, ItemStackUpdate, SColor};
+use luanti_protocol::commands::server_to_client::{ItemDef, ItemAlias, ItemdefList, ItemType};
 use luanti_protocol::types;
 
 use minecraft_data_rs::Api;
@@ -151,12 +152,11 @@ pub fn set_hotbar_selected() -> ToClientCommand {
     )
 }
 
-pub fn get_sky_stuff() -> [ToClientCommand; 4] {
+pub fn get_sky_stuff() -> [ToClientCommand; 5] {
     [
-        //FIXME: luanti migration
-        /*ToClientCommand::SetSky(
-            Box::new(command::SetSkySpec {
-                params: types::SkyboxParams {
+        ToClientCommand::SetSky(
+            Box::new(server_to_client::SetSkyCommand {
+                params: server_to_client::SkyboxParams {
                     bgcolor: SColor {
                         r: 255,
                         g: 255,
@@ -177,7 +177,7 @@ pub fn get_sky_stuff() -> [ToClientCommand; 4] {
                         a: 255,
                     },
                     fog_tint_type: String::from("custom"),
-                    data: types::SkyboxData::Color (
+                    data: server_to_client::SkyboxData::Color (
                         types::SkyColor {
                             day_sky: SColor {
                                 r: 255,
@@ -223,10 +223,19 @@ pub fn get_sky_stuff() -> [ToClientCommand; 4] {
                             },
                         },
                     ),
-                    body_orbit_tilt: Some(-1024.0),
+                    r#type: String::from(""), // TODO
+                    body_orbit_tilt: 0.0,
+                    fog_distance: i16::MAX,
+                    fog_start: f32::MAX,
+                    fog_color: SColor {
+                        r: 0,
+                        g: 0,
+                        b: 0,
+                        a: 255
+                    }
                 }
             })
-        ),*/
+        ),
         ToClientCommand::SetSun(
             Box::new(server_to_client::SetSunSpec {
                 sun: types::SunParams {
@@ -598,7 +607,7 @@ pub async fn get_item_def_command(path_name_map: &BiHashMap<(PathBuf, String), S
     let alias_definitions: Vec<ItemAlias> = vec![ItemAlias {name: String::from(""), convert_to: String::from("")}];
 
     ToClientCommand::Itemdef (
-        Box::new(ToClientCommand::ItemdefSpec {
+        Box::new(server_to_client::ItemdefCommand {
             item_def: ItemdefList {
                 itemdef_manager_version: 0, // https://github.com/minetest/minetest/blob/master/src/itemdef.cpp#L616
                  defs: item_definitions,
