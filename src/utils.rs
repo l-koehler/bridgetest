@@ -11,7 +11,7 @@ use minecraft_data_rs::models::version::Version;
 use minecraft_data_rs::{api, Api};
 use luanti_protocol::CommandRef;
 use luanti_protocol::CommandDirection;
-use luanti_protocol::types::{v3f, MapNode};
+use luanti_protocol::types::MapNode;
 use azalea_client::Event;
 use azalea::core::{aabb::AABB, position::Vec3};
 use azalea::registry::{EntityKind, Registry};
@@ -21,6 +21,8 @@ use std::path::PathBuf;
 use std::io::Read;
 use rand::Rng;
 use mt_definitions::EntityMetadata;
+
+use glam::Vec3 as v3f;
 
 // modified version of the liang-barsky line clipping algo
 // adapted to work in 3d and also to return a simple boolean indicating if the line clips at all.

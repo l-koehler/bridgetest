@@ -21,15 +21,20 @@ use luanti_protocol::types::ItemStackMetadata;
 use luanti_protocol::types::NodeMetadata;
 use luanti_protocol::types::ObjectProperties;
 use luanti_protocol::types::StringVar;
-use mt_definitions::{HeartDisplay, FoodDisplay, Dimensions, EntityMetadata, V3F_ZERO};
+use mt_definitions::{HeartDisplay, FoodDisplay, Dimensions, EntityMetadata};
 use luanti_protocol::peer::PeerError;
+
+use glam::Vec2 as v2f;
+use glam::Vec3 as v3f;
+use glam::I16Vec2 as v2i16;
+use glam::I16Vec3 as v3i16;
 
 use azalea::registry::EntityKind;
 use luanti_protocol::commands::server_to_client::ToClientCommand;
 use luanti_protocol::commands::server_to_client;
 use luanti_protocol::LuantiConnection;
 use luanti_protocol::wire;
-use luanti_protocol::types::{v3s16, v3f, v2f, MapNodesBulk, MapNode, MapBlock, NodeMetadataList, AddedObject, GenericInitData, ActiveObjectCommand, SColor, aabb3f, v2s16, InventoryEntry, InventoryList, ItemStackUpdate, ItemStack };
+use luanti_protocol::types::{MapNodesBulk, MapNode, MapBlock, NodeMetadataList, AddedObject, GenericInitData, ActiveObjectCommand, SColor, aabb3f, InventoryEntry, InventoryList, ItemStackUpdate, ItemStack };
 
 use azalea_client::{PlayerInfo, Client, inventory};
 use azalea_client::chat::ChatPacket;
@@ -113,7 +118,7 @@ pub async fn death(conn: &LuantiConnection, mt_server_state: &mut MTServerState,
     let deathscreen = ToClientCommand::Deathscreen(
         Box::new(server_to_client::DeathscreenSpec {
             set_camera_point_target: false,
-            camera_point_target: V3F_ZERO
+            camera_point_target: v3f::ZERO
         })
     );
 
@@ -164,7 +169,7 @@ pub async fn edit_healthbar(mode: HeartDisplay, num: u32, conn: &LuantiConnectio
         );
         conn.send(set_bar_texture).unwrap();
     }
-    if num < 21 {
+    if num < 20 {
         let set_bar_number = ToClientCommand::Hudchange(
             Box::new(server_to_client::HudchangeCommand {
                 server_id: settings::HEALTHBAR_ID,
@@ -426,7 +431,7 @@ pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &Lua
     
     let addblockcommand = ToClientCommand::Blockdata(
         Box::new(server_to_client::BlockdataSpec {
-            pos: v3s16 { x: x_pos, y: y_pos, z: z_pos },
+            pos: v3i16 { x: x_pos, y: y_pos, z: z_pos },
             block: MapBlock {
                  is_underground: (y_pos <= 4), // below 64, likely?
                  day_night_diff: false,
@@ -676,11 +681,11 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntity>, conn: &m
                                 z: 1.0,
                             },
                             textures,
-                            spritediv: v2s16 {
+                            spritediv: v2i16 {
                                 x: 1,
                                 y: 1,
                             },
-                            initial_sprite_basepos: v2s16 {
+                            initial_sprite_basepos: v2i16 {
                                 x: 0,
                                 y: 0,
                             },
@@ -689,12 +694,7 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntity>, conn: &m
                             automatic_rotate: 0.0,
                             mesh: String::from(mesh),
                             colors: vec![
-                                SColor {
-                                    r: 255,
-                                    g: 255,
-                                    b: 255,
-                                    a: 255,
-                                },
+                                SColor::new(255, 255, 255, 255)
                             ],
                             collide_with_objects: false,
                             stepheight: 0.0,
@@ -702,12 +702,7 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntity>, conn: &m
                             automatic_face_movement_dir_offset: 0.0,
                             backface_culling: true,
                             nametag: String::from(""), // type_str,
-                            nametag_color: SColor {
-                                r: 255,
-                                g: 255,
-                                b: 255,
-                                a: 255,
-                            },
+                            nametag_color: SColor::new(255, 255, 255, 255),
                             automatic_face_movement_max_rotation_per_sec: 360.0,
                             infotext: String::from(""),
                             wield_item: String::from(""),
@@ -999,7 +994,7 @@ pub async fn blockupdate(packet_data: &ClientboundBlockUpdate, conn: &mut Luanti
     let BlockPos { x, y, z } = pos;
     let addnodecommand = ToClientCommand::Addnode(
         Box::new(server_to_client::AddnodeSpec {
-            pos: v3s16 { x: *x as i16, y: *y  as i16, z: *z as i16 },
+            pos: v3i16 { x: *x as i16, y: *y  as i16, z: *z as i16 },
             node: utils::state_to_node(*block_state, cave_air_glow),
             keep_metadata: false
         })

@@ -12,13 +12,15 @@ use azalea_client::inventory::Inventory;
 use azalea::container::ContainerClientExt;
 
 use luanti_protocol::LuantiConnection;
-use luanti_protocol::commands::client_to_server::{TSChatMessageSpec, PlayerPosCommand, InteractSpec, PlayeritemSpec, InventoryActionSpec};
-use luanti_protocol::types::{v3s16, InventoryAction, PlayerPos, PointedThing};
+use luanti_protocol::commands::client_to_server::{TSChatMessageSpec, PlayerPosCommand, InteractSpec, PlayerItemSpec, InventoryActionSpec};
+use luanti_protocol::types::{InventoryAction, PlayerPos, PointedThing};
 use luanti_protocol::types;
 use crate::MTServerState;
 
 use std::sync::{Arc, Mutex};
 use std::f32::consts::PI;
+
+use glam::I16Vec3 as v3i16;
 
 pub fn send_message(mc_client: &Client, specbox: Box<TSChatMessageSpec>) {
     utils::logger("[Minetest] C->S Forwarding Message sent by client", 1);
@@ -153,9 +155,9 @@ pub fn attack_crosshair(mc_client: &mut Client) {
     }
 }
 
-pub fn set_mainhand(mc_client: &mut Client, specbox: Box<PlayeritemSpec>) {
+pub fn set_mainhand(mc_client: &mut Client, specbox: Box<PlayerItemSpec>) {
     // hotbar_index: 0..8, first..last slot of hotbar
-    let PlayeritemSpec { item: hotbar_index } = *specbox;
+    let PlayerItemSpec { item: hotbar_index } = *specbox;
     let mut ecs = mc_client.ecs.lock();
     let mut inventory = mc_client.query::<&mut Inventory>(&mut ecs);
     inventory.selected_hotbar_slot = hotbar_index as u8;
@@ -200,7 +202,7 @@ async fn node_rightclick(conn: &mut LuantiConnection, mc_client: &mut Client, un
     }
 }
 
-async fn interact_node(conn: &mut LuantiConnection, action: types::InteractAction, under_surface: v3s16, above_surface: v3s16, mc_client: &mut Client, mt_server_state: &mut MTServerState) {
+async fn interact_node(conn: &mut LuantiConnection, action: types::InteractAction, under_surface: v3i16, above_surface: v3i16, mc_client: &mut Client, mt_server_state: &mut MTServerState) {
     let under_blockpos = azalea::BlockPos { x: under_surface.x.into(), y: under_surface.y.into(), z: under_surface.z.into() };
     let above_blockpos = azalea::BlockPos { x: above_surface.x.into(), y: above_surface.y.into(), z: above_surface.z.into() };
     match action {

@@ -4,29 +4,28 @@
 
 use luanti_protocol::commands::{client_to_server, client_to_server::ToServerCommand};
 use luanti_protocol::commands::{server_to_client, server_to_client::ToClientCommand};
-use luanti_protocol::types::{ v2f, v3f, v2s32, AlignStyle, BlockPos, NodeBox, ContentFeatures, DrawType, Inventory, SimpleSoundSpec, TileAnimationParams, TileDef, InventoryEntry, InventoryList, ItemStackUpdate, SColor};
+use luanti_protocol::types::{ AlignStyle, BlockPos, NodeBox, ContentFeatures, DrawType, Inventory, SimpleSoundSpec, TileAnimationParams, TileDef, InventoryEntry, InventoryList, ItemStackUpdate, SColor};
 use luanti_protocol::commands::server_to_client::{ItemDef, ItemAlias, ItemdefList, ItemType};
 use luanti_protocol::types;
 
 use minecraft_data_rs::Api;
 use minecraft_data_rs::models;
-
 use config::Config;
 use bimap::BiHashMap;
 
 use std::path::PathBuf;
+// same fucking name as in azalea :sob:
+// i am lazy, so this gets renamed to the old minetest-protocol types
+// except for "v2s32", inconsistent with rust u/i for unsigned/signed. renamed to "v2i32"
+use glam::Vec2 as v2f;
+use glam::Vec3 as v3f;
+use glam::IVec2 as v2i32;
 
 use crate::{ utils, MTServerState };
 use crate::settings;
 
 use azalea::registry::{Block, EntityKind, MenuKind};
 use azalea::Vec3;
-
-pub const V3F_ZERO: v3f = v3f {
-    x: 0.0,
-    y: 0.0,
-    z: 0.0
-};
 
 #[derive(Clone)]
 pub struct EntityMetadata {
@@ -89,7 +88,6 @@ pub const fn get_y_bounds(dimension: &Dimensions) -> (i16, i16) {
         Dimensions::Custom => (-64, 320)
     }
 }
-
 pub fn get_container_formspec(container: &MenuKind, title: &str) -> String {
     // TODO: Sanitize the title, currently someone could name a chest "hi]list[...]" to break a lot of stuff.
     match container {
@@ -157,82 +155,27 @@ pub fn get_sky_stuff() -> [ToClientCommand; 5] {
         ToClientCommand::SetSky(
             Box::new(server_to_client::SetSkyCommand {
                 params: server_to_client::SkyboxParams {
-                    bgcolor: SColor {
-                        r: 255,
-                        g: 255,
-                        b: 255,
-                        a: 255,
-                    },
+                    bgcolor: SColor::new(255, 255, 255, 255),
                     clouds: true,
-                    fog_sun_tint: SColor {
-                        r: 255,
-                        g: 255,
-                        b: 95,
-                        a: 51,
-                    },
-                    fog_moon_tint: SColor {
-                        r: 255,
-                        g: 255,
-                        b: 255,
-                        a: 255,
-                    },
+                    fog_sun_tint: SColor::new(255, 255, 95, 51),
+                    fog_moon_tint: SColor::new(255, 255, 255, 255),
                     fog_tint_type: String::from("custom"),
                     data: server_to_client::SkyboxData::Color (
                         types::SkyColor {
-                            day_sky: SColor {
-                                r: 255,
-                                g: 124,
-                                b: 163,
-                                a: 255,
-                            },
-                            day_horizon: SColor {
-                                r: 255,
-                                g: 192,
-                                b: 216,
-                                a: 255,
-                            },
-                            dawn_sky: SColor {
-                                r: 255,
-                                g: 124,
-                                b: 163,
-                                a: 255,
-                            },
-                            dawn_horizon: SColor {
-                                r: 255,
-                                g: 192,
-                                b: 216,
-                                a: 255,
-                            },
-                            night_sky: SColor {
-                                r: 255,
-                                g: 0,
-                                b: 0,
-                                a: 0,
-                            },
-                            night_horizon: SColor {
-                                r: 255,
-                                g: 74,
-                                b: 103,
-                                a: 144,
-                            },
-                            indoors: SColor {
-                                r: 255,
-                                g: 192,
-                                b: 216,
-                                a: 255,
-                            },
+                            day_sky: SColor::new(255, 124, 163, 255),
+                            day_horizon: SColor::new(255, 192, 216, 255),
+                            dawn_sky: SColor::new(255, 124, 163, 255),
+                            dawn_horizon: SColor::new(255, 192, 216, 255),
+                            night_sky: SColor::new(255, 0, 0, 0),
+                            night_horizon: SColor::new(255, 74, 103, 144),
+                            indoors: SColor::new(255, 192, 216, 255)
                         },
                     ),
                     r#type: String::from(""), // TODO
                     body_orbit_tilt: 0.0,
                     fog_distance: i16::MAX,
                     fog_start: f32::MAX,
-                    fog_color: SColor {
-                        r: 0,
-                        g: 0,
-                        b: 0,
-                        a: 255
-                    }
+                    fog_color: SColor::new(0, 0, 0, 255)
                 }
             })
         ),
@@ -263,12 +206,7 @@ pub fn get_sky_stuff() -> [ToClientCommand; 5] {
                 stars: types::StarParams {
                     visible: true,
                     count: 1000,
-                    starcolor: types::SColor {
-                        r: 105,
-                        g: 235,
-                        b: 235,
-                        a: 255,
-                    },
+                    starcolor: SColor::new(105, 235, 235, 255),
                     scale: 1.0,
                     day_opacity: Some(0.0)
                 }
@@ -363,7 +301,7 @@ pub fn add_healthbar() -> ToClientCommand {
                 },
             ),
             size: Some(
-                v2s32 {
+                v2i32 {
                     x: 24,
                     y: 24,
                 },
@@ -411,7 +349,7 @@ pub fn add_foodbar() -> ToClientCommand {
                 },
             ),
             size: Some(
-                v2s32 {
+                v2i32 {
                     x: 24,
                     y: 24,
                 },
@@ -459,7 +397,7 @@ pub fn add_airbar() -> ToClientCommand {
                 },
             ),
             size: Some(
-                v2s32 {
+                v2i32 {
                     x: 24,
                     y: 24
                 }
@@ -501,7 +439,7 @@ pub fn add_subtitlebox() -> ToClientCommand {
             },
             world_pos: None,
             size: Some(
-                v2s32 {
+                v2i32 {
                     x: 24,
                     y: 24,
                 },
@@ -671,12 +609,7 @@ pub fn generate_itemdef(name: &str, item: models::item::Item, inventory_image: &
         sound_place_failed: simplesound_placeholder,
         range: 5.0,
         palette_image: String::from(""),
-        color: types::SColor {
-            r: 100,
-            g: 70,
-            b: 85,
-            a: 20,
-        },
+        color: SColor::new(100, 70, 85, 20),
         inventory_overlay: String::from(""),
         wield_overlay: String::from(""),
         short_description: Some(String::from("Proxy fucked up, sorry!")),
@@ -748,12 +681,7 @@ pub async fn get_node_def_command(settings: &Config, mt_server_state: &mut MTSer
         waving: 0,
         connect_sides: 0,
         connects_to_ids: Vec::new(),
-        post_effect_color: types::SColor {
-            r: 100,
-            g: 70,
-            b: 85,
-            a: 20,
-        },
+        post_effect_color: SColor::new(100, 70, 85, 20),
         leveled: 0,
         light_propagates: 15,
         sunlight_propagates: 15,
@@ -1137,12 +1065,7 @@ pub fn generate_contentfeature(block: azalea::registry::Block, texture_pack_res:
         waving: 0,
         connect_sides: 0,
         connects_to_ids: Vec::new(),
-        post_effect_color: types::SColor {
-            r: 100,
-            g: 70,
-            b: 85,
-            a: 20,
-        },
+        post_effect_color: SColor::new(100, 70, 85, 20),
         leveled: 0,
         light_propagates: sunlight_propagates,
         sunlight_propagates,

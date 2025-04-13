@@ -26,6 +26,8 @@ use azalea::protocol::packets::game::ClientboundGamePacket;
 use config::Config;
 use std::net::SocketAddr;
 
+use glam::Vec3 as v3f;
+
 pub async fn mt_auto(command: ToServerCommand, mt_conn: &mut LuantiConnection, mc_client: &mut azalea::Client, mt_server_state: &mut MTServerState) {
     match command {
         ToServerCommand::Init(_) => utils::logger("[Minetest] Client sent Init, but handshake already done!", 2),
@@ -36,9 +38,9 @@ pub async fn mt_auto(command: ToServerCommand, mt_conn: &mut LuantiConnection, m
         ToServerCommand::Playerpos(specbox) => serverbound_translator::playerpos(mc_client, specbox, mt_server_state).await,
         ToServerCommand::TSChatMessage(specbox) => serverbound_translator::send_message(mc_client, specbox),
         ToServerCommand::Interact(specbox) => serverbound_translator::interact_generic(mt_conn, mc_client, specbox, mt_server_state).await,
-        ToServerCommand::Playeritem(specbox) => serverbound_translator::set_mainhand(mc_client, specbox),
+        ToServerCommand::PlayerItem(specbox) => serverbound_translator::set_mainhand(mc_client, specbox),
         ToServerCommand::InventoryAction(specbox) => serverbound_translator::inventory_generic(mc_client, mt_conn, specbox, mt_server_state).await,
-        ToServerCommand::Gotblocks(_) => (), // Gotblocks just confirms to the server that blocks were received
+        ToServerCommand::GotBlocks(_) => (), // Gotblocks just confirms to the server that blocks were received
         _ => utils::logger(&format!("[Minetest] Got unimplemented command, dropping {}", command.command_name()), 2) // Drop packet if unable to match
     }
 }
@@ -113,7 +115,7 @@ pub async fn handshake(command: ToServerCommand, conn: &mut LuantiConnection, mt
         panic!("handshake() got called with non-init packet!")
     }
 
-    let mut player_name = init_command.player_name;
+    let mut player_name = init_command.user_name;
     // if the name is "random", the random result only affects the MC server. the MT client will think the name is literal "random".
     mt_server_state.this_player.0 = player_name.clone();
     if player_name == "random" {
@@ -126,9 +128,9 @@ pub async fn handshake(command: ToServerCommand, conn: &mut LuantiConnection, mt
     // Send S->C Hello
     let hello_command = ToClientCommand::Hello(
         Box::new(server_to_client::HelloSpec {
-            serialization_ver: 29, // as per https://docs.rs/minetest-protocol/0.1.4/src/luanti_protocol/wire/types.rs.html#2256-2262
+            serialization_version: 29, // as per https://docs.rs/minetest-protocol/0.1.4/src/luanti_protocol/wire/types.rs.html#2256-2262
             compression_mode: 1,
-            proto_ver: 44,
+            protocol_version: 44,
             auth_mechs: types::AuthMechsBitset {
                 legacy_password: false,
                 srp: false,
@@ -146,7 +148,7 @@ pub async fn handshake(command: ToServerCommand, conn: &mut LuantiConnection, mt
     // Send S->C AuthAccept
     let auth_accept_command = ToClientCommand::AuthAccept(
         Box::new(server_to_client::AuthAcceptSpec {
-            player_pos: types::v3f {
+            player_pos: v3f {
                 // TODO: Sane defaults are impossible here
                 // Teleport the player as soon as DefaultSpawnLocation is recieved or something?
                  x: 0.0,

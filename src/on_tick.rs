@@ -1,4 +1,3 @@
-use luanti_protocol::types::v3f;
 use luanti_protocol::LuantiConnection;
 use luanti_protocol::commands::server_to_client::{self, ActiveObjectMessage, ToClientCommand};
 use azalea_client::Client;
@@ -9,10 +8,11 @@ use azalea::world::MinecraftEntityId;
 
 use crate::MTServerState;
 use crate::clientbound_translator;
-use crate::mt_definitions::V3F_ZERO;
 use std::time::{Duration, Instant};
 use luanti_protocol::types;
 use crate::settings;
+
+use glam::Vec3 as v3f;
 
 pub async fn server(mt_conn: &mut LuantiConnection, mc_client: &Client, mt_server_state: &mut MTServerState) {
     if mt_server_state.has_moved_since_sync {
@@ -63,7 +63,7 @@ pub async fn server(mt_conn: &mut LuantiConnection, mc_client: &Client, mt_serve
                     types::AOCUpdatePosition {
                         position: utils::vec3_to_v3f(position, 0.1),
                         velocity: utils::vec3_to_v3f(&physics.velocity, 0.0025),
-                        acceleration: V3F_ZERO,
+                        acceleration: v3f::ZERO,
                         rotation: v3f {
                             x: look_direction.x_rot,
                             y: look_direction.y_rot,
@@ -98,7 +98,7 @@ pub async fn server(mt_conn: &mut LuantiConnection, mc_client: &Client, mt_serve
                 types::AOCUpdatePosition {
                     position,
                     velocity,
-                    acceleration: V3F_ZERO,
+                    acceleration: v3f::ZERO,
                     rotation: v3f {
                         x: r.0,
                         y: r.1,
