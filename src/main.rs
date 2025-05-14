@@ -19,7 +19,6 @@ use azalea::registry::BlockEntityKind;
 use std::sync::{Mutex, Arc};
 use bimap::BiMap;
 use std::collections::HashMap;
-use bimap::BiHashMap;
 use config::Config;
 use std::path::{PathBuf, Path};
 use std::fs::File;
@@ -30,7 +29,6 @@ use std::time::Instant;
 #[tokio::main]
 async fn main() {
     let settings: Config = load_config();
-    textures::validate_texture_pack(&settings).await;
     start_client_handler(settings).await;
 }
 
@@ -80,7 +78,7 @@ pub struct MTServerState {
     // used to only attack on the rising edge, not constantly
     previous_dig_held: bool,
     
-    path_name_map: BiHashMap<String, TextureBlob>, // "minecraft:thing" <-> TextureBlob mapping (TextureBlob holds relative paths)
+    path_name_map: HashMap<String, TextureBlob>, // "minecraft:thing" -> TextureBlob mapping (TextureBlob holds relative paths)
     subtitles: Vec<(String, Instant)>,
     prev_subtitle_string: String,
 }
@@ -122,7 +120,7 @@ async fn start_client_handler(settings: Config) {
         previous_dig_held: false,
         subtitles: Vec::new(),
         prev_subtitle_string: String::from(""),
-        path_name_map: BiHashMap::new(),
+        path_name_map: HashMap::new(),
     };
 
     // Wait for a client to join

@@ -1,21 +1,20 @@
 // code to get media to the client
-use bimap::BiHashMap;
 use luanti_protocol::commands::client_to_server;
 use luanti_protocol::commands::{server_to_client, server_to_client::ToClientCommand};
 use luanti_protocol::types::{MediaAnnouncement, MediaFileData};
-use std::path::{PathBuf, Path};
+use std::collections::HashMap;
+use std::path::PathBuf;
 use std::fs;
-use config::Config;
-use std::io::{Read, Write, Cursor};
+use std::io::Read;
 use sha1::{Sha1, Digest};
 use base64::{Engine, engine::general_purpose};
 use serde_json;
 
 use crate::{utils, MTServerState, mt_definitions::TextureBlob};
 
-pub fn generate_map() -> BiHashMap<String, TextureBlob> {
+pub fn generate_map() -> HashMap<String, TextureBlob> {
     // minecraft:thing -> TextureBlob::*
-    let mut path_name_map: BiHashMap<String, TextureBlob> = BiHashMap::new();
+    let mut path_name_map: HashMap<String, TextureBlob> = HashMap::new();
     // paths relative to "bridgetest/textures/assets/minecraft/textures/"
     let item_mapping = include_bytes!("../extra_data/item_texture_map.json");
     let block_mapping = include_bytes!("../extra_data/block_texture_map.json");
@@ -28,27 +27,42 @@ pub fn generate_map() -> BiHashMap<String, TextureBlob> {
         );
     };
     for mapping in item_mapping_json.as_object().unwrap().iter() {
-        let insert: TextureBlob;
-        if path_name_map.contains_left(mapping.0) {
-            let old = path_name_map.get_by_left(mapping.0).unwrap();
-            insert = TextureBlob::BlockItem(
+        let texture: TextureBlob;
+        if path_name_map.contains_key(mapping.0) {
+            let old = path_name_map.get(mapping.0).unwrap();
+            texture = TextureBlob::BlockItem(
                 String::from(old.get_texture()),
                 mapping.1.as_str().unwrap().to_owned()
             )
         } else {
-            insert = TextureBlob::Item(mapping.1.as_str().unwrap().to_owned())
+            texture = TextureBlob::Item(mapping.1.as_str().unwrap().to_owned())
         }
         path_name_map.insert(
             String::from(mapping.0),
-            insert
+            texture
         );
     };
+    // air.png is provided by the minetest engine, we don't have to send it
+    path_name_map.insert(
+        String::from("minecraft:air"), TextureBlob::Block(String::from("air.png"))
+    );
+    path_name_map.insert(
+        String::from("minecraft:void_air"), TextureBlob::Block(String::from("air.png"))
+    );
+    path_name_map.insert(
+        String::from("minecraft:cave_air"), TextureBlob::Block(String::from("air.png"))
+    );
     return path_name_map
 }
 
-pub fn get_announcement(path_name_map: &BiHashMap<String, TextureBlob>) -> ToClientCommand {
+pub fn get_announcement(path_name_map: &HashMap<String, TextureBlob>) -> ToClientCommand {
     let mut announcement_vec: Vec<MediaAnnouncement> = Vec::new();
     for texture in path_name_map.iter() {
+        // engine provides air.png
+        // skip last 3 entries (air, void/cave air)
+        if *texture.1 == TextureBlob::Block(String::from("air.png")) {
+            continue;
+        }
         let sha1_base64 = get_sha1_base64(&PathBuf::from(&texture.1.get_texture()), true);
         announcement_vec.push(MediaAnnouncement {
             name: texture.0.to_string(),
@@ -67,10 +81,8 @@ fn get_sha1_base64(path: &PathBuf, is_rel_texture: bool) -> String {
     let mut file_handle;
     let metadata;
     if is_rel_texture {
-        println!("{:?}", path);
-        let textures_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/assets/minecraft/textures/");
-        file_handle = fs::File::open(textures_folder.join(path)).unwrap();
-        metadata = fs::metadata(textures_folder.join(path)).expect("Unable to read File Metadata! (Check Permissions?)");
+        file_handle = fs::File::open(utils::make_abs_path(path)).unwrap();
+        metadata = fs::metadata(utils::make_abs_path(path)).expect("Unable to read File Metadata! (Check Permissions?)");
     } else {
         file_handle = fs::File::open(path).unwrap();
         metadata = fs::metadata(path).expect("Unable to read File Metadata! (Check Permissions?)");
@@ -89,7 +101,7 @@ pub fn handle_request(mt_server_state: &MTServerState, specbox: Box<client_to_se
     let client_to_server::RequestMediaSpec { files } = *specbox;
     let mut file_data: Vec<MediaFileData> = Vec::new();
     for file_name in files {
-        let path = &mt_server_state.path_name_map.get_by_left(&file_name).unwrap().get_texture();
+        let path = &mt_server_state.path_name_map.get(&file_name).unwrap().get_texture();
         if file_name.starts_with("model:") {
             // handle models separately, these are included in the binary
             // remove the "./model/" prefix to the path
@@ -169,59 +181,4 @@ pub fn handle_request(mt_server_state: &MTServerState, specbox: Box<client_to_se
             files: file_data
         })
     )
-}
-
-
-pub async fn validate_texture_pack(settings: &Config) -> bool {
-    // check (and possibly fix) the texture pack
-    let texture_pack_url = settings.get_string("texture_pack_url").expect("Failed to read config!");
-    let mut do_download: bool = false;
-    // ensure the data folder exists
-    let data_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/"); // if this fails, your system got bigger issues
-    utils::possibly_create_dir(&data_folder);
-    // check if url.dsv exists
-    if !Path::new(data_folder.join("url.dsv").as_path()).exists() {
-        // url.dsv does not exist
-        utils::logger("url.dsv is missing, creating it.", 1);
-        let dsv_content = format!("{}:{}", chrono::Utc::now().timestamp(), texture_pack_url);
-        let mut url_dsv = fs::File::create(data_folder.join("url.dsv").as_path()).expect("Creating url.dsv failed!");
-        url_dsv.write_all(dsv_content.as_bytes()).expect("Writing data to url.dsv failed!");
-        // we need to re-download in this case
-        do_download = true;
-    } else {
-        // url.dsv does exist
-        // example dsv_content = "1708635188:https://database.faithfulpack.net/packs/32x-Java/December%202023/Faithful%2032x%20-%201.20.4.zip"
-        let dsv_content = fs::read_to_string(data_folder.join("url.dsv").as_path()).expect("Failed to read url.dsv, but it exists! (Check permissions?)");
-        if !dsv_content.contains(&texture_pack_url) {
-            // url.dsv does not contain our pack URL, so we need to re-download.
-            utils::logger("url.dsv does exist, but contains the wrong URL. re-writing it.", 1);
-            let new_dsv_content = format!("{}:{}", chrono::Utc::now().timestamp(), texture_pack_url);
-            let mut url_dsv = fs::File::open(data_folder.join("url.dsv").as_path()).expect("Opening url.dsv failed!");
-            url_dsv.write_all(new_dsv_content.as_bytes()).expect("Writing data to url.dsv failed!");
-            do_download = true;
-        } else {
-            utils::logger(&format!("Found url.dsv at {}", data_folder.join("url.dsv").display()), 1)
-        }
-    };
-    if do_download {
-        if !utils::ask_confirm("No texture pack found! Download faithfulpack.net? [Y/N]: ") {
-            // the user denied downloading the pack.
-            let config_file_path: PathBuf = dirs::config_dir().unwrap().join("bridgetest.toml");
-            utils::logger(&format!("A texture pack is needed for this program to run.
-    You can change what pack will be downloaded by editing the URL in {}", config_file_path.display()), 3);
-            std::process::exit(0);
-        } else {
-            utils::logger("Preparing texture pack -- This might take a while, depending on your internet speed.", 1);
-            if Path::new(data_folder.join("textures/").as_path()).exists() {
-                utils::logger("Detected old texture folder in data_dir, deleting it.", 1);
-                let _ = fs::remove_dir_all(data_folder.join("textures/").as_path()); // TODO: rn assuming this works
-            }
-            utils::logger("Downloading textures.zip (into memory)", 1);
-            let resp = reqwest::get(texture_pack_url).await.expect("Failed to request texture pack!");
-            let texture_pack_data = resp.bytes().await.expect("Recieved invalid response! This might be caused by not supplying a direct download link.");
-            utils::logger("Unpacking textures.zip to data_dir/textures", 1);
-            zip_extract::extract(Cursor::new(texture_pack_data), data_folder.join("textures/").as_path(), true).expect("Failed to extract! Check Permissions!");
-        }
-    } // else the textures are already installed
-    do_download
 }

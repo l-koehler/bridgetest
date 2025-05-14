@@ -15,12 +15,8 @@ use azalea::{BlockPos, Vec3};
 use azalea::core::delta::PositionDelta8;
 use azalea::core::position::ChunkBlockPos;
 use azalea::entity::{EntityDataValue, EntityDataItem};
-use luanti_protocol::services::server;
-use luanti_protocol::types::AbsBlockPos;
 use luanti_protocol::types::ItemStackMetadata;
-use luanti_protocol::types::NodeMetadata;
 use luanti_protocol::types::ObjectProperties;
-use luanti_protocol::types::StringVar;
 use mt_definitions::{HeartDisplay, FoodDisplay, Dimensions, EntityMetadata};
 use luanti_protocol::peer::PeerError;
 
@@ -33,14 +29,15 @@ use azalea::registry::EntityKind;
 use luanti_protocol::commands::server_to_client::ToClientCommand;
 use luanti_protocol::commands::server_to_client;
 use luanti_protocol::LuantiConnection;
-use luanti_protocol::wire;
-use luanti_protocol::types::{MapNodesBulk, MapNode, MapBlock, NodeMetadataList, AddedObject, GenericInitData, ActiveObjectCommand, SColor, aabb3f, InventoryEntry, InventoryList, ItemStackUpdate, ItemStack };
+use luanti_protocol::types::{MapNodesBulk, TransferrableMapBlock, NodeMetadataList, AddedObject, GenericInitData, ActiveObjectCommand, SColor, aabb3f, InventoryEntry, InventoryList, ItemStackUpdate, ItemStack };
+use luanti_core::MapNode;
+use luanti_core::ContentId;
+
 
 use azalea_client::{PlayerInfo, Client, inventory};
 use azalea_client::chat::ChatPacket;
 use azalea_language;
 
-use sha1::digest::typenum::Abs;
 use tokio::sync::mpsc::UnboundedReceiver;
 use azalea_client::Event;
 use azalea::protocol::packets::game::{ClientboundGamePacket,
@@ -59,7 +56,6 @@ use azalea::protocol::packets::game::{ClientboundGamePacket,
     c_block_update::ClientboundBlockUpdate,
     c_entity_event::ClientboundEntityEvent,
     c_set_entity_data::ClientboundSetEntityData,
-    c_block_destruction::ClientboundBlockDestruction,
     c_block_entity_data::ClientboundBlockEntityData,
     c_open_screen::ClientboundOpenScreen,
     c_sound::ClientboundSound,
@@ -411,18 +407,8 @@ pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &Lua
      * z=0: 0,0,0, 0,0,0, 0,0,0, /
      */
     utils::logger(&format!("[Minetest] S->C Initializing 16^3 nodes at {}/{}/{}", x_pos, y_pos, z_pos), 0);
-    // TODO this does not support actual metadata
-    let mut metadata_vec = Vec::new();
-    // subcoordinates within the chunk
-    for sub_z in 0..15 {
-        for sub_y in 0..15 {
-            for sub_x in 0..15 {
-                metadata_vec.push(mt_definitions::get_metadata_placeholder(sub_x, sub_y, sub_z)) //(x_pos*16+sub_x) as u16, (y_pos*16+sub_y) as u16, (z_pos*16+sub_z) as u16)
-            }
-        }
-    }
     
-    let mut nodes: [MapNode; 4096] = [MapNode{ param0: 126, param1: 0, param2: 0 }; 4096];
+    let mut nodes: [MapNode; 4096] = [MapNode{ content_id: ContentId::AIR, param1: 0, param2: 0 }; 4096];
     let mut state: BlockState;
     for state_arr_i in 0..4095 {
         state = state_arr[state_arr_i];        
@@ -432,9 +418,9 @@ pub async fn initialize_16node_chunk(x_pos:i16, y_pos:i16, z_pos:i16, conn: &Lua
     let addblockcommand = ToClientCommand::Blockdata(
         Box::new(server_to_client::BlockdataSpec {
             pos: v3i16 { x: x_pos, y: y_pos, z: z_pos },
-            block: MapBlock {
+            block: TransferrableMapBlock {
                  is_underground: (y_pos <= 4), // below 64, likely?
-                 day_night_diff: false,
+                 day_night_differs: false,
                  generated: false, // server does not tell us that
                  lighting_complete: Some(65535),
                  nodes: MapNodesBulk {
@@ -870,7 +856,7 @@ pub async fn entity_setmotion(packet_data: &ClientboundSetEntityMotion, mt_serve
     mt_server_state.entities_update_scheduled.push(*id);
 }
 
-pub async fn entity_event(packet_data: &ClientboundEntityEvent, conn: &mut LuantiConnection, mt_server_state: &MTServerState) {
+pub async fn entity_event(packet_data: &ClientboundEntityEvent, _conn: &mut LuantiConnection, mt_server_state: &MTServerState) {
     let ClientboundEntityEvent { entity_id, event_id } = packet_data;
     let Some(metadata_item) = mt_server_state.entity_meta_map.get(entity_id) else {
         utils::logger("[Minecraft] Server sent EntityEvent for unknown ID, skipping", 2);
@@ -1002,12 +988,7 @@ pub async fn blockupdate(packet_data: &ClientboundBlockUpdate, conn: &mut Luanti
     conn.send(addnodecommand).unwrap();
 }
 
-// block destruction overlay stuff
-pub async fn destruction_overlay(_packet_data: &ClientboundBlockDestruction, _conn: &mut LuantiConnection) {
-    // TODO: finish this thing as soon as i figure out how to send overlays
-}
-
-pub async fn open_screen(packet_data: &ClientboundOpenScreen, conn: &mut LuantiConnection, mt_server_state: &mut MTServerState) {
+pub async fn open_screen(packet_data: &ClientboundOpenScreen, conn: &mut LuantiConnection, _mt_server_state: &mut MTServerState) {
     let ClientboundOpenScreen { container_id: _, menu_type, title } = packet_data;
     let form_spec = mt_definitions::get_container_formspec(menu_type, &title.to_string());
     utils::logger("[Minetest] Showing Formspec for opened container", 1);
@@ -1049,7 +1030,7 @@ pub async fn open_screen(packet_data: &ClientboundOpenScreen, conn: &mut LuantiC
 }
 
 
-pub async fn block_entity_data(packet_data: &ClientboundBlockEntityData, conn: &mut LuantiConnection, mt_server_state: &mut MTServerState) {
+pub async fn block_entity_data(packet_data: &ClientboundBlockEntityData, _conn: &mut LuantiConnection, mt_server_state: &mut MTServerState) {
     let ClientboundBlockEntityData { pos, block_entity_type, tag: _ } = packet_data;
     if mt_server_state.container_map.insert((pos.x, pos.y, pos.z), *block_entity_type) != None {
         utils::logger(&format!("[Minecraft] Overwriting Block Entity at {:?}", pos), 2);
@@ -1198,7 +1179,7 @@ pub async fn refresh_inv(mc_client: &Client, mt_conn: &mut LuantiConnection, mt_
 }
 
 // can't figure out how to get "actual" subtitles, so these are just the audio keys mapped to subtitle keys
-pub async fn show_sound(packet_data: &ClientboundSound, conn: &mut LuantiConnection, mt_server_state: &mut MTServerState) {
+pub async fn show_sound(packet_data: &ClientboundSound, _conn: &mut LuantiConnection, mt_server_state: &mut MTServerState) {
     let ClientboundSound { sound, source: _, x: _, y: _, z: _, volume: _, pitch: _, seed: _ } = packet_data;
     utils::logger(&format!("[Minetest] New Subtitle: {:?}", sound), 1);
     let key = sound.to_string().replace("minecraft:", "subtitles.");

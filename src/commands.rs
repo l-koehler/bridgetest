@@ -37,7 +37,7 @@ pub async fn mt_auto(command: ToServerCommand, mt_conn: &mut LuantiConnection, m
         ToServerCommand::TSModchannelMsg(_) => utils::logger("[Minetest] Client sent TSModchannelMsg, this does not exist in MC", 2),
         ToServerCommand::Playerpos(specbox) => serverbound_translator::playerpos(mc_client, specbox, mt_server_state).await,
         ToServerCommand::TSChatMessage(specbox) => serverbound_translator::send_message(mc_client, specbox),
-        ToServerCommand::Interact(specbox) => serverbound_translator::interact_generic(mt_conn, mc_client, specbox, mt_server_state).await,
+        ToServerCommand::Interact(specbox) => serverbound_translator::interact_generic(mc_client, specbox, mt_server_state).await,
         ToServerCommand::PlayerItem(specbox) => serverbound_translator::set_mainhand(mc_client, specbox),
         ToServerCommand::InventoryAction(specbox) => serverbound_translator::inventory_generic(mc_client, mt_conn, specbox, mt_server_state).await,
         ToServerCommand::GotBlocks(_) => (), // Gotblocks just confirms to the server that blocks were received

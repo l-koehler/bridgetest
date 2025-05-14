@@ -16,6 +16,7 @@ chrono = "0.4.34"
 config = "0.14.0"
 dirs = "5.0.1"
 luanti-protocol = { git = "https://github.com/kawogi/luanti-rs.git" }
+luanti-core = { git = "https://github.com/kawogi/luanti-rs.git" }
 reqwest = { version = "0.11.24", features = ["blocking", "json"] }
 sha1 = "0.10.6"
 glam = "0.30.2"

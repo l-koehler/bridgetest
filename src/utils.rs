@@ -7,18 +7,17 @@ use crate::MTServerState;
 use crate::mt_definitions;
 
 use azalea::inventory::ItemStack;
+use luanti_core::ContentId;
 use minecraft_data_rs::models::version::Version;
 use minecraft_data_rs::{api, Api};
 use luanti_protocol::CommandRef;
 use luanti_protocol::CommandDirection;
-use luanti_protocol::types::MapNode;
+use luanti_core::MapNode;
 use azalea_client::Event;
 use azalea::core::{aabb::AABB, position::Vec3};
 use azalea::registry::{EntityKind, Registry};
 use azalea_block::BlockState;
-use std::path::Path;
 use std::path::PathBuf;
-use std::io::Read;
 use rand::Rng;
 use mt_definitions::EntityMetadata;
 
@@ -143,25 +142,24 @@ pub fn texture_from_itemstack(item: &ItemStack, mt_server_state: &MTServerState)
         ItemStack::Empty => String::from("air.png"),
         ItemStack::Present(slot_data) => {
             let item_name = slot_data.kind.to_string();
-            let textures = mt_server_state.path_name_map.get_by_left(&item_name).unwrap();
+            let textures = mt_server_state.path_name_map.get(&item_name).unwrap();
             return String::from(textures.get_texture());
         }
     }
 }
-
 
 pub fn rel_path_exists(rel_path: String) -> bool {
     if rel_path.starts_with("./model/") {
         logger(&format!("rel_path_exists called with include_byte file: {}", rel_path), 2);
         return false
     }
-    let textures_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/assets/minecraft/textures/");
+    let textures_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/");
     let texture: PathBuf = textures_folder.join(rel_path);
     return texture.exists();
 }
 
-pub fn make_abs_path(rel_path: &str) -> PathBuf {
-    let textures_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/assets/minecraft/textures/");
+pub fn make_abs_path(rel_path: &PathBuf) -> PathBuf {
+    let textures_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/");
     return textures_folder.join(rel_path);
 }
 
@@ -183,7 +181,7 @@ pub fn state_to_node(state: BlockState, cave_air_glow: bool) -> MapNode {
     }
     
     MapNode {
-        param0,
+        content_id: ContentId(param0),
         param1,
         param2,
     }
@@ -197,18 +195,6 @@ pub fn vec3_to_v3f(input_vector: &Vec3, scale: f64) -> v3f {
         y: (*yf64/scale) as f32,
         z: (*zf64/scale) as f32
     }
-}
-
-pub fn b3d_sanitize(input_path: String) -> String {
-    input_path
-    .replace("amc_", "")
-    .replace("extra_mobs_", "")
-    .replace("mcl_boats_", "")
-    .replace("mcl_bows_", "")
-    .replace("mcl_chests_", "")
-    .replace("mcl_minecarts_", "")
-    .replace("mcl_", "")
-    .replace("mobs_mc_", "")
 }
 
 pub fn get_colormap(texture: &str) -> Option<(u8, u8, u8)> {
@@ -236,27 +222,6 @@ pub fn get_colormap(texture: &str) -> Option<(u8, u8, u8)> {
     if texture == "block-spruce_leaves.png" { return Some((0x61, 0x99, 0x61)) }
     if texture == "block-lily_pad.png" { return Some((0x20, 0x80, 0x30)) }
     None
-}
-
-pub fn ask_confirm(question: &str) -> bool {
-    println!("{}",question);
-    let mut input = [0];
-    let _ = std::io::stdin().read(&mut input);
-    match char::from_u32(input[0].into()).expect("Failed to read STDIN") {
-        'y' | 'Y' => return true,
-        _ => return false,
-    }
-}
-
-pub fn possibly_create_dir(path: &PathBuf) -> bool {
-    if !Path::new(path.as_path()).exists() {
-        logger(&format!("Creating directory \"{}\"", path.display()), 0);
-        let _ = std::fs::create_dir(path); // TODO check if this worked
-        return true;
-    } else {
-        logger(&format!("Found \"{}\", not creating it", path.display()), 0);
-        return false;
-    }
 }
 
 pub fn show_mt_command(command: &dyn CommandRef) {

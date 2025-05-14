@@ -82,6 +82,10 @@ for model in models:
     if texture_ref.startswith("minecraft:"):
         texture_ref = texture_ref.split(":", 1)[1]
 
+    # very nice easter egg but it is breaking everything
+    if texture_ref == "missingno":
+        continue
+    
     texture_path = f"./{texture_ref}.png"
     mapping[model[0]] = texture_path
 
@@ -89,7 +93,7 @@ for model in models:
 block_mapping_file = Path(__file__).parent.parent/"extra_data/block_texture_map.json"
 print(f"Writing block mapping to: {block_mapping_file}")
 fp = open(block_mapping_file, 'w')
-json.dump(mapping, fp, indent=0)
+json.dump(mapping, fp)
 fp.close()
 
 # do the same stuff for items
@@ -108,10 +112,19 @@ for model_file in sorted(item_model_dir.glob("*.json")):
     if texture_ref.startswith("minecraft:"):
         texture_ref = texture_ref.split(":", 1)[1]
 
+    if texture_ref == "missingno":
+        continue
+    
     texture_path = f"./{texture_ref}.png"
     mapping[item_id] = texture_path
+
+# add missing mappings (deadline-oriented design strikes again)
+mapping["minecraft:compass"] = mapping["minecraft:compass_00"]
+mapping["minecraft:clock"] = mapping["minecraft:clock_00"]
+mapping["minecraft:recovery_compass"] = mapping["minecraft:recovery_compass_00"]
+
 item_mapping_file = Path(__file__).parent.parent/"extra_data/item_texture_map.json"
 print(f"Writing item mapping to: {item_mapping_file}")
 fp = open(item_mapping_file, 'w')
-json.dump(mapping, fp, indent=0)
+json.dump(mapping, fp)
 fp.close()

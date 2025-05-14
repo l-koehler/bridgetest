@@ -2,18 +2,17 @@
 // the functions are actually more like consts but
 // the "String" type cant be a constant so :shrug:
 
-use luanti_protocol::commands::{client_to_server, client_to_server::ToServerCommand};
 use luanti_protocol::commands::{server_to_client, server_to_client::ToClientCommand};
-use luanti_protocol::types::{ AlignStyle, BlockPos, NodeBox, ContentFeatures, DrawType, Inventory, SimpleSoundSpec, TileAnimationParams, TileDef, InventoryEntry, InventoryList, ItemStackUpdate, SColor};
+use luanti_protocol::types::{ AlignStyle, NodeBox, ContentFeatures, DrawType, Inventory, SimpleSoundSpec, TileAnimationParams, TileDef, InventoryEntry, InventoryList, ItemStackUpdate, SColor};
 use luanti_protocol::commands::server_to_client::{ItemDef, ItemAlias, ItemdefList, ItemType};
 use luanti_protocol::types;
 
 use minecraft_data_rs::Api;
 use minecraft_data_rs::models;
 use config::Config;
-use bimap::BiHashMap;
 
-use std::path::PathBuf;
+use std::collections::HashMap;
+
 // same fucking name as in azalea :sob:
 // i am lazy, so this gets renamed to the old minetest-protocol types
 // except for "v2s32", inconsistent with rust u/i for unsigned/signed. renamed to "v2i32"
@@ -202,7 +201,7 @@ pub fn get_sky_stuff() -> [ToClientCommand; 5] {
             Box::new(server_to_client::SetSunSpec {
                 sun: types::SunParams {
                     visible: true,
-                    texture: String::from("environment-sun.png"),
+                    texture: String::from("./environment/sun.png"),
                     tonemap: String::from(""),
                     sunrise: String::from("air.png"),
                     sunrise_visible: true,
@@ -518,22 +517,8 @@ pub fn get_csmrestrictions() -> ToClientCommand {
     )
 }
 
-pub const fn get_metadata_placeholder(x_pos: u16, y_pos: u16, z_pos: u16) -> (BlockPos, types::NodeMetadata) {
-    let blockpos = BlockPos {
-        raw: (16*z_pos + y_pos)*16 + x_pos,
-    };
-    let metadata = types::NodeMetadata {
-        stringvars: vec![],
-        inventory: Inventory {
-            entries: vec![]
-        }
-    };
-    (blockpos, metadata)
-}
-
 // item def stuff
-
-pub async fn get_item_def_command(path_name_map: &BiHashMap<String, TextureBlob>) -> ToClientCommand {
+pub async fn get_item_def_command(path_name_map: &HashMap<String, TextureBlob>) -> ToClientCommand {
     let mc_data_api: Api = utils::compatible_data_api();
     
     // we need food- and placeable IDs to predict right-click behavior of every item
@@ -549,11 +534,15 @@ pub async fn get_item_def_command(path_name_map: &BiHashMap<String, TextureBlob>
     
     let mut mc_name: String;
     let mut texture_name: String;
-    let mut texture_blob: &TextureBlob;
+    let mut texture_blob: TextureBlob;
     let mut item_definitions: Vec<ItemDef> = Vec::new();
     for item in mc_data_api.items.items_array().unwrap() {
-        mc_name = item.name.clone();
-        texture_blob = path_name_map.get_by_left(&mc_name).unwrap();
+        mc_name = format!("minecraft:{}", item.name.clone());
+        if mc_name.ends_with("_spawn_egg") {
+            texture_blob = TextureBlob::Item(String::from("./item/template_spawn_egg.png"));
+        } else {
+            texture_blob = path_name_map.get(&mc_name).unwrap().clone();
+        }
         // set texture name (as relative path)
         texture_name = texture_blob.get_texture().to_owned();
         
@@ -729,11 +718,11 @@ pub async fn get_node_def_command(settings: &Config, mt_server_state: &mut MTSer
         sound_dug: simplesound_placeholder.clone(),
         legacy_facedir_simple: false,
         legacy_wallmounted: false,
-        node_dig_prediction: None,
-        leveled_max: None,
-        alpha: None,
-        move_resistance: None,
-        liquid_move_physics: None
+        node_dig_prediction: String::new(),
+        leveled_max: 0,
+        alpha: types::AlphaMode::Opaque,
+        move_resistance: 0,
+        liquid_move_physics: false
     }));
     
     ToClientCommand::Nodedef(
@@ -749,7 +738,8 @@ pub fn generate_contentfeature(block: azalea::registry::Block, texture_pack_res:
     // If *every* possible state is solid, then walkable=true
     // for light stuff, use the "brightest" state
     // for everything else, do other stuff idk look at the code
-    let texture_blob: &TextureBlob = mt_server_state.path_name_map.get_by_left(&block.to_string()).unwrap();
+    let mc_name = block.to_string();
+    let texture_blob: &TextureBlob = mt_server_state.path_name_map.get(&mc_name).unwrap();
     // without extension, to allow messing around with _top etc
     let texture_base_name = texture_blob.get_texture().to_owned().replace(".png", "");
     let mut liquid_range = 0;
@@ -1022,7 +1012,7 @@ pub fn generate_contentfeature(block: azalea::registry::Block, texture_pack_res:
         red: 100,
         green: 70,
         blue: 85,
-        palette_name: String::from(""),
+        palette_name: String::new(),
         waving: 0,
         connect_sides: 0,
         connects_to_ids: Vec::new(),
@@ -1040,8 +1030,8 @@ pub fn generate_contentfeature(block: azalea::registry::Block, texture_pack_res:
         rightclickable,
         damage_per_second: 0,
         liquid_type_bc: 0,
-        liquid_alternative_flowing: String::from(""),
-        liquid_alternative_source: String::from(""),
+        liquid_alternative_flowing: String::new(),
+        liquid_alternative_source: String::new(),
         liquid_viscosity,
         liquid_renewable,
         liquid_range,
@@ -1055,10 +1045,10 @@ pub fn generate_contentfeature(block: azalea::registry::Block, texture_pack_res:
         sound_dug: simplesound_placeholder.clone(),
         legacy_facedir_simple: false,
         legacy_wallmounted: false,
-        node_dig_prediction: None,
-        leveled_max: None,
-        alpha: None,
-        move_resistance: None,
-        liquid_move_physics: None
+        node_dig_prediction: String::new(),
+        leveled_max: 0,
+        alpha: types::AlphaMode::Opaque,
+        move_resistance: 0,
+        liquid_move_physics: false
     }
 }

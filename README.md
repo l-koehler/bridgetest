@@ -1,21 +1,50 @@
-# THIS IS VERY INCOMPLETE!
-
-#### What is this?
+# Brigetest
 
 This program is supposed to let a unmodified [Minetest](https://github.com/minetest/minetest) client connect to  
 another (mostly) unmodified Minecraft (Java Edition) server.  
-The Java Server version needed is 1.21.4, use [ViaProxy](https://github.com/ViaVersion/ViaProxy) if you need another version.  
+The Java Server version needed is 1.21.5, use [ViaProxy](https://github.com/ViaVersion/ViaProxy) if you need another version.  
 It compiles to a standalone executable, which will listen on 127.0.0.1:30000  
 for minetest and then proxy to a minecraft server specified in CONF_DIR/config.txt  
 
 You need nightly rust to build some dependencies (`rustup default nightly`).  
 
-#### Things that are still missing from a usable version:
+## Installation Instructions
+
+This program needs the minecraft textures.  
+I won't just bundle these due to copyright reasons, but you can get them:  
+
+* From the Minecraft client:  
+  * Get a minecraft jar file (should be something like `minecraft-1.21.4-client.jar`)  
+  * Unpack it (jar files are glorified zip archives)  
+  * Grab the folders in `assets/minecraft/textures/`  
+* or from the internet:  
+  * Go [here](https://mcasset.cloud/1.21.5/assets/minecraft/textures) (mcasset.cloud)  
+  * Click "Download Folder"  
+  * You'll need to unpack that zip file, it contains your textures.  
+
+Regardless of method, you now have a bunch of directories.  
+Checkpoint: These directories should contain a bunch of PNG files.  
+Now, move these so you'll have this folder structure:
+
+```text
+<bridgetest-data-directory>
+|- textures
+|  |- block
+|  |- item
+|  |- entity
+|  |- misc
+|  |- <a pile of other folders>
+```
+
+The `bridgetest-data-directory` is `~/.local/share/bridgetest` on Linux.  
+On Windows, it *should* be `C:\Users\Alice\AppData\Roaming\bridgetest`.  
+
+## Things that are still missing from a usable version
 
 * Crafting (Containers work (mostly, the UI is broken))  
 * Attacking/usable combat in general  
 
-#### Other, smaller, broken things:
+## Other, smaller, broken things
 
 * Rotated Blocks (ex. ladders that have a "side")  
 * Climbable Blocks (ladders/vines)  
@@ -27,7 +56,7 @@ You need nightly rust to build some dependencies (`rustup default nightly`).
   server/client will drift out of sync for up to half a block, at which point the  
   proxy re-positions the client)
 
-#### Even more limitations (ones that don't affect gameplay):
+## Even more limitations (ones that don't affect gameplay)
 
 * The Minecraft server needs to be in offline-mode. I could fix that  
   with `azalea-auth` but most people who might use this probably do not  
@@ -51,23 +80,10 @@ You need nightly rust to build some dependencies (`rustup default nightly`).
 * The proxy can only handle one client at a time, but could probably be  
   rewritten to handle more clients without changing that much.  
 
-#### Attributions
+## Attributions
 
 This repository contains entity models (the .b3d files).  
 These were not made by me and are licensed under the [CC-BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/legalcode.en).  
 The MPL2 License does __NOT__ apply to anything in the `models` directory!  
 The Models are taken from [Mineclonia](https://content.minetest.net/packages/ryvnf/mineclonia/), a minetest mod.  
 This Mod is owned on ContentDB by [ryvnf](https://content.minetest.net/users/ryvnf/), a full list of contributors is [here](https://codeberg.org/mineclonia/mineclonia/src/branch/main/CREDITS.md).  
-
-#### Isn't this violating Microsofts Intellectual Property?
-
-The minecraft protocol is implemented by another library, not by me.  
-
-The textures this server is sending are NOT the official minecraft resources.  
-This repository contains NO textures, but the program will offer to download  
-the [Faithful x32](https://faithfulpack.net/) texture pack ([license](https://faithfulpack.net/license)) if no pack is found.  
-You can change what pack is used by changing the URL the config file  
-(at `~/.config/bridgetest.toml`) points to or by changing the texture pack  
-itself, at `~/.local/share/bridgetest/textures`).  
-(these paths are dirs::local_data_dir and dirs::config_dir, not hardcoded)  
-The 3D-models are also not provided by this program.  
