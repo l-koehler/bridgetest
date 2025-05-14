@@ -9,59 +9,49 @@ use config::Config;
 use std::io::{Read, Write, Cursor};
 use sha1::{Sha1, Digest};
 use base64::{Engine, engine::general_purpose};
+use serde_json;
 
-use crate::{utils, MTServerState};
+use crate::{utils, MTServerState, mt_definitions::TextureBlob};
 
-pub fn generate_map() -> BiHashMap<(PathBuf, String), String> {
-    // generates the bimap (path,basename)<->name
-    // basename is the (possibly ambiguous) name without prefix (with extension)
-    let mut path_name_map: BiHashMap<(PathBuf, String), String> = BiHashMap::new();
-    let textures_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/assets/minecraft/textures/");
-    for dir_prefix in ["block", "particle", "entity", "item", "environment", "gui"] {
-        scan_dir(&mut path_name_map, &textures_folder.join(dir_prefix), 3, dir_prefix);
-    }
-    // add models (which are included in the binary, not as external files)
-    let iterator = fs::read_dir("./models/").expect("Failed to read media");
-    for item in iterator {
-        let name = item.as_ref().unwrap().file_name().into_string().unwrap();
-        if name.ends_with(".b3d") {
-            let path = item.unwrap().path();
-            let basename = utils::b3d_sanitize(name);
-            path_name_map.insert(
-                (path, basename.clone()),
-                format!("{}-{}", "entitymodel", basename)
-            );
-        };
-    }
-    path_name_map
+pub fn generate_map() -> BiHashMap<String, TextureBlob> {
+    // minecraft:thing -> TextureBlob::*
+    let mut path_name_map: BiHashMap<String, TextureBlob> = BiHashMap::new();
+    // paths relative to "bridgetest/textures/assets/minecraft/textures/"
+    let item_mapping = include_bytes!("../extra_data/item_texture_map.json");
+    let block_mapping = include_bytes!("../extra_data/block_texture_map.json");
+    let item_mapping_json: serde_json::Value = serde_json::from_slice(item_mapping).unwrap();
+    let block_mapping_json: serde_json::Value = serde_json::from_slice(block_mapping).unwrap();
+    for mapping in block_mapping_json.as_object().unwrap().iter() {
+        path_name_map.insert(
+            String::from(mapping.0),
+            TextureBlob::Block(mapping.1.as_str().unwrap().to_owned())
+        );
+    };
+    for mapping in item_mapping_json.as_object().unwrap().iter() {
+        let insert: TextureBlob;
+        if path_name_map.contains_left(mapping.0) {
+            let old = path_name_map.get_by_left(mapping.0).unwrap();
+            insert = TextureBlob::BlockItem(
+                String::from(old.get_texture()),
+                mapping.1.as_str().unwrap().to_owned()
+            )
+        } else {
+            insert = TextureBlob::Item(mapping.1.as_str().unwrap().to_owned())
+        }
+        path_name_map.insert(
+            String::from(mapping.0),
+            insert
+        );
+    };
+    return path_name_map
 }
 
-pub fn scan_dir(path_name_map: &mut BiHashMap<(PathBuf, String), String>, dir: &PathBuf, recurse: u8, prefix: &str) {
-    let iterator = fs::read_dir(dir).expect("Failed to read media");
-    for item in iterator {
-        let name = item.as_ref().unwrap().file_name().into_string().unwrap();
-        if item.as_ref().unwrap().file_type().unwrap().is_dir() && recurse != 0 {
-            // recurse one layer deep
-            // also add the dir name to the prefix of these textures
-            // to avoid "boat/birch.png" -> "entity-birch.png", when it should be "entity-boat-birch.png"
-            scan_dir(path_name_map, &item.as_ref().unwrap().path(), recurse-1, &format!("{}-{}", prefix, name));
-        }
-        // ignore non-texture files
-        if name.ends_with(".png") {
-            path_name_map.insert(
-                (item.as_ref().unwrap().path(), name.clone()),
-                format!("{}-{}", prefix, name)
-            );
-        }
-    }
-}
-
-pub fn get_announcement(path_name_map: &BiHashMap<(PathBuf, String), String>) -> ToClientCommand {
+pub fn get_announcement(path_name_map: &BiHashMap<String, TextureBlob>) -> ToClientCommand {
     let mut announcement_vec: Vec<MediaAnnouncement> = Vec::new();
     for texture in path_name_map.iter() {
-        let sha1_base64 = get_sha1_base64(&texture.0.0);
+        let sha1_base64 = get_sha1_base64(&PathBuf::from(&texture.1.get_texture()), true);
         announcement_vec.push(MediaAnnouncement {
-            name: texture.1.to_string(),
+            name: texture.0.to_string(),
             sha1_base64
         });
     }
@@ -73,9 +63,18 @@ pub fn get_announcement(path_name_map: &BiHashMap<(PathBuf, String), String>) ->
     )
 }
 
-fn get_sha1_base64(path: &PathBuf) -> String {
-    let mut file_handle = fs::File::open(&path).unwrap();
-    let metadata = fs::metadata(&path).expect("Unable to read File Metadata! (Check Permissions?)");
+fn get_sha1_base64(path: &PathBuf, is_rel_texture: bool) -> String {
+    let mut file_handle;
+    let metadata;
+    if is_rel_texture {
+        println!("{:?}", path);
+        let textures_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/assets/minecraft/textures/");
+        file_handle = fs::File::open(textures_folder.join(path)).unwrap();
+        metadata = fs::metadata(textures_folder.join(path)).expect("Unable to read File Metadata! (Check Permissions?)");
+    } else {
+        file_handle = fs::File::open(path).unwrap();
+        metadata = fs::metadata(path).expect("Unable to read File Metadata! (Check Permissions?)");
+    }
     let mut buffer = vec![0; metadata.len() as usize];
     file_handle.read_exact(&mut buffer).expect("File Metadata lied about File Size. This should NOT happen, what the hell is wrong with your device?");
     // buffer_hash_b64 is base64encode( sha1hash( buffer ) )
@@ -90,14 +89,11 @@ pub fn handle_request(mt_server_state: &MTServerState, specbox: Box<client_to_se
     let client_to_server::RequestMediaSpec { files } = *specbox;
     let mut file_data: Vec<MediaFileData> = Vec::new();
     for file_name in files {
-        if !mt_server_state.path_name_map.contains_right(&file_name) {
-            utils::logger(&format!("[Minetest] Client requested unknown media: {}", file_name), 3);
-            continue;
-        }
-        let path = &mt_server_state.path_name_map.get_by_right(&file_name).unwrap().0;
-        if file_name.starts_with("entitymodel") {
+        let path = &mt_server_state.path_name_map.get_by_left(&file_name).unwrap().get_texture();
+        if file_name.starts_with("model:") {
             // handle models separately, these are included in the binary
-            let buffer = match path.file_name().unwrap().to_str().unwrap() {
+            // remove the "./model/" prefix to the path
+            let buffer = match path.split_at_checked(8).unwrap().1 {
                 "extra_mobs_cod.b3d" => include_bytes!("../models/extra_mobs_cod.b3d").to_vec(),
                 "extra_mobs_dolphin.b3d" => include_bytes!("../models/extra_mobs_dolphin.b3d").to_vec(),
                 "extra_mobs_glow_squid.b3d" => include_bytes!("../models/extra_mobs_glow_squid.b3d").to_vec(),

@@ -142,44 +142,27 @@ pub fn texture_from_itemstack(item: &ItemStack, mt_server_state: &MTServerState)
     match item {
         ItemStack::Empty => String::from("air.png"),
         ItemStack::Present(slot_data) => {
-            let item_name = slot_data.kind.to_string().replace("minecraft:", "").to_lowercase() + ".png";
-            return match basename_to_prefixed(mt_server_state, &item_name) {
-                Some(name) => name,
-                None => format!("block-{}", item_name)
-            }
+            let item_name = slot_data.kind.to_string();
+            let textures = mt_server_state.path_name_map.get_by_left(&item_name).unwrap();
+            return String::from(textures.get_texture());
         }
     }
 }
 
-pub fn basename_to_prefixed(mt_server_state: &MTServerState, basename: &str) -> Option<String> {
-    // chests are in entity-chest-(something.png) eg
-    match basename {
-        "chest_side.png" => {
-            return Some(String::from("entity-chest-normal_left.png"))
-        }
-        "chest_bottom.png" | "chest_top.png" | "chest.png" => {
-            return Some(String::from("entity-chest-normal.png"))
-        },
-        "trapped_chest_side.png" => {
-            return Some(String::from("entity-chest-trapped_left.png"))
-        }
-        "trapped_chest_bottom.png" | "trapped_chest_top.png" | "trapped_chest.png" => {
-            return Some(String::from("entity-chest-trapped.png"))
-        },
-        "ender_chest.png" | "ender_chest_top.png" | "ender_chest_bottom.png" | "ender_chest_side.png" => {
-            return Some(String::from("entity-chest-ender.png"))
-        },
-        _ => ()
-    };
-    for item in mt_server_state.path_name_map.iter() {
-        if item.0.1 == basename { // basename
-            if basename.contains("chest") {
-                println!("success")
-            }
-            return Some(String::from(item.1)) // prefixed name
-        }
+
+pub fn rel_path_exists(rel_path: String) -> bool {
+    if rel_path.starts_with("./model/") {
+        logger(&format!("rel_path_exists called with include_byte file: {}", rel_path), 2);
+        return false
     }
-    None
+    let textures_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/assets/minecraft/textures/");
+    let texture: PathBuf = textures_folder.join(rel_path);
+    return texture.exists();
+}
+
+pub fn make_abs_path(rel_path: &str) -> PathBuf {
+    let textures_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/assets/minecraft/textures/");
+    return textures_folder.join(rel_path);
 }
 
 pub fn state_to_node(state: BlockState, cave_air_glow: bool) -> MapNode {

@@ -12,7 +12,7 @@ mod textures;
 
 use azalea::container::ContainerHandle;
 use luanti_protocol::LuantiServer;
-use mt_definitions::{Dimensions, EntityMetadata};
+use mt_definitions::{Dimensions, EntityMetadata, TextureBlob};
 use azalea_client::inventory;
 use azalea::registry::BlockEntityKind;
 
@@ -80,7 +80,7 @@ pub struct MTServerState {
     // used to only attack on the rising edge, not constantly
     previous_dig_held: bool,
     
-    path_name_map: BiHashMap<(PathBuf, String), String>, // (path,basename)<->name mapping
+    path_name_map: BiHashMap<String, TextureBlob>, // "minecraft:thing" <-> TextureBlob mapping (TextureBlob holds relative paths)
     subtitles: Vec<(String, Instant)>,
     prev_subtitle_string: String,
 }

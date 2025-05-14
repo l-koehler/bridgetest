@@ -133,6 +133,7 @@ pub async fn client_handler(_mt_server: LuantiServer, mut mt_conn: LuantiConnect
      * mc_client and mc_conn refer to the minecraft client and its connection
      * we also run a tick function every 50ms
      */
+    println!("{:?}", mt_server_state.path_name_map);
     let mut stream = IntervalStream::new(tokio::time::interval(Duration::from_millis(50)));
     loop {
         tokio::select! {

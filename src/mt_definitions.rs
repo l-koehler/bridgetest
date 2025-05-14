@@ -64,6 +64,25 @@ pub enum HeartDisplay {
     NoChange // special value: do not change the heart texture
 }
 
+// resolves ambiguity in mapping minecraft:thing to textures
+// important! only stores paths relative to the texture pack root.
+// Stores models using the fake ./model/ path
+#[derive(Clone,Eq,PartialEq,Hash,Debug)]
+pub enum TextureBlob {
+    Block(String),
+    Item(String),
+    BlockItem(String, String)
+}
+
+impl TextureBlob {
+    // prefers returning a item texture
+    pub fn get_texture(&self) -> &str {
+        match self {
+            TextureBlob::Block(a)|TextureBlob::Item(a)|TextureBlob::BlockItem(_, a) => return a
+        }
+    }
+}
+
 #[derive(Clone)]
 pub enum FoodDisplay {
     Normal,
@@ -514,7 +533,7 @@ pub const fn get_metadata_placeholder(x_pos: u16, y_pos: u16, z_pos: u16) -> (Bl
 
 // item def stuff
 
-pub async fn get_item_def_command(path_name_map: &BiHashMap<(PathBuf, String), String>) -> ToClientCommand {
+pub async fn get_item_def_command(path_name_map: &BiHashMap<String, TextureBlob>) -> ToClientCommand {
     let mc_data_api: Api = utils::compatible_data_api();
     
     // we need food- and placeable IDs to predict right-click behavior of every item
@@ -530,15 +549,15 @@ pub async fn get_item_def_command(path_name_map: &BiHashMap<(PathBuf, String), S
     
     let mut mc_name: String;
     let mut texture_name: String;
+    let mut texture_blob: &TextureBlob;
     let mut item_definitions: Vec<ItemDef> = Vec::new();
     for item in mc_data_api.items.items_array().unwrap() {
         mc_name = item.name.clone();
-        if path_name_map.contains_right(&format!("item-{}.png", mc_name.replace("minecraft:", ""))) {
-            texture_name = format!("item-{}.png", mc_name.replace("minecraft:", ""));
-        } else {
-            texture_name = format!("block-{}.png", mc_name.replace("minecraft:", ""));
-        };
-        utils::logger(&format!("[Itemdefs] Mapped {} to the texture {}", mc_name, texture_name), 0);
+        texture_blob = path_name_map.get_by_left(&mc_name).unwrap();
+        // set texture name (as relative path)
+        texture_name = texture_blob.get_texture().to_owned();
+        
+        utils::logger(&format!("[Itemdefs] Mapped {} to the texture at {}", mc_name, texture_name), 0);
         item_definitions.push(generate_itemdef(&mc_name, item, &texture_name, food_ids.clone(), placeable_ids.clone()));
     }
     
@@ -641,7 +660,7 @@ pub async fn get_node_def_command(settings: &Config, mt_server_state: &mut MTSer
         content_features.push((mt_id, content_feature));
     }
     
-    // add a special block without MC equivalent: glowing_air. this block will replace cave_air in the nether.
+    // add a special block without MC equivalent: bridgetest:glowing_air. this block will replace cave_air in the nether.
     // because the minetest engine has no concept of dimensions, it is impossible to tell it to make air glow in the nether.
     let tiledef = TileDef {
         name: String::from("air.png"),
@@ -662,7 +681,7 @@ pub async fn get_node_def_command(settings: &Config, mt_server_state: &mut MTSer
     let tiledef_sides = [tiledef.clone(), tiledef.clone(), tiledef.clone(), tiledef.clone(), tiledef.clone(), tiledef.clone()];
     content_features.push((120, ContentFeatures {
         version: 13,
-        name: String::from("glowing_air"),
+        name: String::from("bridgetest:glowing_air"),
         groups: vec![(String::from(""), 1)],
         param_type: 0,
         param_type_2: 0,
@@ -730,8 +749,9 @@ pub fn generate_contentfeature(block: azalea::registry::Block, texture_pack_res:
     // If *every* possible state is solid, then walkable=true
     // for light stuff, use the "brightest" state
     // for everything else, do other stuff idk look at the code
-    let mut texture_base_name: String = block.to_string().replace("minecraft:", "");
-    
+    let texture_blob: &TextureBlob = mt_server_state.path_name_map.get_by_left(&block.to_string()).unwrap();
+    // without extension, to allow messing around with _top etc
+    let texture_base_name = texture_blob.get_texture().to_owned().replace(".png", "");
     let mut liquid_range = 0;
     let mut liquid_viscosity = 0;
     let mut liquid_renewable = true;
@@ -742,52 +762,15 @@ pub fn generate_contentfeature(block: azalea::registry::Block, texture_pack_res:
         liquid_renewable = true;
         liquid_viscosity = 0; // determines how much the liquid slows the player down
         liquid_range = 7;
-        texture_base_name.push_str("_still"); // water.png does not exist, mc uses water_still.png and water_flow.png
     } else if block == Block::Lava {
         liquid_renewable = false;
         liquid_viscosity = 1;
         liquid_range = 4;
-        texture_base_name.push_str("_still");
     }
     // animated textures
     if [Block::Water, Block::Lava, Block::Seagrass, Block::TallSeagrass, Block::NetherPortal, Block::EndPortal, Block::MagmaBlock].contains(&block) {
         animation = TileAnimationParams::VerticalFrames { aspect_w: texture_pack_res, aspect_h: texture_pack_res, length: 2.0 }
     }
-    // some blocks just use the texture of other blocks
-    if ![Block::BambooFence, Block::BambooFenceGate].contains(&block) {
-        texture_base_name = texture_base_name.replace("_fence", "_planks");
-        texture_base_name = texture_base_name.replace("_gate", "_planks");
-    }
-    if !texture_base_name.contains("stone") {
-        texture_base_name = texture_base_name.replace("_slab", "_planks");
-        texture_base_name = texture_base_name.replace("_stairs", "_planks");
-    }
-    texture_base_name = texture_base_name.replace("_carpet", "_block");
-    texture_base_name = texture_base_name.replace("_wall_banner", "_concrete");
-    texture_base_name = texture_base_name.replace("_bulb", "_block");
-    if texture_base_name.contains("brick") {
-        texture_base_name = texture_base_name.replace("_wall", "s");
-    }
-    if [Block::StoneButton, Block::StonePressurePlate].contains(&block) {
-        texture_base_name = texture_base_name.replace("_button", "");
-        texture_base_name = texture_base_name.replace("_pressure_plate", "");
-    } else {
-        texture_base_name = texture_base_name.replace("_button", "_block");
-        texture_base_name = texture_base_name.replace("_pressure_plate", "_block");
-    }
-    
-    // dripstone cant be implemented properly with the current metadata system
-    if block == Block::PointedDripstone {
-        texture_base_name = String::from("pointed_dripstone_down_middle")
-    }
-    // crops neither
-    texture_base_name += match block {
-        Block::Bamboo => "_stalk",
-        Block::Cocoa | Block::NetherWart => "_stage2",
-        Block::Carrots | Block::Beetroots | Block::SweetBerryBush | Block::Potatoes => "_stage3",
-        Block::Wheat => "_stage7",
-        _ => "",
-    };
 
     /*
      * PlantLike: Texture rendered along both diagonal horizontal lines.
@@ -1003,47 +986,25 @@ pub fn generate_contentfeature(block: azalea::registry::Block, texture_pack_res:
             align_style: AlignStyle::Node
         }
     }
-    let texture_fallback_name: String; // what we initialize everything to
-    if utils::basename_to_prefixed(&mt_server_state, &format!("{}.png", texture_base_name)).is_some() {
-        texture_fallback_name = utils::basename_to_prefixed(&mt_server_state, &format!("{}.png", texture_base_name)).unwrap();
-    } else if utils::basename_to_prefixed(&mt_server_state, &format!("{}_side.png", texture_base_name)).is_some() {
-        texture_fallback_name = utils::basename_to_prefixed(&mt_server_state, &format!("{}_side.png", texture_base_name)).unwrap();
-    } else if utils::basename_to_prefixed(&mt_server_state, &format!("{}_top.png", texture_base_name)).is_some() {
-        texture_fallback_name = utils::basename_to_prefixed(&mt_server_state, &format!("{}_top.png", texture_base_name)).unwrap();
-    } else if utils::basename_to_prefixed(&mt_server_state, &format!("{}_bottom.png", texture_base_name)).is_some() {
-        texture_fallback_name = utils::basename_to_prefixed(&mt_server_state, &format!("{}_bottom.png", texture_base_name)).unwrap();
-    } else {
-        utils::logger(&format!("[Minetest] Unable to set sane default texture for block {}, using air.png", texture_base_name), 2);
-        texture_fallback_name = String::from("air.png");
-    }
-
+    let texture_fallback_name: String = format!("{}.png", texture_base_name);
     let mut tiledef_sides: [TileDef; 6] = [get_tiledef(&texture_fallback_name, &animation), get_tiledef(&texture_fallback_name, &animation), get_tiledef(&texture_fallback_name, &animation), get_tiledef(&texture_fallback_name, &animation), get_tiledef(&texture_fallback_name, &animation), get_tiledef(&texture_fallback_name, &animation)];
     // if _side/_top/_bottom exists, use that for the respective side(s)
-    if utils::basename_to_prefixed(&mt_server_state, &format!("{}_top.png", texture_base_name)).is_some() {
-        tiledef_sides[0] = get_tiledef(
-            &utils::basename_to_prefixed(&mt_server_state, &format!("{}_top.png", texture_base_name)).unwrap(),
-            &animation);
+    if utils::rel_path_exists(format!("{}_top.png", texture_base_name)) {
+        tiledef_sides[0] = get_tiledef(&format!("{}_top.png", texture_base_name), &animation);
     }
-    if utils::basename_to_prefixed(&mt_server_state, &format!("{}_bottom.png", texture_base_name)).is_some() {
-        tiledef_sides[1] = get_tiledef(&utils::basename_to_prefixed(&mt_server_state, &format!("{}_bottom.png", texture_base_name)).unwrap(), &animation);
+    if utils::rel_path_exists(format!("{}_bottom.png", texture_base_name)) {
+        tiledef_sides[1] = get_tiledef(&format!("{}_bottom.png", texture_base_name), &animation);
     }
-    if utils::basename_to_prefixed(&mt_server_state, &format!("{}_side.png", texture_base_name)).is_some() {
-        tiledef_sides[2] = get_tiledef(
-            &utils::basename_to_prefixed(&mt_server_state, &format!("{}_side.png", texture_base_name)).unwrap(),
-            &animation);
-        tiledef_sides[3] = get_tiledef(
-            &utils::basename_to_prefixed(&mt_server_state, &format!("{}_side.png", texture_base_name)).unwrap(),
-            &animation);
-        tiledef_sides[4] = get_tiledef(
-            &utils::basename_to_prefixed(&mt_server_state, &format!("{}_side.png", texture_base_name)).unwrap(),
-            &animation);
-        tiledef_sides[5] = get_tiledef(
-            &utils::basename_to_prefixed(&mt_server_state, &format!("{}_side.png", texture_base_name)).unwrap(),
-            &animation);
+    if utils::rel_path_exists(format!("{}_side.png", texture_base_name)) {
+        let side_td = get_tiledef(&format!("{}_side.png", texture_base_name), &animation);
+        tiledef_sides[2] = side_td.clone();
+        tiledef_sides[3] = side_td.clone();
+        tiledef_sides[4] = side_td.clone();
+        tiledef_sides[5] = side_td;
     }
     ContentFeatures {
         version: 13, // https://github.com/minetest/minetest/blob/master/src/nodedef.h#L313
-        name: block.to_string().replace("minecraft:", ""),
+        name: block.to_string(),
         groups: vec![
             (String::from("handy_dig"), 1),
         ],
