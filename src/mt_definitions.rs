@@ -26,7 +26,6 @@ use crate::settings;
 use azalea::registry::{Block, EntityKind, MenuKind};
 use azalea::Vec3;
 use std::path::PathBuf;
-use base64::{Engine, engine::general_purpose};
 
 #[derive(Clone)]
 pub struct EntityMetadata {
@@ -117,6 +116,11 @@ impl LuantiTexture {
     }
     pub fn from_string(rpath: &str) -> LuantiTexture {
         LuantiTexture { rel_path: String::from(rpath) }
+    }
+    pub fn from_absolute(apath: PathBuf) -> LuantiTexture {
+        let textures_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/");
+        let rel_path = apath.strip_prefix(textures_folder).unwrap().to_str().unwrap().to_owned();
+        LuantiTexture { rel_path }
     }
 }
 
@@ -239,7 +243,7 @@ pub fn get_sky_stuff() -> [ToClientCommand; 5] {
             Box::new(server_to_client::SetSunSpec {
                 sun: types::SunParams {
                     visible: true,
-                    texture: String::from("./environment/sun.png"),
+                    texture: String::from("environment-sun.png"),
                     tonemap: String::from(""),
                     sunrise: String::from("air.png"),
                     sunrise_visible: true,

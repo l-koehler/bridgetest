@@ -27,13 +27,22 @@ Checkpoint: These directories should contain a bunch of PNG files.
 Now, move these so you'll have this folder structure:
 
 ```text
-<bridgetest-data-directory>
-|- textures
-|  |- block
-|  |- item
-|  |- entity
-|  |- misc
-|  |- <a pile of other folders>
+<bridgetext-data-directory>
+└── textures
+    ├── block
+    ├── colormap
+    ├── effect
+    ├── entity
+    ├── environment
+    ├── font
+    ├── gui
+    ├── item
+    ├── map
+    ├── misc
+    ├── mob_effect
+    ├── painting
+    ├── particle
+    └── trims
 ```
 
 The `bridgetest-data-directory` is `~/.local/share/bridgetest` on Linux.  

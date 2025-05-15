@@ -87,3 +87,6 @@ pub const HOTBAR_SIZE: i32 = 9;
  * how to implement that without performance drop. (currently messages that don't get displayed get optimized out)
  */
 pub const DROP_LOG_BELOW: i8 = 3;
+
+// How many layers deep we recurse into the assets when building the announcement
+pub const TEXTURE_MAX_RECURSION: u8 = 6;

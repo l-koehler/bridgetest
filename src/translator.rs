@@ -65,11 +65,9 @@ pub async fn client_handler(_mt_server: LuantiServer, mut mt_conn: LuantiConnect
     //     utils::logger(&format!("[Minetest] S->C {}", packet_names[index]), 1);
     //     let _ = mt_conn.send(media_packets[index].clone()).await;
     // }
-    let path_name_map = textures::generate_map();
-    let announcement = textures::get_announcement(&path_name_map);
+    mt_server_state.path_name_map = textures::generate_map();
     
-    mt_conn.send(announcement).unwrap();
-    mt_server_state.path_name_map = path_name_map;
+    mt_conn.send(textures::get_announcement()).unwrap();
 
     utils::logger("[Minetest] S->C Itemdef", 1);
     mt_conn.send(mt_definitions::get_item_def_command(&mt_server_state.path_name_map).await).unwrap();

@@ -5,12 +5,14 @@ use luanti_protocol::types::{MediaAnnouncement, MediaFileData};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::fs;
+use std::ffi::OsStr;
 use std::io::Read;
 use sha1::{Sha1, Digest};
 use base64::{Engine, engine::general_purpose};
 use serde_json;
 
 use crate::mt_definitions::{TextureBlob, LuantiTexture};
+use crate::settings;
 use crate::MTServerState;
 
 pub fn generate_map() -> HashMap<String, TextureBlob> {
@@ -56,18 +58,12 @@ pub fn generate_map() -> HashMap<String, TextureBlob> {
     return path_name_map
 }
 
-pub fn get_announcement(path_name_map: &HashMap<String, TextureBlob>) -> ToClientCommand {
+pub fn get_announcement() -> ToClientCommand {
     let mut announcement_vec: Vec<MediaAnnouncement> = Vec::new();
-    for texture in path_name_map.iter() {
-        // engine provides air.png
-        // skip last 3 entries (air, void/cave air)
-        if *texture.1 == TextureBlob::Block(LuantiTexture::from_string("air.png")) {
-            continue;
-        }
-        let sha1_base64 = get_sha1_base64(&texture.1.get_texture().get_absolute());
+    for texture in get_texture_iterator() {
         announcement_vec.push(MediaAnnouncement {
-            name: String::from(texture.1.get_texture().to_luanti_safe()),
-            sha1_base64
+            name: String::from(texture.to_luanti_safe()),
+            sha1_base64: get_sha1_base64(&texture.get_absolute())
         });
     }
     ToClientCommand::AnnounceMedia(
@@ -76,6 +72,29 @@ pub fn get_announcement(path_name_map: &HashMap<String, TextureBlob>) -> ToClien
             remote_servers: String::from("") // IDK what this means or does, but it works if left alone. (meee :3)
         })
     )
+}
+
+pub fn get_texture_iterator() -> Vec<LuantiTexture> {
+    let path_root = LuantiTexture::from_string(".").get_absolute();
+    return get_texture_iterator_recursive(path_root, settings::TEXTURE_MAX_RECURSION);
+}
+
+pub fn get_texture_iterator_recursive(path: PathBuf, limit: u8) -> Vec<LuantiTexture> {
+    let mut ret: Vec<LuantiTexture> = Vec::new();
+    if limit == 0 {
+        return ret;
+    };
+    for entry in path.read_dir().unwrap() {
+        let entry_u = entry.unwrap();
+        if entry_u.file_type().unwrap().is_dir() {
+            ret.extend(get_texture_iterator_recursive(entry_u.path(), limit-1));
+        };
+        if entry_u.path().extension() != Some(&OsStr::new("png")) {
+            continue;
+        };
+        ret.push(LuantiTexture::from_absolute(entry_u.path()));
+    };
+    return ret
 }
 
 fn get_sha1_base64(path: &PathBuf) -> String {
