@@ -78,7 +78,8 @@ for model in models:
     if not textures:
         continue
 
-    texture_ref = list(textures.values())[0]
+    # pick the shortest, as that is likely the least specific (don't use _top when a generic texture exists)
+    texture_ref = sorted(list(textures.values()), key=len)[0]
     if texture_ref.startswith("minecraft:"):
         texture_ref = texture_ref.split(":", 1)[1]
 
@@ -108,7 +109,7 @@ for model_file in sorted(item_model_dir.glob("*.json")):
         continue # there are a bunch of weird non-items in there. this is fine
     textures = data["textures"]
 
-    texture_ref = list(textures.values())[0]
+    texture_ref = sorted(list(textures.values()), key=len)[0]
     if texture_ref.startswith("minecraft:"):
         texture_ref = texture_ref.split(":", 1)[1]
 

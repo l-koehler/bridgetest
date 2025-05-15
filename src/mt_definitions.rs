@@ -1022,12 +1022,23 @@ pub fn generate_contentfeature(block: azalea::registry::Block, texture_pack_res:
     }
     let mut tiledef_sides: [TileDef; 6] = [get_tiledef(&texture, &animation), get_tiledef(&texture, &animation), get_tiledef(&texture, &animation), get_tiledef(&texture, &animation), get_tiledef(&texture, &animation), get_tiledef(&texture, &animation)];
     // if _side/_top/_bottom exists, use that for the respective side(s)
-    if texture.with_postfix("_top").is_valid() {
-        tiledef_sides[0] = get_tiledef(&texture.with_postfix("_top"), &animation);
+    // use _top for _bottom and _bottom for _top if respectively missing
+    match (texture.with_postfix("_top").is_valid(), texture.with_postfix("_bottom").is_valid()) {
+        (true, true) => {
+            tiledef_sides[0] = get_tiledef(&texture.with_postfix("_top"), &animation);
+            tiledef_sides[1] = get_tiledef(&texture.with_postfix("_bottom"), &animation);
+        },
+        (true, false) => {
+            tiledef_sides[0] = get_tiledef(&texture.with_postfix("_top"), &animation);
+            tiledef_sides[1] = get_tiledef(&texture.with_postfix("_top"), &animation);
+        },
+        (false, true) => {
+            tiledef_sides[0] = get_tiledef(&texture.with_postfix("_bottom"), &animation);
+            tiledef_sides[1] = get_tiledef(&texture.with_postfix("_bottom"), &animation);
+        },
+        _=>(),
     }
-    if texture.with_postfix("_bottom").is_valid() {
-        tiledef_sides[1] = get_tiledef(&texture.with_postfix("_bottom"), &animation);
-    }
+    
     if texture.with_postfix("_side").is_valid() {
         let side_td = get_tiledef(&texture.with_postfix("_side"), &animation);
         tiledef_sides[2] = side_td.clone();
