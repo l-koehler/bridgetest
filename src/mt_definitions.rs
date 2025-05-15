@@ -25,6 +25,8 @@ use crate::settings;
 
 use azalea::registry::{Block, EntityKind, MenuKind};
 use azalea::Vec3;
+use std::path::PathBuf;
+use base64::{Engine, engine::general_purpose};
 
 #[derive(Clone)]
 pub struct EntityMetadata {
@@ -68,17 +70,53 @@ pub enum HeartDisplay {
 // Stores models using the fake ./model/ path
 #[derive(Clone,Eq,PartialEq,Hash,Debug)]
 pub enum TextureBlob {
-    Block(String),
-    Item(String),
-    BlockItem(String, String)
+    Block(LuantiTexture),
+    Item(LuantiTexture),
+    BlockItem(LuantiTexture, LuantiTexture)
 }
 
 impl TextureBlob {
     // prefers returning a item texture
-    pub fn get_texture(&self) -> &str {
+    pub fn get_texture(&self) -> &LuantiTexture {
         match self {
             TextureBlob::Block(a)|TextureBlob::Item(a)|TextureBlob::BlockItem(_, a) => return a
         }
+    }
+}
+
+#[derive(Clone,Eq,PartialEq,Hash,Debug)]
+pub struct LuantiTexture {
+    rel_path: String
+}
+
+impl LuantiTexture {
+    pub fn get_relative(&self) -> &str {
+        return &self.rel_path;
+    }
+    pub fn get_absolute(&self) -> PathBuf {
+        let textures_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/");
+        return textures_folder.join(PathBuf::from(&self.rel_path))
+    }
+    // ./block/thing.png -> block-thing.png
+    // we need to keep the extension, luanti relies on that for file type
+    pub fn to_luanti_safe(&self) -> String {
+        return self.get_relative().replace("./", "").replace("/", "-")
+    }
+    pub fn from_luanti_safe(safe_texture: &str) -> LuantiTexture {
+        let rel_path = format!("./{}", safe_texture.replace("-", "/"));
+        return LuantiTexture { rel_path }
+    }
+    pub fn with_postfix(&self, prefix: &str) -> LuantiTexture {
+        let new_rpath = format!("{}{}.png", self.rel_path.replace(".png", ""), prefix);
+        return LuantiTexture {
+            rel_path: new_rpath
+        }
+    }
+    pub fn is_valid(&self) -> bool {
+        self.get_absolute().exists()
+    }
+    pub fn from_string(rpath: &str) -> LuantiTexture {
+        LuantiTexture { rel_path: String::from(rpath) }
     }
 }
 
@@ -539,12 +577,12 @@ pub async fn get_item_def_command(path_name_map: &HashMap<String, TextureBlob>) 
     for item in mc_data_api.items.items_array().unwrap() {
         mc_name = format!("minecraft:{}", item.name.clone());
         if mc_name.ends_with("_spawn_egg") {
-            texture_blob = TextureBlob::Item(String::from("./item/template_spawn_egg.png"));
+            texture_blob = path_name_map.get("minecraft:template_spawn_egg").unwrap().clone();
         } else {
             texture_blob = path_name_map.get(&mc_name).unwrap().clone();
         }
         // set texture name (as relative path)
-        texture_name = texture_blob.get_texture().to_owned();
+        texture_name = texture_blob.get_texture().to_luanti_safe();
         
         utils::logger(&format!("[Itemdefs] Mapped {} to the texture at {}", mc_name, texture_name), 0);
         item_definitions.push(generate_itemdef(&mc_name, item, &texture_name, food_ids.clone(), placeable_ids.clone()));
@@ -628,7 +666,6 @@ pub fn generate_itemdef(name: &str, item: models::item::Item, inventory_image: &
 }
 
 // node def stuff
-
 pub async fn get_node_def_command(settings: &Config, mt_server_state: &mut MTServerState) -> ToClientCommand {
     let mut content_features: Vec<(u16, ContentFeatures)> = Vec::new();
     let mut content_feature: ContentFeatures;
@@ -741,7 +778,10 @@ pub fn generate_contentfeature(block: azalea::registry::Block, texture_pack_res:
     let mc_name = block.to_string();
     let texture_blob: &TextureBlob = mt_server_state.path_name_map.get(&mc_name).unwrap();
     // without extension, to allow messing around with _top etc
-    let texture_base_name = texture_blob.get_texture().to_owned().replace(".png", "");
+    // can't use get_texture, it prefers item textures in ambiguous cases
+    let texture = match texture_blob {
+        TextureBlob::Block(a)|TextureBlob::Item(a)|TextureBlob::BlockItem(a,_) => a.clone()
+    };
     let mut liquid_range = 0;
     let mut liquid_viscosity = 0;
     let mut liquid_renewable = true;
@@ -964,9 +1004,9 @@ pub fn generate_contentfeature(block: azalea::registry::Block, texture_pack_res:
     // texture stuff
     // texture_base_name is the basename.
     // if {texture_base_name}_top.png exists then use it etc, default to fallbacks
-    fn get_tiledef(texture: &str, animation: &TileAnimationParams) -> TileDef {
+    fn get_tiledef(texture: &LuantiTexture, animation: &TileAnimationParams) -> TileDef {
         TileDef {
-            name: String::from(texture),
+            name: texture.to_luanti_safe(),
             animation: animation.clone(),
             backface_culling: true,
             tileable_horizontal: false,
@@ -976,17 +1016,16 @@ pub fn generate_contentfeature(block: azalea::registry::Block, texture_pack_res:
             align_style: AlignStyle::Node
         }
     }
-    let texture_fallback_name: String = format!("{}.png", texture_base_name);
-    let mut tiledef_sides: [TileDef; 6] = [get_tiledef(&texture_fallback_name, &animation), get_tiledef(&texture_fallback_name, &animation), get_tiledef(&texture_fallback_name, &animation), get_tiledef(&texture_fallback_name, &animation), get_tiledef(&texture_fallback_name, &animation), get_tiledef(&texture_fallback_name, &animation)];
+    let mut tiledef_sides: [TileDef; 6] = [get_tiledef(&texture, &animation), get_tiledef(&texture, &animation), get_tiledef(&texture, &animation), get_tiledef(&texture, &animation), get_tiledef(&texture, &animation), get_tiledef(&texture, &animation)];
     // if _side/_top/_bottom exists, use that for the respective side(s)
-    if utils::rel_path_exists(format!("{}_top.png", texture_base_name)) {
-        tiledef_sides[0] = get_tiledef(&format!("{}_top.png", texture_base_name), &animation);
+    if texture.with_postfix("_top").is_valid() {
+        tiledef_sides[0] = get_tiledef(&texture.with_postfix("_top"), &animation);
     }
-    if utils::rel_path_exists(format!("{}_bottom.png", texture_base_name)) {
-        tiledef_sides[1] = get_tiledef(&format!("{}_bottom.png", texture_base_name), &animation);
+    if texture.with_postfix("_bottom").is_valid() {
+        tiledef_sides[1] = get_tiledef(&texture.with_postfix("_bottom"), &animation);
     }
-    if utils::rel_path_exists(format!("{}_side.png", texture_base_name)) {
-        let side_td = get_tiledef(&format!("{}_side.png", texture_base_name), &animation);
+    if texture.with_postfix("_side").is_valid() {
+        let side_td = get_tiledef(&texture.with_postfix("_side"), &animation);
         tiledef_sides[2] = side_td.clone();
         tiledef_sides[3] = side_td.clone();
         tiledef_sides[4] = side_td.clone();

@@ -17,9 +17,8 @@ use azalea_client::Event;
 use azalea::core::{aabb::AABB, position::Vec3};
 use azalea::registry::{EntityKind, Registry};
 use azalea_block::BlockState;
-use std::path::PathBuf;
 use rand::Rng;
-use mt_definitions::EntityMetadata;
+use mt_definitions::{EntityMetadata, LuantiTexture};
 
 use glam::Vec3 as v3f;
 
@@ -143,24 +142,9 @@ pub fn texture_from_itemstack(item: &ItemStack, mt_server_state: &MTServerState)
         ItemStack::Present(slot_data) => {
             let item_name = slot_data.kind.to_string();
             let textures = mt_server_state.path_name_map.get(&item_name).unwrap();
-            return String::from(textures.get_texture());
+            return textures.get_texture().to_luanti_safe();
         }
     }
-}
-
-pub fn rel_path_exists(rel_path: String) -> bool {
-    if rel_path.starts_with("./model/") {
-        logger(&format!("rel_path_exists called with include_byte file: {}", rel_path), 2);
-        return false
-    }
-    let textures_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/");
-    let texture: PathBuf = textures_folder.join(rel_path);
-    return texture.exists();
-}
-
-pub fn make_abs_path(rel_path: &PathBuf) -> PathBuf {
-    let textures_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/");
-    return textures_folder.join(rel_path);
 }
 
 pub fn state_to_node(state: BlockState, cave_air_glow: bool) -> MapNode {
@@ -197,30 +181,32 @@ pub fn vec3_to_v3f(input_vector: &Vec3, scale: f64) -> v3f {
     }
 }
 
-pub fn get_colormap(texture: &str) -> Option<(u8, u8, u8)> {
+pub fn get_colormap(texture: &LuantiTexture) -> Option<(u8, u8, u8)> {
     // use the "Plains" texture. per-biome textures dont really work in mt afaik
     // https://minecraft.fandom.com/wiki/Color#Block_and_fluid_colors - what blocks use the colormaps
     // https://minecraft.fandom.com/wiki/Block_colors                 - what colors are to be used
+    let r_texture = texture.to_luanti_safe();
+    let name = r_texture.as_str();
     let grass_group = ["block-grass_block_top.png", "block-grass_block_side_overlay.png", "block-short_grass.png", "block-tall_grass_bottom.png", "block-tall_grass_top.png", "block-fern.png", "block-large_fern_bottom.png", "block-large_fern_top.png"];
-    if grass_group.contains(&texture) {
+    if grass_group.contains(&name) {
         return Some((0x91, 0xBD, 0x59))
     }
     let foliage_group = ["block-oak_leaves.png", "block-jungle_leaves.png", "block-acacia_leaves.png", "block-dark_oak_leaves.png", "block-vine.png"];
-    if foliage_group.contains(&texture) {
+    if foliage_group.contains(&name) {
         return Some((0x77, 0xAB, 0x2F))
     }
     let water_group = ["block-water_still.png", "block-water_flow.png"];
-    if water_group.contains(&texture) {
+    if water_group.contains(&name) {
         return Some((0x3F, 0x76, 0xE4))
     }
     let stem_group = ["block-attached_melon_stem.png", "block-attached_pumpkin_stem.png", "block-melon_stem.png", "block-pumpkin_stem.png", "pink_petals_stem.png"];
-    if stem_group.contains(&texture) {
+    if stem_group.contains(&name) {
         return Some((0xE0, 0xC7, 0x1C))
     }
     // these textures are colormapped but constant for some stupid reason
-    if texture == "block-birch_leaves.png" { return Some((0x80, 0xA7, 0x55)) }
-    if texture == "block-spruce_leaves.png" { return Some((0x61, 0x99, 0x61)) }
-    if texture == "block-lily_pad.png" { return Some((0x20, 0x80, 0x30)) }
+    if name == "block-birch_leaves.png" { return Some((0x80, 0xA7, 0x55)) }
+    if name == "block-spruce_leaves.png" { return Some((0x61, 0x99, 0x61)) }
+    if name == "block-lily_pad.png" { return Some((0x20, 0x80, 0x30)) }
     None
 }
 

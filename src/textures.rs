@@ -10,7 +10,8 @@ use sha1::{Sha1, Digest};
 use base64::{Engine, engine::general_purpose};
 use serde_json;
 
-use crate::{utils, MTServerState, mt_definitions::TextureBlob};
+use crate::mt_definitions::{TextureBlob, LuantiTexture};
+use crate::MTServerState;
 
 pub fn generate_map() -> HashMap<String, TextureBlob> {
     // minecraft:thing -> TextureBlob::*
@@ -23,7 +24,7 @@ pub fn generate_map() -> HashMap<String, TextureBlob> {
     for mapping in block_mapping_json.as_object().unwrap().iter() {
         path_name_map.insert(
             String::from(mapping.0),
-            TextureBlob::Block(mapping.1.as_str().unwrap().to_owned())
+            TextureBlob::Block(LuantiTexture::from_string(mapping.1.as_str().unwrap()))
         );
     };
     for mapping in item_mapping_json.as_object().unwrap().iter() {
@@ -31,11 +32,11 @@ pub fn generate_map() -> HashMap<String, TextureBlob> {
         if path_name_map.contains_key(mapping.0) {
             let old = path_name_map.get(mapping.0).unwrap();
             texture = TextureBlob::BlockItem(
-                String::from(old.get_texture()),
-                mapping.1.as_str().unwrap().to_owned()
+                old.get_texture().clone(),
+                LuantiTexture::from_string(mapping.1.as_str().unwrap())
             )
         } else {
-            texture = TextureBlob::Item(mapping.1.as_str().unwrap().to_owned())
+            texture = TextureBlob::Item(LuantiTexture::from_string(mapping.1.as_str().unwrap()))
         }
         path_name_map.insert(
             String::from(mapping.0),
@@ -44,13 +45,13 @@ pub fn generate_map() -> HashMap<String, TextureBlob> {
     };
     // air.png is provided by the minetest engine, we don't have to send it
     path_name_map.insert(
-        String::from("minecraft:air"), TextureBlob::Block(String::from("air.png"))
+        String::from("minecraft:air"), TextureBlob::Block(LuantiTexture::from_string("air.png"))
     );
     path_name_map.insert(
-        String::from("minecraft:void_air"), TextureBlob::Block(String::from("air.png"))
+        String::from("minecraft:void_air"), TextureBlob::Block(LuantiTexture::from_string("air.png"))
     );
     path_name_map.insert(
-        String::from("minecraft:cave_air"), TextureBlob::Block(String::from("air.png"))
+        String::from("minecraft:cave_air"), TextureBlob::Block(LuantiTexture::from_string("air.png"))
     );
     return path_name_map
 }
@@ -60,12 +61,12 @@ pub fn get_announcement(path_name_map: &HashMap<String, TextureBlob>) -> ToClien
     for texture in path_name_map.iter() {
         // engine provides air.png
         // skip last 3 entries (air, void/cave air)
-        if *texture.1 == TextureBlob::Block(String::from("air.png")) {
+        if *texture.1 == TextureBlob::Block(LuantiTexture::from_string("air.png")) {
             continue;
         }
-        let sha1_base64 = get_sha1_base64(&PathBuf::from(&texture.1.get_texture()), true);
+        let sha1_base64 = get_sha1_base64(&texture.1.get_texture().get_absolute());
         announcement_vec.push(MediaAnnouncement {
-            name: texture.0.to_string(),
+            name: String::from(texture.1.get_texture().to_luanti_safe()),
             sha1_base64
         });
     }
@@ -77,16 +78,11 @@ pub fn get_announcement(path_name_map: &HashMap<String, TextureBlob>) -> ToClien
     )
 }
 
-fn get_sha1_base64(path: &PathBuf, is_rel_texture: bool) -> String {
+fn get_sha1_base64(path: &PathBuf) -> String {
     let mut file_handle;
     let metadata;
-    if is_rel_texture {
-        file_handle = fs::File::open(utils::make_abs_path(path)).unwrap();
-        metadata = fs::metadata(utils::make_abs_path(path)).expect("Unable to read File Metadata! (Check Permissions?)");
-    } else {
-        file_handle = fs::File::open(path).unwrap();
-        metadata = fs::metadata(path).expect("Unable to read File Metadata! (Check Permissions?)");
-    }
+    file_handle = fs::File::open(path).unwrap();
+    metadata = fs::metadata(path).expect("Unable to read File Metadata! (Check Permissions?)");
     let mut buffer = vec![0; metadata.len() as usize];
     file_handle.read_exact(&mut buffer).expect("File Metadata lied about File Size. This should NOT happen, what the hell is wrong with your device?");
     // buffer_hash_b64 is base64encode( sha1hash( buffer ) )
@@ -101,11 +97,11 @@ pub fn handle_request(mt_server_state: &MTServerState, specbox: Box<client_to_se
     let client_to_server::RequestMediaSpec { files } = *specbox;
     let mut file_data: Vec<MediaFileData> = Vec::new();
     for file_name in files {
-        let path = &mt_server_state.path_name_map.get(&file_name).unwrap().get_texture();
-        if file_name.starts_with("model:") {
+        let texture = LuantiTexture::from_luanti_safe(&file_name);
+        if texture.get_relative().starts_with("./model/") {
             // handle models separately, these are included in the binary
             // remove the "./model/" prefix to the path
-            let buffer = match path.split_at_checked(8).unwrap().1 {
+            let buffer = match texture.get_relative().split_at_checked(8).unwrap().1 {
                 "extra_mobs_cod.b3d" => include_bytes!("../models/extra_mobs_cod.b3d").to_vec(),
                 "extra_mobs_dolphin.b3d" => include_bytes!("../models/extra_mobs_dolphin.b3d").to_vec(),
                 "extra_mobs_glow_squid.b3d" => include_bytes!("../models/extra_mobs_glow_squid.b3d").to_vec(),
@@ -164,6 +160,7 @@ pub fn handle_request(mt_server_state: &MTServerState, specbox: Box<client_to_se
                 data: buffer
             })
         } else {
+            let path = texture.get_absolute();
             let mut file_handle = fs::File::open(&path).unwrap();
             let metadata = fs::metadata(&path).expect("Unable to read File Metadata! (Check Permissions?)");
             let mut buffer = vec![0; metadata.len() as usize];
