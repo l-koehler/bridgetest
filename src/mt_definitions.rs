@@ -807,6 +807,7 @@ pub fn generate_contentfeature(block: azalea::registry::Block, texture_pack_res:
 
     let sunlight_propagates = match texture.drawtype {
         DrawType::AirLike => 15,
+        DrawType::PlantLike | DrawType::PlantLikeRooted => 15,
         DrawType::GlassLike => 15,
         DrawType::Liquid => 10,
         _ => 0
