@@ -9,7 +9,7 @@ use azalea::entity::{metadata::AbstractEntity, Dead, LocalEntity, Position, Phys
 use azalea::ecs::prelude::{With, Without};
 use azalea_client::Client;
 use azalea_client::inventory::Inventory;
-use azalea::container::ContainerClientExt;
+use azalea::container::{ContainerClientExt, ContainerHandle, ContainerHandleRef};
 
 use luanti_protocol::LuantiConnection;
 use luanti_protocol::commands::client_to_server::{TSChatMessageSpec, PlayerPosCommand, InteractSpec, PlayerItemSpec, InventoryActionSpec};
@@ -218,8 +218,8 @@ pub async fn inventory_generic(mc_client: &mut Client, mt_conn: &mut LuantiConne
     match action {
         InventoryAction::Drop { count, from_inv: _, from_list, from_i }
             => drop_item(count, from_list, from_i, mc_client),
-        InventoryAction::Move { count: _, from_inv: _, from_list, from_i, to_inv: _, to_list, to_i }
-            => move_item(from_list, from_i, to_list, to_i, mc_client, mt_server_state),
+        InventoryAction::Move { count, from_inv: _, from_list, from_i, to_inv: _, to_list, to_i }
+            => move_item(count, from_list, from_i, to_list, to_i, mc_client, mt_server_state),
         //TODO support workbenches etc
         InventoryAction::Craft { count: _, craft_inv: _ }
             => craft_item(mc_client, mt_conn, mt_server_state).await,
@@ -287,8 +287,33 @@ pub fn drop_item(count: u16, from_list: String, from_i: i16, mc_client: &mut Cli
     }
 }
 
+fn pickupclick_c(handle: &ContainerHandleRef, index: i16, count: u16) {
+    let is_full_stack = (count == handle.contents().unwrap()[index as usize].count() as u16);
+    if is_full_stack {
+        handle.click(ClickOperation::Pickup(PickupClick::Left {
+            slot: Some(index as u16)
+        }));
+    } else {
+        handle.click(ClickOperation::Pickup(PickupClick::Right {
+            slot: Some(index as u16)
+        }));
+    }
+}
+fn pickupclick_i(handle: &ContainerHandle, index: u16, count: u16) {
+    let is_full_stack = (count == handle.contents().unwrap()[index as usize].count() as u16);
+    if is_full_stack {
+        handle.click(ClickOperation::Pickup(PickupClick::Left {
+            slot: Some(index)
+        }));
+    } else {
+        handle.click(ClickOperation::Pickup(PickupClick::Right {
+            slot: Some(index)
+        }));
+    }
+}
 
-pub fn move_item(from_list: String, from_i: i16, to_list: String, to_i: Option<i16>, mc_client: &mut Client, mt_server_state: &mut MTServerState) {
+pub fn move_item(count: u16, from_list: String, from_i: i16, to_list: String, to_i: Option<i16>, mc_client: &mut Client, mt_server_state: &mut MTServerState) {
+    println!("Moving from {from_list} to {to_list}: {from_i}, {:?}", to_i);
     match (from_list.as_str(), to_list.as_str()) {
         ("container", "container") => {
             let maybe_handle = mc_client.get_open_container();
@@ -301,9 +326,7 @@ pub fn move_item(from_list: String, from_i: i16, to_list: String, to_i: Option<i
                 utils::logger("[Minetest] Client attempted to take items from a container without contents", 2);
                 return;
             }
-            handle.click(ClickOperation::Pickup(PickupClick::Left {
-                slot: Some(from_i as u16)
-            }));
+            pickupclick_c(&handle, from_i, count);
             handle.click(ClickOperation::Pickup(PickupClick::Left {
                 slot: Some(to_i.unwrap() as u16)
             }))
@@ -319,9 +342,7 @@ pub fn move_item(from_list: String, from_i: i16, to_list: String, to_i: Option<i
                 utils::logger("[Minetest] Client attempted to take items from a container without contents", 2);
                 return;
             }
-            handle.click(ClickOperation::Pickup(PickupClick::Left {
-                slot: Some(from_i as u16)
-            }));
+            pickupclick_c(&handle, from_i, count);
             let maybe_handle = mc_client.open_inventory();
             if maybe_handle.is_none() {
                 utils::logger("[Minetest] Client attempted to put items into the inventory while a container was opened", 2);
@@ -345,9 +366,7 @@ pub fn move_item(from_list: String, from_i: i16, to_list: String, to_i: Option<i
             }
             let handle = maybe_handle.unwrap();
             let slot_index = get_adjusted_index(from_i as u16, from_list.as_str());
-            handle.click(ClickOperation::Pickup(PickupClick::Left {
-                slot: Some(slot_index)
-            }));
+            pickupclick_i(&handle, slot_index, count);
             let maybe_handle = mc_client.get_open_container();
             if maybe_handle.is_none() {
                 utils::logger("[Minetest] Client attempted to put items into a container while no container was opened", 2);
@@ -370,16 +389,14 @@ pub fn move_item(from_list: String, from_i: i16, to_list: String, to_i: Option<i
             }
             let handle = maybe_handle.unwrap();
             let slot_index = get_adjusted_index(from_i as u16, from_list.as_str());
-            handle.click(ClickOperation::Pickup(PickupClick::Left {
-                slot: Some(slot_index)
-            }));
+            pickupclick_i(&handle, slot_index, count);
             let slot_index = get_adjusted_index(to_i.unwrap() as u16, to_list.as_str());
             handle.click(ClickOperation::Pickup(PickupClick::Left {
                 slot: Some(slot_index)
             }));
             // we moved a item into the crafting slots, keep the handle around so the inventory won't close
             // the handle will get dropped on movement as the MT client doesn't notify us of closing the inventory
-            if (1..=5).contains(&slot_index) && mt_server_state.inventory_handle.is_none() {
+            if (1..=5).contains(&slot_index) {
                 mt_server_state.inventory_handle = Some(Arc::new(Mutex::new(handle)));
             }
         },

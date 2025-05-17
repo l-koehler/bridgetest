@@ -1,6 +1,9 @@
 #![feature(variant_count)]
 #![feature(slice_as_array)]
 #![feature(string_remove_matches)]
+// fuck this warning.
+// sure the language doesn't need the parens, but this isn't codegolf. i need legible code
+#![allow(unused_parens)]
 
 mod translator;
 mod utils;

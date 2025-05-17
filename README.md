@@ -89,8 +89,7 @@ Some models are also needed and will be downloaded on the first start.
 
 ## Attributions
 
-This repository contains entity models (the .b3d files).  
+This program automatically downloads entity models.  
 These were not made by me and are licensed under the [CC-BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/legalcode.en).  
-The MPL2 License does __NOT__ apply to anything in the `models` directory!  
 The Models are taken from [Mineclonia](https://content.minetest.net/packages/ryvnf/mineclonia/), a minetest mod.  
 This Mod is owned on ContentDB by [ryvnf](https://content.minetest.net/users/ryvnf/), a full list of contributors is [here](https://codeberg.org/mineclonia/mineclonia/src/branch/main/CREDITS.md).  
