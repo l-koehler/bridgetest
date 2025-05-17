@@ -382,22 +382,35 @@ pub fn move_item(count: u16, from_list: String, from_i: i16, to_list: String, to
             }));
         }
         _ => {
-            let maybe_handle = mc_client.open_inventory();
-            if maybe_handle.is_none() {
-                utils::logger("[Minetest] Client attempted to put items into the inventory while a container was opened", 2);
-                return;
-            }
-            let handle = maybe_handle.unwrap();
-            let slot_index = get_adjusted_index(from_i as u16, from_list.as_str());
-            pickupclick_i(&handle, slot_index, count);
-            let slot_index = get_adjusted_index(to_i.unwrap() as u16, to_list.as_str());
-            handle.click(ClickOperation::Pickup(PickupClick::Left {
-                slot: Some(slot_index)
-            }));
-            // we moved a item into the crafting slots, keep the handle around so the inventory won't close
-            // the handle will get dropped on movement as the MT client doesn't notify us of closing the inventory
-            if (1..=5).contains(&slot_index) {
-                mt_server_state.inventory_handle = Some(Arc::new(Mutex::new(handle)));
+            // the ominous match n7ua9p34rf8,, (at what point did ,,, begin feeling like overly formal/proper punctuation? im cooked)
+            let index_from = get_adjusted_index(from_i as u16, from_list.as_str());
+            let index_to = get_adjusted_index(to_i.unwrap() as u16, to_list.as_str());
+            match &mt_server_state.inventory_handle {
+                Some(arc_mtx_cht) => {
+                    let guard = arc_mtx_cht.lock();
+                    let handle = guard.unwrap();
+                    pickupclick_i(&handle, index_from, count);
+                    handle.click(ClickOperation::Pickup(PickupClick::Left {
+                        slot: Some(index_to)
+                    }));
+                },
+                None => {
+                    let maybe_handle = mc_client.open_inventory();
+                    if maybe_handle.is_none() {
+                        utils::logger("[Minetest] Client attempted something silly", 2);
+                        return;
+                    }
+                    let handle = maybe_handle.unwrap();
+                    pickupclick_i(&handle, index_from, count);
+                    handle.click(ClickOperation::Pickup(PickupClick::Left {
+                        slot: Some(index_to)
+                    }));
+                    // we moved a item into the crafting slots, keep the handle around so the inventory won't close
+                    // the handle will get dropped on movement as the MT client doesn't notify us of closing the inventory
+                    if (1..=5).contains(&index_to) {
+                        mt_server_state.inventory_handle = Some(Arc::new(Mutex::new(handle)));
+                    }
+                },
             }
         },
     }
