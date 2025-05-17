@@ -1,4 +1,6 @@
 #![feature(variant_count)]
+#![feature(slice_as_array)]
+#![feature(string_remove_matches)]
 
 mod translator;
 mod utils;
@@ -12,7 +14,9 @@ mod textures;
 
 use azalea::container::ContainerHandle;
 use luanti_protocol::LuantiServer;
-use mt_definitions::{Dimensions, EntityMetadata, TextureBlob};
+use luanti_protocol::types::NodeBox;
+use mt_definitions::{Dimensions, EntityMetadata};
+use textures::{LuantiTexture, BlockMapping};
 use azalea_client::inventory;
 use azalea::registry::BlockEntityKind;
 
@@ -29,6 +33,7 @@ use std::time::Instant;
 #[tokio::main]
 async fn main() {
     let settings: Config = load_config();
+    textures::fetch_models().await;
     start_client_handler(settings).await;
 }
 
@@ -77,8 +82,12 @@ pub struct MTServerState {
     next_click_no_attack: bool,
     // used to only attack on the rising edge, not constantly
     previous_dig_held: bool,
-    
-    path_name_map: HashMap<String, TextureBlob>, // "minecraft:thing" -> TextureBlob mapping (TextureBlob holds relative paths)
+    // maps "minecraft:item"
+    item_texture_map: HashMap<String, LuantiTexture>,
+    // maps "minecraft:block"
+    block_texture_map: HashMap<String, BlockMapping>,
+    // maps NB_abc123
+    nodebox_lookup: HashMap<String, NodeBox>,
     subtitles: Vec<(String, Instant)>,
     prev_subtitle_string: String,
 }
@@ -118,9 +127,11 @@ async fn start_client_handler(settings: Config) {
         inventory_handle: None,
         next_click_no_attack: false,
         previous_dig_held: false,
+        item_texture_map: HashMap::new(),
+        block_texture_map: HashMap::new(),
+        nodebox_lookup: HashMap::new(),
         subtitles: Vec::new(),
         prev_subtitle_string: String::from(""),
-        path_name_map: HashMap::new(),
     };
 
     // Wait for a client to join

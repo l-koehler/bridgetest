@@ -20,12 +20,12 @@ use glam::Vec2 as v2f;
 use glam::Vec3 as v3f;
 use glam::IVec2 as v2i32;
 
+use crate::textures::{self, get_empty_tiledefs, LuantiTexture};
 use crate::{ utils, MTServerState };
 use crate::settings;
 
 use azalea::registry::{Block, EntityKind, MenuKind};
 use azalea::Vec3;
-use std::path::PathBuf;
 
 #[derive(Clone)]
 pub struct EntityMetadata {
@@ -62,66 +62,6 @@ pub enum HeartDisplay {
     
     Vehicle,
     NoChange // special value: do not change the heart texture
-}
-
-// resolves ambiguity in mapping minecraft:thing to textures
-// important! only stores paths relative to the texture pack root.
-// Stores models using the fake ./model/ path
-#[derive(Clone,Eq,PartialEq,Hash,Debug)]
-pub enum TextureBlob {
-    Block(LuantiTexture),
-    Item(LuantiTexture),
-    BlockItem(LuantiTexture, LuantiTexture)
-}
-
-impl TextureBlob {
-    // prefers returning a item texture
-    pub fn get_texture(&self) -> &LuantiTexture {
-        match self {
-            TextureBlob::Block(a)|TextureBlob::Item(a)|TextureBlob::BlockItem(_, a) => return a
-        }
-    }
-}
-
-#[derive(Clone,Eq,PartialEq,Hash,Debug)]
-pub struct LuantiTexture {
-    rel_path: String
-}
-
-impl LuantiTexture {
-    pub fn get_relative(&self) -> &str {
-        return &self.rel_path;
-    }
-    pub fn get_absolute(&self) -> PathBuf {
-        let textures_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/");
-        return textures_folder.join(PathBuf::from(&self.rel_path))
-    }
-    // ./block/thing.png -> block-thing.png
-    // we need to keep the extension, luanti relies on that for file type
-    pub fn to_luanti_safe(&self) -> String {
-        return self.get_relative().replace("./", "").replace("/", "-")
-    }
-    pub fn from_luanti_safe(safe_texture: &str) -> LuantiTexture {
-        let rel_path = format!("./{}", safe_texture.replace("-", "/"));
-        return LuantiTexture { rel_path }
-    }
-    pub fn with_postfix(&self, prefix: &str) -> LuantiTexture {
-        let new_rpath = format!("{}{}.png", self.rel_path.replace(".png", ""), prefix);
-        return LuantiTexture {
-            rel_path: new_rpath
-        }
-    }
-    pub fn is_valid(&self) -> bool {
-        self.get_absolute().exists()
-    }
-    pub fn from_string(rpath: &str) -> LuantiTexture {
-        LuantiTexture { rel_path: String::from(rpath) }
-    }
-    pub fn from_absolute(apath: PathBuf) -> LuantiTexture {
-        let textures_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/textures/");
-        let rel_path = apath.strip_prefix(textures_folder).unwrap().to_str().unwrap().to_owned();
-        LuantiTexture { rel_path }
-    }
 }
 
 #[derive(Clone)]
@@ -560,7 +500,7 @@ pub fn get_csmrestrictions() -> ToClientCommand {
 }
 
 // item def stuff
-pub async fn get_item_def_command(path_name_map: &HashMap<String, TextureBlob>) -> ToClientCommand {
+pub async fn get_item_def_command(mt_server_state: &MTServerState) -> ToClientCommand {
     let mc_data_api: Api = utils::compatible_data_api();
     
     // we need food- and placeable IDs to predict right-click behavior of every item
@@ -575,21 +515,24 @@ pub async fn get_item_def_command(path_name_map: &HashMap<String, TextureBlob>) 
         .collect();
     
     let mut mc_name: String;
-    let mut texture_name: String;
-    let mut texture_blob: TextureBlob;
+    let mut inventory_image: String;
     let mut item_definitions: Vec<ItemDef> = Vec::new();
     for item in mc_data_api.items.items_array().unwrap() {
         mc_name = format!("minecraft:{}", item.name.clone());
+        // generate inventory image
+        // if only present as block mapping, use inventory cube
+        // this logic is duplicated in utils::texture_from_itemstack
         if mc_name.ends_with("_spawn_egg") {
-            texture_blob = path_name_map.get("minecraft:template_spawn_egg").unwrap().clone();
+            inventory_image = mt_server_state.item_texture_map.get("minecraft:template_spawn_egg").unwrap().clone().to_luanti_safe();
         } else {
-            texture_blob = path_name_map.get(&mc_name).unwrap().clone();
+            if mt_server_state.item_texture_map.contains_key(&mc_name) {
+                inventory_image = mt_server_state.item_texture_map.get(&mc_name).unwrap().clone().to_luanti_safe();
+            } else {
+                inventory_image = mt_server_state.block_texture_map.get(&mc_name).unwrap().clone().to_safe_cube();
+            }
         }
-        // set texture name (as relative path)
-        texture_name = texture_blob.get_texture().to_luanti_safe();
-        
-        utils::logger(&format!("[Itemdefs] Mapped {} to the texture at {}", mc_name, texture_name), 0);
-        item_definitions.push(generate_itemdef(&mc_name, item, &texture_name, food_ids.clone(), placeable_ids.clone()));
+
+        item_definitions.push(generate_itemdef(&mc_name, item, inventory_image, food_ids.clone(), placeable_ids.clone()));
     }
     
     let alias_definitions: Vec<ItemAlias> = vec![ItemAlias {name: String::from(""), convert_to: String::from("")}];
@@ -605,7 +548,7 @@ pub async fn get_item_def_command(path_name_map: &HashMap<String, TextureBlob>) 
     )
 }
 
-pub fn generate_itemdef(name: &str, item: models::item::Item, inventory_image: &str, food_ids: Vec<u32>, placeable_ids: Vec<u32>) -> ItemDef {
+pub fn generate_itemdef(name: &str, item: models::item::Item, inventory_image: String, food_ids: Vec<u32>, placeable_ids: Vec<u32>) -> ItemDef {
     let stack_max: i16 = item.stack_size as i16;
     let max_durability = item.max_durability;
     let is_edible: bool = food_ids.contains(&item.id);
@@ -635,15 +578,8 @@ pub fn generate_itemdef(name: &str, item: models::item::Item, inventory_image: &
         item_type: item_type.clone(),
         name: String::from(name),
         description: String::from(""),
-        // legible formatted string (curly braces are escaped by duplication, so the output is "{a{b{c")
-        inventory_image: match item_type {
-            ItemType::Node => format!("[inventorycube{{{}{{{}{{{}", inventory_image, inventory_image, inventory_image),
-            _ => String::from(inventory_image)
-        },
-        wield_image: match item_type {
-            ItemType::Node => format!("[inventorycube{{{}{{{}{{{}", inventory_image, inventory_image, inventory_image),
-            _ => String::from(inventory_image)
-        },
+        inventory_image: inventory_image.clone(),
+        wield_image: inventory_image,
         wield_scale: v3f {
             x: 1.0,
             y: 1.0,
@@ -780,12 +716,7 @@ pub fn generate_contentfeature(block: azalea::registry::Block, texture_pack_res:
     // for light stuff, use the "brightest" state
     // for everything else, do other stuff idk look at the code
     let mc_name = block.to_string();
-    let texture_blob: &TextureBlob = mt_server_state.path_name_map.get(&mc_name).unwrap();
-    // without extension, to allow messing around with _top etc
-    // can't use get_texture, it prefers item textures in ambiguous cases
-    let texture = match texture_blob {
-        TextureBlob::Block(a)|TextureBlob::Item(a)|TextureBlob::BlockItem(a,_) => a.clone()
-    };
+
     let mut liquid_range = 0;
     let mut liquid_viscosity = 0;
     let mut liquid_renewable = true;
@@ -805,125 +736,6 @@ pub fn generate_contentfeature(block: azalea::registry::Block, texture_pack_res:
     if [Block::Water, Block::Lava, Block::Seagrass, Block::TallSeagrass, Block::NetherPortal, Block::EndPortal, Block::MagmaBlock].contains(&block) {
         animation = TileAnimationParams::VerticalFrames { aspect_w: texture_pack_res, aspect_h: texture_pack_res, length: 2.0 }
     }
-
-    /*
-     * PlantLike: Texture rendered along both diagonal horizontal lines.
-     * Normal: Texture rendered on each of the 6 faces.
-     * Liquid: Like Normal, but transparency added + shader stuff
-     * other stuff - idk too lazy to type, use common sense
-     */
-    // azalea_registry::blockkind would be ideal, but is unused and thus unusable in azalea.
-    // so i need to make this ugly thing matching each block with a non-normal drawtype
-    let drawtype = match block {
-        Block::Water       => DrawType::Liquid,
-        Block::Lava        => DrawType::Liquid,
-        
-        Block::Air         => DrawType::AirLike,
-        Block::CaveAir     => DrawType::AirLike,
-        Block::VoidAir     => DrawType::AirLike,
-        
-        Block::Torch       => DrawType::TorchLike,
-        Block::SoulTorch   => DrawType::TorchLike,
-        
-        Block::Dandelion   => DrawType::PlantLike,
-        Block::Poppy       => DrawType::PlantLike,
-        Block::BlueOrchid  => DrawType::PlantLike,
-        Block::Allium      => DrawType::PlantLike,
-        Block::AzureBluet  => DrawType::PlantLike,
-        Block::RedTulip    => DrawType::PlantLike,
-        Block::OrangeTulip => DrawType::PlantLike,
-        Block::WhiteTulip  => DrawType::PlantLike,
-        Block::PinkTulip   => DrawType::PlantLike,
-        Block::OxeyeDaisy  => DrawType::PlantLike,
-        Block::Cornflower  => DrawType::PlantLike,
-        Block::LilyOfTheValley => DrawType::PlantLike,
-        Block::Torchflower => DrawType::PlantLike,
-        Block::BambooSapling => DrawType::PlantLike,
-        Block::Bamboo      => DrawType::PlantLike,
-        Block::DeadBush    => DrawType::PlantLike,
-        Block::ShortGrass  => DrawType::PlantLike,
-        Block::Fern        => DrawType::PlantLike,
-        Block::HangingRoots => DrawType::PlantLike,
-        Block::SweetBerryBush => DrawType::PlantLike,
-        Block::Seagrass    => DrawType::PlantLike,
-        Block::PointedDripstone => DrawType::PlantLike, // totally a plant, whatever
-
-        // works surprisingly fine for tall flowers
-        Block::SugarCane   => DrawType::FireLike,
-        Block::TallGrass   => DrawType::FireLike,
-        Block::LargeFern   => DrawType::FireLike,
-        Block::TallSeagrass => DrawType::FireLike,
-        Block::RoseBush    => DrawType::FireLike,
-        Block::Peony       => DrawType::FireLike,
-
-        Block::LilyPad     => DrawType::SignLike, // is flat without param2
-        Block::MossCarpet  => DrawType::SignLike,
-        Block::WhiteCarpet => DrawType::SignLike,
-        Block::LightGrayCarpet => DrawType::SignLike,
-        Block::GrayCarpet  => DrawType::SignLike,
-        Block::BlackCarpet => DrawType::SignLike,
-        Block::BrownCarpet => DrawType::SignLike,
-        Block::RedCarpet   => DrawType::SignLike,
-        Block::OrangeCarpet => DrawType::SignLike,
-        Block::YellowCarpet => DrawType::SignLike,
-        Block::LimeCarpet  => DrawType::SignLike,
-        Block::CyanCarpet  => DrawType::SignLike,
-        Block::LightBlueCarpet => DrawType::SignLike,
-        Block::BlueCarpet  => DrawType::SignLike,
-        Block::PurpleCarpet => DrawType::SignLike,
-        Block::MagentaCarpet => DrawType::SignLike,
-        Block::PinkCarpet  => DrawType::SignLike,
-        
-        Block::Rail        => DrawType::RailLike,
-        Block::PoweredRail => DrawType::RailLike,
-        Block::DetectorRail => DrawType::RailLike,
-        Block::ActivatorRail => DrawType::RailLike,
-        
-        Block::OakSign     => DrawType::SignLike, // TODO send param2 for these nodes
-        Block::SpruceSign  => DrawType::SignLike,
-        Block::BirchSign   => DrawType::SignLike,
-        Block::JungleSign  => DrawType::SignLike,
-        Block::AcaciaSign  => DrawType::SignLike,
-        Block::DarkOakSign => DrawType::SignLike,
-        Block::MangroveSign => DrawType::SignLike,
-        Block::CherrySign  => DrawType::SignLike,
-        Block::BambooSign  => DrawType::SignLike,
-        Block::CrimsonSign => DrawType::SignLike,
-        Block::WarpedSign  => DrawType::SignLike,
-        
-        Block::OakFence    => DrawType::FenceLike,
-        Block::SpruceFence => DrawType::FenceLike,
-        Block::BirchFence  => DrawType::FenceLike,
-        Block::JungleFence => DrawType::FenceLike,
-        Block::AcaciaFence => DrawType::FenceLike,
-        Block::DarkOakFence => DrawType::FenceLike,
-        Block::MangroveFence => DrawType::FenceLike,
-        Block::CherryFence => DrawType::FenceLike,
-        Block::BambooFence => DrawType::FenceLike,
-        Block::CrimsonFence => DrawType::FenceLike,
-        Block::WarpedFence => DrawType::FenceLike,
-        
-        Block::Fire        => DrawType::FireLike,
-        Block::SoulFire    => DrawType::FireLike,
-        
-        // leaves, vines etc
-        Block::MangroveRoots => DrawType::GlassLike,
-        Block::Vine        => DrawType::GlassLike,
-        Block::GlowLichen  => DrawType::GlassLike,
-        Block::OakLeaves   => DrawType::GlassLike,
-        Block::SpruceLeaves => DrawType::GlassLike,
-        Block::BirchLeaves => DrawType::GlassLike,
-        Block::JungleLeaves => DrawType::GlassLike,
-        Block::AcaciaLeaves => DrawType::GlassLike,
-        Block::CherryPlanks => DrawType::GlassLike,
-        Block::DarkOakLeaves => DrawType::GlassLike,
-        Block::MangroveLeaves => DrawType::GlassLike,
-        Block::AzaleaLeaves => DrawType::GlassLike,
-        Block::FloweringAzaleaLeaves => DrawType::GlassLike,
-        
-        _ => DrawType::Normal,
-    };
-    let walkable = matches!(drawtype, DrawType::AirLike | DrawType::GlassLike | DrawType::Mesh | DrawType::Normal);
     
     let rightclickable = match block {
         // opens inventory
@@ -991,7 +803,9 @@ pub fn generate_contentfeature(block: azalea::registry::Block, texture_pack_res:
         // TODO level 1 skipped, boring :(
         _ => 0,
     };
-    let sunlight_propagates = match drawtype.clone() {
+    let texture = mt_server_state.block_texture_map.get(&mc_name).unwrap();
+
+    let sunlight_propagates = match texture.drawtype {
         DrawType::AirLike => 15,
         DrawType::GlassLike => 15,
         DrawType::Liquid => 10,
@@ -1004,48 +818,9 @@ pub fn generate_contentfeature(block: azalea::registry::Block, texture_pack_res:
         pitch: 1.0,
         fade: 1.0,
     };
-    
-    // texture stuff
-    // texture_base_name is the basename.
-    // if {texture_base_name}_top.png exists then use it etc, default to fallbacks
-    fn get_tiledef(texture: &LuantiTexture, animation: &TileAnimationParams) -> TileDef {
-        TileDef {
-            name: texture.to_luanti_safe(),
-            animation: animation.clone(),
-            backface_culling: true,
-            tileable_horizontal: false,
-            tileable_vertical: false,
-            color_rgb: utils::get_colormap(texture),
-            scale: 0,
-            align_style: AlignStyle::Node
-        }
-    }
-    let mut tiledef_sides: [TileDef; 6] = [get_tiledef(&texture, &animation), get_tiledef(&texture, &animation), get_tiledef(&texture, &animation), get_tiledef(&texture, &animation), get_tiledef(&texture, &animation), get_tiledef(&texture, &animation)];
-    // if _side/_top/_bottom exists, use that for the respective side(s)
-    // use _top for _bottom and _bottom for _top if respectively missing
-    match (texture.with_postfix("_top").is_valid(), texture.with_postfix("_bottom").is_valid()) {
-        (true, true) => {
-            tiledef_sides[0] = get_tiledef(&texture.with_postfix("_top"), &animation);
-            tiledef_sides[1] = get_tiledef(&texture.with_postfix("_bottom"), &animation);
-        },
-        (true, false) => {
-            tiledef_sides[0] = get_tiledef(&texture.with_postfix("_top"), &animation);
-            tiledef_sides[1] = get_tiledef(&texture.with_postfix("_top"), &animation);
-        },
-        (false, true) => {
-            tiledef_sides[0] = get_tiledef(&texture.with_postfix("_bottom"), &animation);
-            tiledef_sides[1] = get_tiledef(&texture.with_postfix("_bottom"), &animation);
-        },
-        _=>(),
-    }
-    
-    if texture.with_postfix("_side").is_valid() {
-        let side_td = get_tiledef(&texture.with_postfix("_side"), &animation);
-        tiledef_sides[2] = side_td.clone();
-        tiledef_sides[3] = side_td.clone();
-        tiledef_sides[4] = side_td.clone();
-        tiledef_sides[5] = side_td;
-    }
+
+    let tiledef_sides: [TileDef; 6] = texture.get_tiledefs(&animation);
+    let walkable = matches!(texture.drawtype, DrawType::GlassLike | DrawType::NodeBox | DrawType::Normal);
     ContentFeatures {
         version: 13, // https://github.com/minetest/minetest/blob/master/src/nodedef.h#L313
         name: block.to_string(),
@@ -1054,15 +829,18 @@ pub fn generate_contentfeature(block: azalea::registry::Block, texture_pack_res:
         ],
         param_type: 0,
         param_type_2: 0,
-        drawtype: drawtype.clone(),
-        mesh: String::from(""),
-        visual_scale: 1.0,
+        drawtype: texture.drawtype.clone(),
+        mesh: String::new(),
+        visual_scale: match texture.drawtype {
+            DrawType::NodeBox => textures::NB_SCALE_FACTOR,
+            _ => 1.0
+        },
         unused_six: 6, // unused? idk what does this even do
         tiledef: tiledef_sides.clone(),
-        tiledef_overlay: tiledef_sides.clone(),
+        tiledef_overlay: get_empty_tiledefs(),
         // unexplained in the minetest-protocol crate
-        tiledef_special: tiledef_sides.to_vec(),
-        alpha_for_legacy: 20,
+        tiledef_special: get_empty_tiledefs().to_vec(),
+        alpha_for_legacy: 255,
         red: 100,
         green: 70,
         blue: 85,
@@ -1077,12 +855,12 @@ pub fn generate_contentfeature(block: azalea::registry::Block, texture_pack_res:
         light_source, // TODO test the effect of this
         is_ground_content: false,
         walkable,
-        pointable: drawtype != DrawType::AirLike,
-        diggable: block != Block::Bedrock && drawtype != DrawType::Liquid && drawtype != DrawType::AirLike,
+        pointable: texture.drawtype != DrawType::AirLike,
+        diggable: block != Block::Bedrock && texture.drawtype != DrawType::Liquid && texture.drawtype != DrawType::AirLike,
         climbable: false,
         buildable_to: !rightclickable, // TODO this is a oversimplification and likely needs its own match abomination
         rightclickable,
-        damage_per_second: 0,
+        damage_per_second: 0, // the 100 DPS dirt block
         liquid_type_bc: 0,
         liquid_alternative_flowing: String::new(),
         liquid_alternative_source: String::new(),
@@ -1091,17 +869,20 @@ pub fn generate_contentfeature(block: azalea::registry::Block, texture_pack_res:
         liquid_range,
         drowning: 0,
         floodable: false,
-        node_box: NodeBox::Regular,
-        selection_box: NodeBox::Regular,
-        collision_box: NodeBox::Regular,
+        node_box: texture.nodebox.clone(),
+        selection_box: texture.nodebox.clone(),
+        collision_box: texture.nodebox.clone(),
         sound_footstep: simplesound_placeholder.clone(),
         sound_dig: simplesound_placeholder.clone(),
         sound_dug: simplesound_placeholder.clone(),
-        legacy_facedir_simple: false,
+        legacy_facedir_simple: true,
         legacy_wallmounted: false,
         node_dig_prediction: String::new(),
         leveled_max: 0,
-        alpha: types::AlphaMode::Opaque,
+        alpha: match texture.drawtype {
+            DrawType::PlantLike | DrawType::PlantLikeRooted => types::AlphaMode::Blend,
+            _ => types::AlphaMode::Opaque
+        },
         move_resistance: 0,
         liquid_move_physics: false
     }

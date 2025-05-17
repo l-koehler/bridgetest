@@ -1,109 +1,189 @@
 #!/usr/bin/env python3
-
-# this file generates the texture maps in extra_data/
-# you shouldn't need to run it, unless you want to update the proxy to support new versions
-
-import json, os
+import json
+import hashlib
 from pathlib import Path
-# path to unpacked client jar file
-# change as needed
-jar_data_root = Path("/home/user/Code/minecraft-1.21.4-client")
 
-if not (jar_data_root.exists() and jar_data_root.is_dir()):
-    print(f"Data root does not exist/is not a directory: {jar_data_root}")
-    exit(1)
-if not (jar_data_root/"version.json").is_file():
-    print(f"Data root seems invalid. The directory should contain a version.json file")
-    exit(1)
-blockstate_dir = jar_data_root/"assets/minecraft/blockstates/"
-block_model_dir = jar_data_root/"assets/minecraft/models/block/"
-item_model_dir = jar_data_root/"assets/minecraft/models/item/"
-print(f"Unpacked client jar at: {jar_data_root}")
+asset_root = Path("/home/user/Code/minecraft-1.21.4-client")
+blockstates_dir = asset_root / "assets/minecraft/blockstates"
+models_dir = asset_root / "assets/minecraft/models/block"
+item_dir = asset_root / "assets/minecraft/models/item"
 
-# i love deadline-oriented programming, minecraft is such a functional and normal piece of ~~crap~~ software
-fake_blocks = [
-    "minecraft:glow_item_frame",
-    "minecraft:item_frame"
-]
+bridgetest = Path(__file__).parent.parent
+face_keys = ["up", "down", "north", "south", "east", "west"]
+key_aliases = {
+    "up": ["top"],
+    "down": ["bottom"],
+    "north": ["side"],
+    "south": ["side"],
+    "east": ["side"],
+    "west": ["side"]
+}
 
-json_files = sorted(blockstate_dir.glob('*.json'))
+block_map = {}
+nodebox_map = {}
+item_map = {}
 
-# List<(String, String)> with block_id and model_path
-models = []
-fakes = 0
-for state_file in json_files:
-    fp = state_file.open()
-    data = json.load(fp)
-    fp.close()
-    block_id = f"minecraft:{state_file.stem}"
-    # fuck this
-    if block_id in fake_blocks:
-        fakes += 1
-        continue
-    model = None
+def load_json(path):
+    try:
+        with path.open() as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+special_nodeboxes = load_json(bridgetest/"extra_data/virtual_models.json")
+
+def resolve_model(model_name, seen=None):
+    # recursively resolve model parents, merge textures and elements
+    if seen is None:
+        seen = set()
+    if model_name in seen:
+        return {}, []
+    seen.add(model_name)
+
+    path = models_dir / (model_name.replace("minecraft:block/", "") + ".json")
+    data = load_json(path)
+    if not data:
+        if model_name in special_nodeboxes:
+            data = special_nodeboxes[model_name]
+        else:
+            print(f"WARN: Missing model: {model_name}")
+            return {}, []
+
+    # inherit
+    parent_textures, parent_elements = {}, []
+    parent = data.get("parent")
+    if parent:
+        parent_textures, parent_elements = resolve_model(parent, seen)
+
+    # merge textures
+    textures = parent_textures.copy()
+    textures.update(data.get("textures", {}))
+
+    # use elements if present
+    elements = data.get("elements", parent_elements)
+
+    return textures, elements
+
+def get_face_textures(texture_map):
+    # extract the textures for each face direction
+    has_particle = ("particle" in texture_map)
+    faces = {k: None for k in face_keys}
+    for key in face_keys:
+        texture = None
+        if key in texture_map:
+            texture = texture_map[key]
+            if texture[0] == "#":
+                texture = texture_map[texture[1::]]
+        else:
+            # try aliases
+            for key_alias in key_aliases[key]:
+                if key_alias in texture_map:
+                    texture = texture_map[key_alias]
+                    if texture[0] == "#":
+                        texture = texture_map[texture[1::]]
+            # default to particle, then air
+            if has_particle and texture == None:
+                texture = texture_map["particle"]
+                if texture[0] == "#":
+                    texture = texture_map[texture[1::]]
+            elif texture == None:
+                texture = "minecraft:block/air"
+        texture = texture.replace("minecraft:", "./")
+        faces[key] = texture+".png"
+    return faces
+
+def round_box(box):
+    return [int(round(v)) for v in box]
+
+def extract_nodebox(elements):
+    # get cuboids from element
+    boxes = []
+    for el in elements:
+        from_box = el.get("from")
+        to_box = el.get("to")
+        if not from_box or not to_box:
+            continue
+        cuboid = round_box(from_box + to_box)
+        boxes.append(cuboid)
+    return boxes
+
+def is_flower_like(elements):
+    if len(elements) != 2:
+        return False
+    planes = []
+    for el in elements:
+        from_x, from_y, from_z = el["from"]
+        to_x, to_y, to_z = el["to"]
+        if from_y != 0 or to_y != 16:
+            return False
+        if from_x == to_x or from_z == to_z:
+            planes.append((from_x, from_z, to_x, to_z))
+    return len(planes) == 2
+
+def is_full_cube(elements):
+    if len(elements) != 1:
+        return False
+    el = elements[0]
+    return round_box(el["from"] + el["to"]) == [0, 0, 0, 16, 16, 16]
+
+def determine_drawtype(textures, elements, nodeboxes):
+    if not elements:
+        texture = [textures['particle'] if "particle" in textures else ""][0]
+        if "fire" in texture:
+            return "fire"
+        elif "water" in texture or "lava" in texture:
+            return "liquid"
+        # rather ugly fallback
+        # many weird entity-like blocks (beds, chests, signs, banners) are air otherwise
+        elif "block" in texture:
+            return "full"
+        # only applies to blocks with that weird missingno texture (which is not prefixed with block/)
+        return "air"
+    if is_flower_like(elements):
+        return "flower"
+    if is_full_cube(elements):
+        return "full"
+
+    # nodebox name is its hash, prevents duplicates 
+    key_data = json.dumps(sorted(nodeboxes)).encode("utf-8")
+    key_hash = hashlib.sha1(key_data).hexdigest()[:8]
+    key = f"NB_{key_hash}"
+    nodebox_map[key] = nodeboxes
+    return key
+
+# blocks and nodeboxes
+print("Generating block mappings and nodeboxes...")
+for block_file in sorted(blockstates_dir.glob("*.json")):
+    block_id = f"minecraft:{block_file.stem}"
+    data = load_json(block_file)
+
+    model_name = None
     if "variants" in data:
-        for variant in data["variants"].values():
-            if isinstance(variant, list):
-                model = variant[0]["model"]
-            else:
-                model = variant["model"]
-            break
+        first = next(iter(data["variants"].values()), None)
+        model_name = first[0]["model"] if isinstance(first, list) else first["model"]
     elif "multipart" in data:
         for part in data["multipart"]:
             apply = part.get("apply")
-            if isinstance(apply, list):
-                model = apply[0]["model"]
-            else:
-                model = apply["model"]
+            model_name = apply[0]["model"] if isinstance(apply, list) else apply["model"]
             break
-    if model != None:
-        model = model.replace("minecraft:block/", "")
-        model = block_model_dir/f"{model}.json"
 
-    models.append((block_id, model))
-# skip none-type, these were accounted for above
-missing = [m for m in models if not (m[1] == None or m[1].is_file())]
-failures = [m for m in models if m[1] == None]
-if len(failures) != 0:
-    print(f"Bad Mappings: {failures}")
-if len(missing) != 0:
-    print(f"Bad Paths: {missing}")
-
-mapping = {}
-for model in models:
-    fp = open(model[1])
-    data = json.load(fp)
-    fp.close()
-    textures = data.get("textures", {})
-    if not textures:
+    if not model_name:
         continue
 
-    # pick the shortest, as that is likely the least specific (don't use _top when a generic texture exists)
-    texture_ref = sorted(list(textures.values()), key=len)[0]
-    if texture_ref.startswith("minecraft:"):
-        texture_ref = texture_ref.split(":", 1)[1]
+    textures, elements = resolve_model(model_name)
+    face_textures = get_face_textures(textures)
+    nodeboxes = extract_nodebox(elements)
+    drawtype = determine_drawtype(textures, elements, nodeboxes)
+    block_map[block_id] = {
+        "textures": face_textures,
+        "drawtype": drawtype
+    }
 
-    # very nice easter egg but it is breaking everything
-    if texture_ref == "missingno":
-        continue
-    
-    texture_path = f"./{texture_ref}.png"
-    mapping[model[0]] = texture_path
-
-# works as long as this file doesn't get moved around
-block_mapping_file = Path(__file__).parent.parent/"extra_data/block_texture_map.json"
-print(f"Writing block mapping to: {block_mapping_file}")
-fp = open(block_mapping_file, 'w')
-json.dump(mapping, fp)
-fp.close()
-
-# do the same stuff for items
-mapping = {}
-for model_file in sorted(item_model_dir.glob("*.json")):
+# items
+print("Generating item mappings...")
+for model_file in sorted(item_dir.glob("*.json")):
     item_id = f"minecraft:{model_file.stem}"
-    fp = open(model_file)
-    data = json.load(fp)
-    fp.close()
+    data = load_json(model_file)
 
     if "textures" not in data:
         continue # there are a bunch of weird non-items in there. this is fine
@@ -117,15 +197,23 @@ for model_file in sorted(item_model_dir.glob("*.json")):
         continue
     
     texture_path = f"./{texture_ref}.png"
-    mapping[item_id] = texture_path
-
+    item_map[item_id] = texture_path
 # add missing mappings (deadline-oriented design strikes again)
-mapping["minecraft:compass"] = mapping["minecraft:compass_00"]
-mapping["minecraft:clock"] = mapping["minecraft:clock_00"]
-mapping["minecraft:recovery_compass"] = mapping["minecraft:recovery_compass_00"]
+item_map["minecraft:compass"] = item_map["minecraft:compass_00"]
+item_map["minecraft:clock"] = item_map["minecraft:clock_00"]
+item_map["minecraft:recovery_compass"] = item_map["minecraft:recovery_compass_00"]
 
-item_mapping_file = Path(__file__).parent.parent/"extra_data/item_texture_map.json"
-print(f"Writing item mapping to: {item_mapping_file}")
-fp = open(item_mapping_file, 'w')
-json.dump(mapping, fp)
-fp.close()
+# save data
+texture_file = bridgetest/"extra_data/block_texture_map.json"
+with open(texture_file, "w") as f:
+    json.dump(block_map, f, indent=2)
+
+nodebox_file = bridgetest/"extra_data/nodeboxes.json"
+with open(nodebox_file, "w") as f:
+    json.dump(nodebox_map, f, indent=2)
+
+item_file = bridgetest/"extra_data/item_texture_map.json"
+with open(item_file, "w") as f:
+    json.dump(item_map, f, indent=2)
+
+print(f"Done! Saved mappings and nodeboxes to: {bridgetest/'extra_data'}")

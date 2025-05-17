@@ -31,22 +31,20 @@ Now, move these so you'll have this folder structure:
 └── textures
     ├── block
     ├── colormap
-    ├── effect
-    ├── entity
-    ├── environment
-    ├── font
-    ├── gui
-    ├── item
-    ├── map
-    ├── misc
-    ├── mob_effect
-    ├── painting
-    ├── particle
-    └── trims
+    └── ...
 ```
 
 The `bridgetest-data-directory` is `~/.local/share/bridgetest` on Linux.  
 On Windows, it *should* be `C:\Users\Alice\AppData\Roaming\bridgetest`.  
+It will be created on the first start, alternatively you can create it yourself.  
+
+Some models are also needed and will be downloaded on the first start.  
+
+## Troubleshooting Steps
+
+* Ensure you are running the latest commit for bridgetest.  
+* Try using luanti compiled from somewhat recent source.  
+* Make a issue report, most likely any problems are caused by bridgetest.  
 
 ## Things that are still missing from a usable version
 

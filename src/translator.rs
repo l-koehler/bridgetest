@@ -65,12 +65,14 @@ pub async fn client_handler(_mt_server: LuantiServer, mut mt_conn: LuantiConnect
     //     utils::logger(&format!("[Minetest] S->C {}", packet_names[index]), 1);
     //     let _ = mt_conn.send(media_packets[index].clone()).await;
     // }
-    mt_server_state.path_name_map = textures::generate_map();
-    
+    mt_server_state.item_texture_map = textures::load_item_mappings();
+    mt_server_state.nodebox_lookup = textures::load_nodeboxes();
+    mt_server_state.block_texture_map = textures::load_block_mappings(&mt_server_state.nodebox_lookup);
+
     mt_conn.send(textures::get_announcement()).unwrap();
 
     utils::logger("[Minetest] S->C Itemdef", 1);
-    mt_conn.send(mt_definitions::get_item_def_command(&mt_server_state.path_name_map).await).unwrap();
+    mt_conn.send(mt_definitions::get_item_def_command(&mt_server_state).await).unwrap();
     utils::logger("[Minetest] S->C Nodedef", 1);
     mt_conn.send(mt_definitions::get_node_def_command(&settings, &mut mt_server_state).await).unwrap();
     
@@ -101,7 +103,7 @@ pub async fn client_handler(_mt_server: LuantiServer, mut mt_conn: LuantiConnect
         let command = t.unwrap();
         match command {
             ToServerCommand::RequestMedia(packet) => {
-                mt_conn.send(textures::handle_request(&mt_server_state, packet)).unwrap();
+                mt_conn.send(textures::handle_request( packet)).unwrap();
             },
             ToServerCommand::ClientReady(_) => break,
             _ => utils::logger(&format!("[Minetest] Dropping unexpected packet! Got serverbound \"{}\", expected \"ClientReady\"!", command.command_name()), 2)
