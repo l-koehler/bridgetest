@@ -595,7 +595,7 @@ pub fn generate_itemdef(name: &str, item: models::item::Item, inventory_image: S
         sound_place_failed: simplesound_placeholder,
         range: 5.0,
         palette_image: String::from(""),
-        color: SColor::new(100, 70, 85, 20),
+        color: SColor::new(255, 255, 255, 255),
         inventory_overlay: String::from(""),
         wield_overlay: String::from(""),
         short_description: Some(String::from("Proxy fucked up, sorry!")),
