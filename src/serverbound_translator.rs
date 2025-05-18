@@ -313,9 +313,8 @@ fn pickupclick_i(handle: &ContainerHandle, index: u16, count: u16) {
 }
 
 pub fn move_item(count: u16, from_list: String, from_i: i16, to_list: String, to_i: Option<i16>, mc_client: &mut Client, mt_server_state: &mut MTServerState) {
-    println!("Moving from {from_list} to {to_list}: {from_i}, {:?}", to_i);
-    match (from_list.as_str(), to_list.as_str()) {
-        ("container", "container") => {
+    match from_list.as_str() {
+        "container" => {
             let maybe_handle = mc_client.get_open_container();
             if maybe_handle.is_none() {
                 utils::logger("[Minetest] Client attempted to take items from a container while no container was opened", 2);
@@ -327,69 +326,47 @@ pub fn move_item(count: u16, from_list: String, from_i: i16, to_list: String, to
                 return;
             }
             pickupclick_c(&handle, from_i, count);
-            handle.click(ClickOperation::Pickup(PickupClick::Left {
-                slot: Some(to_i.unwrap() as u16)
-            }))
-        }
-        ("container", _) => {
-            let maybe_handle = mc_client.get_open_container();
-            if maybe_handle.is_none() {
-                utils::logger("[Minetest] Client attempted to take items from a container while no container was opened", 2);
-                return;
-            }
-            let handle = maybe_handle.unwrap();
-            if handle.contents().is_none() {
-                utils::logger("[Minetest] Client attempted to take items from a container without contents", 2);
-                return;
-            }
-            pickupclick_c(&handle, from_i, count);
-            let maybe_handle = mc_client.open_inventory();
-            if maybe_handle.is_none() {
-                utils::logger("[Minetest] Client attempted to put items into the inventory while a container was opened", 2);
-                return;
-            }
-            let handle = maybe_handle.unwrap();
-            let slot_index = get_adjusted_index(from_i as u16, to_list.as_str());
-            handle.click(ClickOperation::Pickup(PickupClick::Left {
-                slot: Some(slot_index)
-            }));
-            // we moved a item into the crafting slots, keep the handle around so the inventory won't close
-            if (1..=5).contains(&slot_index) && mt_server_state.inventory_handle.is_none() {
-                mt_server_state.inventory_handle = Some(Arc::new(Mutex::new(handle)));
-            }
-        }
-        (_, "container") => {
-            let maybe_handle = mc_client.open_inventory();
-            if maybe_handle.is_none() {
-                utils::logger("[Minetest] Client attempted to put items into the inventory while a container was opened", 2);
-                return;
-            }
-            let handle = maybe_handle.unwrap();
-            let slot_index = get_adjusted_index(from_i as u16, from_list.as_str());
-            pickupclick_i(&handle, slot_index, count);
-            let maybe_handle = mc_client.get_open_container();
-            if maybe_handle.is_none() {
-                utils::logger("[Minetest] Client attempted to put items into a container while no container was opened", 2);
-                return;
-            }
-            let handle = maybe_handle.unwrap();
-            if handle.contents().is_none() {
-                utils::logger("[Minetest] Client attempted to put items into a container without contents", 2);
-                return;
-            }
-            handle.click(ClickOperation::Pickup(PickupClick::Left {
-                slot: Some(to_i.unwrap() as u16)
-            }));
-        }
+        },
         _ => {
-            // the ominous match n7ua9p34rf8,, (at what point did ,,, begin feeling like overly formal/proper punctuation? im cooked)
             let index_from = get_adjusted_index(from_i as u16, from_list.as_str());
-            let index_to = get_adjusted_index(to_i.unwrap() as u16, to_list.as_str());
             match &mt_server_state.inventory_handle {
                 Some(arc_mtx_cht) => {
                     let guard = arc_mtx_cht.lock();
                     let handle = guard.unwrap();
                     pickupclick_i(&handle, index_from, count);
+                },
+                None => {
+                    let maybe_handle = mc_client.open_inventory();
+                    if maybe_handle.is_none() {
+                        utils::logger("[Minetest] Client attempted something silly", 2);
+                        return;
+                    }
+                    let handle = maybe_handle.unwrap();
+                    pickupclick_i(&handle, index_from, count);
+                },
+            }
+        }
+    }
+    match to_list.as_str() {
+        "container" => {
+            let maybe_handle = mc_client.get_open_container();
+            if maybe_handle.is_none() {
+                utils::logger("[Minetest] Client attempted to take items from a container while no container was opened", 2);
+                return;
+            }
+            let handle = maybe_handle.unwrap();
+            if handle.contents().is_none() {
+                utils::logger("[Minetest] Client attempted to take items from a container without contents", 2);
+                return;
+            }
+            handle.click(ClickOperation::Pickup(PickupClick::Left { slot: Some(to_i.unwrap() as u16) }));
+        },
+        _ => {
+            let index_to = get_adjusted_index(to_i.unwrap() as u16, to_list.as_str());
+            match &mt_server_state.inventory_handle {
+                Some(arc_mtx_cht) => {
+                    let guard = arc_mtx_cht.lock();
+                    let handle = guard.unwrap();
                     handle.click(ClickOperation::Pickup(PickupClick::Left {
                         slot: Some(index_to)
                     }));
@@ -401,7 +378,6 @@ pub fn move_item(count: u16, from_list: String, from_i: i16, to_list: String, to
                         return;
                     }
                     let handle = maybe_handle.unwrap();
-                    pickupclick_i(&handle, index_from, count);
                     handle.click(ClickOperation::Pickup(PickupClick::Left {
                         slot: Some(index_to)
                     }));
@@ -412,7 +388,7 @@ pub fn move_item(count: u16, from_list: String, from_i: i16, to_list: String, to
                     }
                 },
             }
-        },
+        }
     }
 }
 

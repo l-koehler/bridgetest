@@ -3,15 +3,13 @@
 // the "String" type cant be a constant so :shrug:
 
 use luanti_protocol::commands::{server_to_client, server_to_client::ToClientCommand};
-use luanti_protocol::types::{ AlignStyle, NodeBox, ContentFeatures, DrawType, Inventory, SimpleSoundSpec, TileAnimationParams, TileDef, InventoryEntry, InventoryList, ItemStackUpdate, SColor};
+use luanti_protocol::types::{ AlignStyle, ContentFeatures, DrawType, Inventory, SimpleSoundSpec, TileAnimationParams, TileDef, InventoryEntry, InventoryList, ItemStackUpdate, SColor};
 use luanti_protocol::commands::server_to_client::{ItemDef, ItemAlias, ItemdefList, ItemType};
 use luanti_protocol::types;
 
 use minecraft_data_rs::Api;
 use minecraft_data_rs::models;
 use config::Config;
-
-use std::collections::HashMap;
 
 // same fucking name as in azalea :sob:
 // i am lazy, so this gets renamed to the old minetest-protocol types
@@ -20,7 +18,7 @@ use glam::Vec2 as v2f;
 use glam::Vec3 as v3f;
 use glam::IVec2 as v2i32;
 
-use crate::textures::{self, get_empty_tiledefs, LuantiTexture};
+use crate::textures::{self, get_empty_tiledefs};
 use crate::{ utils, MTServerState };
 use crate::settings;
 
