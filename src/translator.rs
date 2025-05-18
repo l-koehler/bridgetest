@@ -5,27 +5,32 @@
  */
 
 use crate::clientbound_translator;
+use crate::commands;
 use crate::mt_definitions;
+use crate::on_tick;
+use crate::settings;
 use crate::textures;
 use crate::utils;
-use crate::commands;
 use crate::MTServerState; // ok this is stupid to do whatever it works (i need global variables) (for normal reasons)
-use crate::settings;
-use crate::on_tick;
 
-use luanti_protocol::peer::PeerError;
-use luanti_protocol::commands::CommandProperties;
 use luanti_protocol::commands::client_to_server::ToServerCommand;
+use luanti_protocol::commands::CommandProperties;
+use luanti_protocol::peer::PeerError;
 use luanti_protocol::LuantiConnection;
 use luanti_protocol::LuantiServer;
 
 use azalea_client::Event;
 use config::Config;
+use std::time::Duration;
 use tokio_stream::wrappers::IntervalStream;
 use tokio_stream::StreamExt;
-use std::time::Duration;
 
-pub async fn client_handler(_mt_server: LuantiServer, mut mt_conn: LuantiConnection, mut mt_server_state: MTServerState, settings: Config) {
+pub async fn client_handler(
+    _mt_server: LuantiServer,
+    mut mt_conn: LuantiConnection,
+    mut mt_server_state: MTServerState,
+    settings: Config,
+) {
     /*
      * The first few packets (handshake) are outside the main loop, because
      * at this point the minecraft client isn't initialized yet.
@@ -43,9 +48,9 @@ pub async fn client_handler(_mt_server: LuantiServer, mut mt_conn: LuantiConnect
                 }
             }
         };
-        
     }
-    let (mut mc_client, mut mc_conn) = commands::handshake(command, &mut mt_conn, &mut mt_server_state, &settings).await;
+    let (mut mc_client, mut mc_conn) =
+        commands::handshake(command, &mut mt_conn, &mut mt_server_state, &settings).await;
     // Await a LOGIN packet
     // It verifies that the client is now in the server world
     utils::logger("[Minecraft] Awaiting S->C Login confirmation...", 1);
@@ -58,7 +63,7 @@ pub async fn client_handler(_mt_server: LuantiServer, mut mt_conn: LuantiConnect
             _ => utils::logger(&format!("[Minetest] Dropping unexpected packet! Got serverbound \"{}\", expected \"Init\"", utils::mc_packet_name(&command)), 1),
         }
     }
-    
+
     // let media_packets = mt_definitions::get_texture_media_commands(&settings, &mut mt_server_state).await;
     // let packet_names = ["MediaAnnouncement", "Media (Blocks)", "Media (Particle)", "Media (Entity)", "Media (Item)", "Media (Other)"];
     // for index in 0..media_packets.len() {
@@ -67,21 +72,28 @@ pub async fn client_handler(_mt_server: LuantiServer, mut mt_conn: LuantiConnect
     // }
     mt_server_state.item_texture_map = textures::load_item_mappings();
     mt_server_state.nodebox_lookup = textures::load_nodeboxes();
-    mt_server_state.block_texture_map = textures::load_block_mappings(&mt_server_state.nodebox_lookup);
+    mt_server_state.block_texture_map =
+        textures::load_block_mappings(&mt_server_state.nodebox_lookup);
 
     mt_conn.send(textures::get_announcement()).unwrap();
 
     utils::logger("[Minetest] S->C Itemdef", 1);
-    mt_conn.send(mt_definitions::get_item_def_command(&mt_server_state).await).unwrap();
+    mt_conn
+        .send(mt_definitions::get_item_def_command(&mt_server_state).await)
+        .unwrap();
     utils::logger("[Minetest] S->C Nodedef", 1);
-    mt_conn.send(mt_definitions::get_node_def_command(&settings, &mut mt_server_state).await).unwrap();
-    
+    mt_conn
+        .send(mt_definitions::get_node_def_command(&settings, &mut mt_server_state).await)
+        .unwrap();
+
     utils::logger("[Minetest] S->C Movement", 1);
-    mt_conn.send(mt_definitions::get_movementspec(4.317)).unwrap();
-    
+    mt_conn
+        .send(mt_definitions::get_movementspec(4.317))
+        .unwrap();
+
     utils::logger("[Minetest] S->C SetPriv", 1);
     mt_conn.send(mt_definitions::get_defaultpriv()).unwrap();
-    
+
     utils::logger("[Minetest] S->C AddHud Healthbar", 1);
     mt_conn.send(mt_definitions::add_healthbar()).unwrap();
     utils::logger("[Minetest] S->C AddHud Foodbar", 1);
@@ -90,13 +102,17 @@ pub async fn client_handler(_mt_server: LuantiServer, mut mt_conn: LuantiConnect
     mt_conn.send(mt_definitions::add_airbar()).unwrap();
     utils::logger("[Minetest] S->C AddHud Subtitles", 1);
     mt_conn.send(mt_definitions::add_subtitlebox()).unwrap();
-    
+
     utils::logger("[Minetest] S->C Formspec", 1);
-    mt_conn.send(mt_definitions::get_inventory_formspec(settings::PLAYER_INV_FORMSPEC)).unwrap();
-    
+    mt_conn
+        .send(mt_definitions::get_inventory_formspec(
+            settings::PLAYER_INV_FORMSPEC,
+        ))
+        .unwrap();
+
     utils::logger("[Minetest] S->C CsmRestrictions", 1);
     mt_conn.send(mt_definitions::get_csmrestrictions()).unwrap();
-    
+
     utils::logger("Awaiting ClientReady", 1);
     loop {
         let t = mt_conn.recv().await;
@@ -109,20 +125,23 @@ pub async fn client_handler(_mt_server: LuantiServer, mut mt_conn: LuantiConnect
             _ => utils::logger(&format!("[Minetest] Dropping unexpected packet! Got serverbound \"{}\", expected \"ClientReady\"!", command.command_name()), 2)
         }
     }
-    
+
     utils::logger("[Minetest] S->C Hotbar Definition", 1);
     mt_conn.send(mt_definitions::set_hotbar_size()).unwrap();
     mt_conn.send(mt_definitions::set_hotbar_texture()).unwrap();
     mt_conn.send(mt_definitions::set_hotbar_selected()).unwrap();
-    
+
     utils::logger("[Minetest] S->C Inventory", 1);
     mt_conn.send(mt_definitions::empty_inventory()).unwrap();
-    
-    utils::logger("[Minetest] S->C SetSky, SetSun, SetMoon, SetStars, OverrideDayNightRatio ", 1);
+
+    utils::logger(
+        "[Minetest] S->C SetSky, SetSun, SetMoon, SetStars, OverrideDayNightRatio ",
+        1,
+    );
     for thing in mt_definitions::get_sky_stuff() {
         mt_conn.send(thing).unwrap();
     }
-    
+
     utils::logger("[Minetest] S->C ActiveObjectRemoveAdd LocalPlayer", 1);
     clientbound_translator::add_entity(None, &mut mt_conn, &mut mt_server_state).await;
     /*

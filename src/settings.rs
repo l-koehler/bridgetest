@@ -1,7 +1,7 @@
 /*
  * This file contains various defaults used when creating
  * a initial configuration file.
- * 
+ *
  * Also some other constants and hacks
  */
 
@@ -20,9 +20,9 @@ mt_server_addr = \"127.0.0.1:30000\"
 
 // IDs for various HUD things
 pub const HEALTHBAR_ID: u32 = 0;
-pub const FOODBAR_ID:   u32 = 1;
-pub const AIRBAR_ID:    u32 = 2;
-pub const SUBTITLE_ID:  u32 = 3;
+pub const FOODBAR_ID: u32 = 1;
+pub const AIRBAR_ID: u32 = 2;
+pub const SUBTITLE_ID: u32 = 3;
 
 // max "disagreement" between server and client about position
 // y distance is only weighted half:
@@ -31,35 +31,43 @@ pub const POS_DIFF_TOLERANCE: f32 = 0.5;
 
 // names to use for random name generation
 pub const HS_NAMES: [&str; 26] = [
-"Aradia_Megido",
-"Tavros_Nitram",
-"Sollux_Captor",
-"Karkat_Vantas",
-"Nepeta_Leijon",
-"Kanaya_Maryam",
-"Terezi_Pyrope",
-"Vriska_Serket",
-"Equius_Zahhak",
-"Gamzee_Makara",
-"Eridan_Ampora",
-"Feferi_Peixes",
-"John_Egbert",
-"Rose_Lalonde",
-"Dave_Strider",
-"Jade_Harley",
-"Jane_Egbert",
-"Roxy_Lalonde",
-"Jake_Harley",
-"Dad_Egbert",
-"Jane_Crocker",
-"Dirk_Strider",
-"Jake_English",
-"Dad_Crocker",
-"John_Crocker",
-"Jade_English"];
+    "Aradia_Megido",
+    "Tavros_Nitram",
+    "Sollux_Captor",
+    "Karkat_Vantas",
+    "Nepeta_Leijon",
+    "Kanaya_Maryam",
+    "Terezi_Pyrope",
+    "Vriska_Serket",
+    "Equius_Zahhak",
+    "Gamzee_Makara",
+    "Eridan_Ampora",
+    "Feferi_Peixes",
+    "John_Egbert",
+    "Rose_Lalonde",
+    "Dave_Strider",
+    "Jade_Harley",
+    "Jane_Egbert",
+    "Roxy_Lalonde",
+    "Jake_Harley",
+    "Dad_Egbert",
+    "Jane_Crocker",
+    "Dirk_Strider",
+    "Jake_English",
+    "Dad_Crocker",
+    "John_Crocker",
+    "Jade_English",
+];
 
 // list[current_player; _NAME_ ; x,y ; size_x,size_y;]
-pub const ALL_INV_FIELDS: [&str; 6] = ["main", "armor", "offhand", "craft", "craftpreview", "container"]; // container is dynamic in size
+pub const ALL_INV_FIELDS: [&str; 6] = [
+    "main",
+    "armor",
+    "offhand",
+    "craft",
+    "craftpreview",
+    "container",
+]; // container is dynamic in size
 pub const PLAYER_INV_FORMSPEC: &str = "\
 formspec_version[7]
 size[12,11.3]
