@@ -89,6 +89,63 @@ pub const fn get_y_bounds(dimension: &Dimensions) -> (i16, i16) {
         Dimensions::Custom => (-64, 320),
     }
 }
+
+pub const INTERACTIVE_BLOCKS: [Block; 50] = [
+    // opens inventory
+    Block::Chest,
+    Block::EnderChest,
+    Block::EnchantingTable,
+    Block::Anvil,
+    Block::Grindstone,
+    Block::CraftingTable,
+    // changes own state
+    Block::Lever,
+    Block::Comparator,
+    Block::Repeater,
+    Block::RedstoneOre,
+    Block::RedstoneWire,
+    Block::OakButton,
+    Block::SpruceButton,
+    Block::BirchButton,
+    Block::JungleButton,
+    Block::AcaciaButton,
+    Block::DarkOakButton,
+    Block::MangroveButton,
+    Block::CherryButton,
+    Block::BambooButton,
+    Block::CrimsonButton,
+    Block::WarpedButton,
+    // other stuff
+    Block::WhiteBed,
+    Block::LightGrayBed,
+    Block::GrayBed,
+    Block::BlackBed,
+    Block::BrownBed,
+    Block::RedBed,
+    Block::OrangeBed,
+    Block::YellowBed,
+    Block::LimeBed,
+    Block::CyanBed,
+    Block::LightBlueBed,
+    Block::BlueBed,
+    Block::PurpleBed,
+    Block::MagentaBed,
+    Block::PinkBed,
+    Block::Campfire,
+    Block::SoulCampfire,
+    Block::Cauldron,
+    Block::Cake,
+    Block::CandleCake,
+    Block::RedCandleCake,
+    Block::BlueCandleCake,
+    Block::CyanCandleCake,
+    Block::GrayCandleCake,
+    Block::LimeCandleCake,
+    Block::PinkCandleCake,
+    Block::BlackCandleCake,
+    Block::BrownCandleCake,
+];
+
 pub fn get_container_formspec(container: &MenuKind, title: &str) -> String {
     // TODO: Sanitize the title, currently someone could name a chest "hi]list[...]" to break a lot of stuff.
     match container {
@@ -690,52 +747,7 @@ pub fn generate_contentfeature(
         }
     }
 
-    let rightclickable = match block {
-        // opens inventory
-        Block::Chest => true,
-        Block::EnderChest => true,
-        Block::EnchantingTable => true,
-        Block::Anvil => true,
-        Block::Grindstone => true,
-
-        // changes own state
-        Block::Lever => true,
-        Block::Comparator => true,
-        Block::Repeater => true,
-        Block::RedstoneOre => true,
-        Block::RedstoneWire => true,
-
-        Block::OakButton => true,
-        Block::SpruceButton => true,
-        Block::BirchButton => true,
-        Block::JungleButton => true,
-        Block::AcaciaButton => true,
-        Block::DarkOakButton => true,
-        Block::MangroveButton => true,
-        Block::CherryButton => true,
-        Block::BambooButton => true,
-        Block::CrimsonButton => true,
-        Block::WarpedButton => true,
-
-        // other stuff
-        Block::WhiteBed => true,
-        Block::LightGrayBed => true,
-        Block::GrayBed => true,
-        Block::BlackBed => true,
-        Block::BrownBed => true,
-        Block::RedBed => true,
-        Block::OrangeBed => true,
-        Block::YellowBed => true,
-        Block::LimeBed => true,
-        Block::CyanBed => true,
-        Block::LightBlueBed => true,
-        Block::BlueBed => true,
-        Block::PurpleBed => true,
-        Block::MagentaBed => true,
-        Block::PinkBed => true,
-
-        _ => false,
-    };
+    let rightclickable = INTERACTIVE_BLOCKS.contains(&block);
 
     let light_source = match block {
         Block::Beacon

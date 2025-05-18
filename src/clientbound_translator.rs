@@ -12,7 +12,6 @@ use crate::utils;
 use crate::MTServerState;
 
 use azalea::core::delta::PositionDelta8;
-use azalea::core::position::ChunkBlockPos;
 use azalea::entity::{EntityDataItem, EntityDataValue};
 use azalea::{BlockPos, Vec3};
 use luanti_protocol::peer::PeerError;
@@ -41,9 +40,8 @@ use azalea_client::{inventory, Client, PlayerInfo};
 use azalea_language;
 
 use azalea::protocol::packets::game::{
-    c_add_entity::ClientboundAddEntity, c_block_entity_data::ClientboundBlockEntityData,
-    c_block_update::ClientboundBlockUpdate, c_entity_event::ClientboundEntityEvent,
-    c_move_entity_pos::ClientboundMoveEntityPos,
+    c_add_entity::ClientboundAddEntity, c_block_update::ClientboundBlockUpdate,
+    c_entity_event::ClientboundEntityEvent, c_move_entity_pos::ClientboundMoveEntityPos,
     c_move_entity_pos_rot::ClientboundMoveEntityPosRot,
     c_move_entity_rot::ClientboundMoveEntityRot, c_open_screen::ClientboundOpenScreen,
     c_player_position::ClientboundPlayerPosition, c_remove_entities::ClientboundRemoveEntities,
@@ -594,7 +592,7 @@ pub async fn send_level_chunk(
     let ClientboundLevelChunkPacketData {
         heightmaps: chunk_heightmaps,
         data: chunk_data,
-        block_entities,
+        block_entities: _,
     } = chunk_packet_data;
     utils::logger(
         &format!(
@@ -656,28 +654,6 @@ pub async fn send_level_chunk(
         )
         .await;
         chunk_y_pos += 1;
-    }
-    for block_entity in block_entities {
-        let chunk_pos = ChunkBlockPos {
-            x: block_entity.packed_xz >> 4,
-            y: (block_entity.y % dimension_height) as i32, // TODO breaks with neg y
-            z: block_entity.packed_xz & 15,
-        };
-        let pos: (i32, i32, i32) = (
-            chunk_pos.x as i32 + ((*chunk_x_pos * 16) as i32),
-            chunk_pos.y,
-            chunk_pos.z as i32 + ((*chunk_z_pos * 16) as i32),
-        );
-        utils::logger(
-            &format!("[Minecraft] Registring Block Entity at {:?}", pos),
-            1,
-        );
-        if mt_server_state.container_map.insert(pos, block_entity.kind) != None {
-            utils::logger(
-                &format!("[Minecraft] Overwriting Block Entity at {:?}", pos),
-                2,
-            );
-        }
     }
 }
 
@@ -1259,29 +1235,6 @@ pub async fn open_screen(
     //     MenuKind::CartographyTable => 3,
     //     MenuKind::Stonecutter => 2
     // }
-}
-
-pub async fn block_entity_data(
-    packet_data: &ClientboundBlockEntityData,
-    _conn: &mut LuantiConnection,
-    mt_server_state: &mut MTServerState,
-) {
-    let ClientboundBlockEntityData {
-        pos,
-        block_entity_type,
-        tag: _,
-    } = packet_data;
-    if mt_server_state
-        .container_map
-        .insert((pos.x, pos.y, pos.z), *block_entity_type)
-        != None
-    {
-        utils::logger(
-            &format!("[Minecraft] Overwriting Block Entity at {:?}", pos),
-            2,
-        );
-    }
-    // TODO: Add the tag to the block metadata if it is relevant to the client
 }
 
 pub async fn refresh_inv(

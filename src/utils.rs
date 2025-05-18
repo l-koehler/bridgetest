@@ -9,7 +9,10 @@ use crate::MTServerState;
 
 use azalea::core::{aabb::AABB, position::Vec3};
 use azalea::inventory::ItemStack;
+use azalea::registry::Block;
 use azalea::registry::{EntityKind, Registry};
+use azalea::BlockPos;
+use azalea::Client;
 use azalea_block::BlockState;
 use azalea_client::Event;
 use luanti_core::ContentId;
@@ -279,6 +282,17 @@ pub fn get_colormap(texture: &LuantiTexture) -> Option<(u8, u8, u8)> {
         return Some((0x20, 0x80, 0x30));
     }
     None
+}
+
+pub fn get_block_at(mc_client: &mut Client, pos: &BlockPos) -> Option<Block> {
+    let world_lock = mc_client.world();
+    let world = world_lock.read();
+    let state = world.get_block_state(pos);
+    if let Some(state_u) = state {
+        return Some(Block::from(state_u));
+    } else {
+        return None;
+    }
 }
 
 pub fn show_mt_command(command: &dyn CommandRef) {

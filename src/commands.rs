@@ -151,10 +151,6 @@ pub async fn mc_auto(
             ClientboundGamePacket::OpenScreen(screen_packet) => {
                 clientbound_translator::open_screen(&screen_packet, mt_conn, mt_server_state).await
             }
-            ClientboundGamePacket::BlockEntityData(data_packet) => {
-                clientbound_translator::block_entity_data(&data_packet, mt_conn, mt_server_state)
-                    .await
-            }
 
             ClientboundGamePacket::BlockUpdate(blockupdate_packet) => {
                 clientbound_translator::blockupdate(&blockupdate_packet, mt_conn, mt_server_state)

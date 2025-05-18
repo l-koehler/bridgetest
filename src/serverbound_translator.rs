@@ -1,6 +1,6 @@
 // this contains functions that TAKE data from the client
 // and send it to the MC server.
-use crate::{clientbound_translator, utils};
+use crate::{clientbound_translator, mt_definitions, utils};
 
 use azalea::container::{ContainerClientExt, ContainerHandle, ContainerHandleRef};
 use azalea::ecs::prelude::{With, Without};
@@ -181,9 +181,7 @@ pub fn attack_crosshair(mc_client: &mut Client) {
 pub fn set_mainhand(mc_client: &mut Client, specbox: Box<PlayerItemSpec>) {
     // hotbar_index: 0..8, first..last slot of hotbar
     let PlayerItemSpec { item: hotbar_index } = *specbox;
-    let _ = mc_client.write_packet(ServerboundSetCarriedItem {
-        slot: hotbar_index
-    });
+    let _ = mc_client.write_packet(ServerboundSetCarriedItem { slot: hotbar_index });
 }
 
 // This function only validates the interaction, then splits by node/object
@@ -216,24 +214,9 @@ fn stop_digging(mc_client: &mut Client) {
     })
 }
 
-async fn node_rightclick(
-    mc_client: &mut Client,
-    under: azalea::BlockPos,
-    above: azalea::BlockPos,
-    mt_server_state: &mut MTServerState,
-) {
-    let under_key: (i32, i32, i32) = (under.x, under.y, under.z);
-    if mt_server_state.container_map.contains_key(&under_key) {
-        let diff = ((under.x as f64) - mc_client.position().x).abs()
-            + ((under.y as f64) - mc_client.position().y).abs()
-            + ((under.z as f64) - mc_client.position().z).abs();
-        utils::logger(
-            &format!(
-                "[Minetest] Attempting to open Chest at {}, Client is {} blocks away.",
-                under, diff
-            ),
-            1,
-        );
+async fn node_rightclick(mc_client: &mut Client, under: azalea::BlockPos, above: azalea::BlockPos) {
+    let block_type = utils::get_block_at(mc_client, &under).unwrap();
+    if mt_definitions::INTERACTIVE_BLOCKS.contains(&block_type) {
         mc_client.block_interact(under)
     } else {
         mc_client.block_interact(above)
@@ -267,7 +250,7 @@ async fn interact_node(
         types::InteractAction::StopDigging => stop_digging(mc_client),
         // using a node needs the position of the node that was clicked
         types::InteractAction::Place => {
-            node_rightclick(mc_client, under_blockpos, above_blockpos, mt_server_state).await
+            node_rightclick(mc_client, under_blockpos, above_blockpos).await
         }
         _ => utils::logger(
             &format!(
@@ -312,10 +295,9 @@ pub async fn inventory_generic(
             mt_server_state,
         ),
         //TODO support workbenches etc
-        InventoryAction::Craft {
-            count,
-            craft_inv,
-        } => craft_item(mc_client, mt_conn, mt_server_state, count, craft_inv).await,
+        InventoryAction::Craft { count, craft_inv } => {
+            craft_item(mc_client, mt_conn, mt_server_state, count, craft_inv).await
+        }
     }
 }
 
@@ -512,7 +494,7 @@ pub async fn craft_item(
     mt_conn: &mut LuantiConnection,
     mt_server_state: &mut MTServerState,
     count: u16,
-    craft_location: InventoryLocation
+    craft_location: InventoryLocation,
 ) {
     // we are not deleting the inventory handle, as the user might click craft repeatedly
     match &mt_server_state.inventory_handle {

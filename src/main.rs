@@ -16,7 +16,6 @@ mod translator;
 mod utils;
 
 use azalea::container::ContainerHandle;
-use azalea::registry::BlockEntityKind;
 use azalea_client::inventory;
 use luanti_protocol::types::NodeBox;
 use luanti_protocol::LuantiServer;
@@ -74,13 +73,8 @@ pub struct MTServerState {
     // used to prevent flooding the client with thousands of packets
     // side effect: we only iterate the ECS once
     entities_update_scheduled: Vec<u32>,
-    // used for looking up wheter a block should open a right-click menu on click.
-    // only contains positions that have some block entity
-    // to be exact, when the user clicks on a block _face_ (touching two _blocks_), we need to send the server
-    // _block_ coordinates somehow. TODO: maybe send the coordinates of the non-air block instead,
-    // falling back to sending these of the block closer to the player if needed.
-    container_map: HashMap<(i32, i32, i32), BlockEntityKind>,
-    inventory_handle: Option<Arc<Mutex<ContainerHandle>>>, // never read, only used to not drop the handle
+    // never read, only used to not drop the handle
+    inventory_handle: Option<Arc<Mutex<ContainerHandle>>>,
     // used to not attack on every left click, only on ones that aren't breaking blocks
     next_click_no_attack: bool,
     // used to only attack on the rising edge, not constantly
@@ -131,7 +125,6 @@ async fn start_client_handler(settings: Config) {
         c_alloc_id_ranges: vec![(2, u16::MAX)], // 0 reserved for player, 1 causes issues
         entity_meta_map: HashMap::new(),
         entities_update_scheduled: Vec::new(),
-        container_map: HashMap::new(),
         inventory_handle: None,
         next_click_no_attack: false,
         previous_dig_held: false,
