@@ -6,16 +6,16 @@ use azalea::container::{ContainerClientExt, ContainerHandle, ContainerHandleRef}
 use azalea::ecs::prelude::{With, Without};
 use azalea::entity::{metadata::AbstractEntity, Dead, LocalEntity, Physics, Position};
 use azalea::inventory::operations::{ClickOperation, PickupClick, ThrowClick};
+use azalea::protocol::packets::game::ServerboundSetCarriedItem;
 use azalea::world::{InstanceName, MinecraftEntityId};
 use azalea::Vec3;
-use azalea_client::inventory::Inventory;
 use azalea_client::Client;
 
 use crate::MTServerState;
 use luanti_protocol::commands::client_to_server::{
     InteractSpec, InventoryActionSpec, PlayerItemSpec, PlayerPosCommand, TSChatMessageSpec,
 };
-use luanti_protocol::types;
+use luanti_protocol::types::{self, InventoryLocation};
 use luanti_protocol::types::{InventoryAction, PlayerPos, PointedThing};
 use luanti_protocol::LuantiConnection;
 
@@ -181,10 +181,9 @@ pub fn attack_crosshair(mc_client: &mut Client) {
 pub fn set_mainhand(mc_client: &mut Client, specbox: Box<PlayerItemSpec>) {
     // hotbar_index: 0..8, first..last slot of hotbar
     let PlayerItemSpec { item: hotbar_index } = *specbox;
-    let mut ecs = mc_client.ecs.lock();
-    let mut inventory = mc_client.query::<&mut Inventory>(&mut ecs);
-    inventory.selected_hotbar_slot = hotbar_index as u8;
-    drop(ecs);
+    let _ = mc_client.write_packet(ServerboundSetCarriedItem {
+        slot: hotbar_index
+    });
 }
 
 // This function only validates the interaction, then splits by node/object
@@ -314,9 +313,9 @@ pub async fn inventory_generic(
         ),
         //TODO support workbenches etc
         InventoryAction::Craft {
-            count: _,
-            craft_inv: _,
-        } => craft_item(mc_client, mt_conn, mt_server_state).await,
+            count,
+            craft_inv,
+        } => craft_item(mc_client, mt_conn, mt_server_state, count, craft_inv).await,
     }
 }
 
@@ -512,13 +511,18 @@ pub async fn craft_item(
     mc_client: &mut Client,
     mt_conn: &mut LuantiConnection,
     mt_server_state: &mut MTServerState,
+    count: u16,
+    craft_location: InventoryLocation
 ) {
     // we are not deleting the inventory handle, as the user might click craft repeatedly
     match &mt_server_state.inventory_handle {
         Some(arc_mtx_cht) => {
+            println!("location: {:?}", craft_location);
             let guard = arc_mtx_cht.lock();
             let handle = guard.unwrap();
-            handle.click(ClickOperation::Pickup(PickupClick::Left { slot: Some(0) }));
+            for _ in 0..count {
+                handle.click(ClickOperation::Pickup(PickupClick::Left { slot: Some(0) }));
+            }
         }
         None => {
             utils::logger(
