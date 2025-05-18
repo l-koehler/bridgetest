@@ -611,7 +611,7 @@ pub async fn add_entity(optional_packet: Option<&ClientboundAddEntity>, conn: &m
             name = mt_server_state.this_player.0.clone();
             c_id = 0; // ensured to be "free" by the allocatable range starting at 1
             position = v3f{x: 0.0, y: 0.0, z: 0.0}; // player will be moved somewhere else later
-            mesh = "entitymodel-villager.b3d"; // TODO
+            mesh = "model-villager.b3d"; // TODO
             textures = vec![String::from("entity-player-slim-steve.png")];
         }
     };
