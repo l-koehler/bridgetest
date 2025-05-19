@@ -493,7 +493,7 @@ pub async fn initialize_16node_chunk(
             is_underground: (y_pos <= 4), // below 64, likely?
             day_night_differs: false,
             generated: false, // server does not tell us that
-            lighting_complete: Some(65535),
+            lighting_complete: Some(u16::MAX),
             nodes: MapNodesBulk { nodes },
             node_metadata: NodeMetadataList { metadata: vec![] },
         },
@@ -805,7 +805,7 @@ pub async fn add_entity(
                         wield_item: String::from(""),
                         glow: 0,
                         breath_max: 0,
-                        eye_height: 1.625,
+                        eye_height: 1.125,
                         zoom_fov: 0.0,
                         use_texture_alpha: false,
                         damage_texture_modifier: Some(String::from("^[brighten")),
