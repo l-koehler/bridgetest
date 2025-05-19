@@ -5,17 +5,17 @@
  * Minecraft client.
  */
 
+use crate::MTServerState;
 use crate::clientbound_translator;
 use crate::serverbound_translator;
 use crate::utils;
-use crate::MTServerState;
 extern crate alloc;
 
+use luanti_protocol::LuantiConnection;
 use luanti_protocol::commands::CommandProperties;
 use luanti_protocol::commands::{client_to_server, client_to_server::ToServerCommand};
 use luanti_protocol::commands::{server_to_client, server_to_client::ToClientCommand};
 use luanti_protocol::types;
-use luanti_protocol::LuantiConnection;
 
 use azalea_client::{Account, Client};
 
@@ -35,18 +35,50 @@ pub async fn mt_auto(
     mt_server_state: &mut MTServerState,
 ) {
     match command {
-        ToServerCommand::Init(_) => utils::logger("[Minetest] Client sent Init, but handshake already done!", 2),
-        ToServerCommand::Init2(_) => utils::logger("[Minetest] Client sent Init2 (preferred language), this is not implemented and will be ignored.", 2),
-        ToServerCommand::ModchannelJoin(_) => utils::logger("[Minetest] Client sent ModchannelJoin, this does not exist in MC", 2),
-        ToServerCommand::ModchannelLeave(_) => utils::logger("[Minetest] Client sent ModchannelLeave, this does not exist in MC", 2),
-        ToServerCommand::TSModchannelMsg(_) => utils::logger("[Minetest] Client sent TSModchannelMsg, this does not exist in MC", 2),
-        ToServerCommand::Playerpos(specbox) => serverbound_translator::playerpos(mc_client, specbox, mt_server_state).await,
-        ToServerCommand::TSChatMessage(specbox) => serverbound_translator::send_message(mc_client, specbox),
-        ToServerCommand::Interact(specbox) => serverbound_translator::interact_generic(mc_client, specbox, mt_server_state).await,
-        ToServerCommand::PlayerItem(specbox) => serverbound_translator::set_mainhand(mc_client, specbox),
-        ToServerCommand::InventoryAction(specbox) => serverbound_translator::inventory_generic(mc_client, mt_conn, specbox, mt_server_state).await,
+        ToServerCommand::Init(_) => utils::logger(
+            "[Minetest] Client sent Init, but handshake already done!",
+            2,
+        ),
+        ToServerCommand::Init2(_) => utils::logger(
+            "[Minetest] Client sent Init2 (preferred language), this is not implemented and will be ignored.",
+            2,
+        ),
+        ToServerCommand::ModchannelJoin(_) => utils::logger(
+            "[Minetest] Client sent ModchannelJoin, this does not exist in MC",
+            2,
+        ),
+        ToServerCommand::ModchannelLeave(_) => utils::logger(
+            "[Minetest] Client sent ModchannelLeave, this does not exist in MC",
+            2,
+        ),
+        ToServerCommand::TSModchannelMsg(_) => utils::logger(
+            "[Minetest] Client sent TSModchannelMsg, this does not exist in MC",
+            2,
+        ),
+        ToServerCommand::Playerpos(specbox) => {
+            serverbound_translator::playerpos(mc_client, specbox, mt_server_state).await
+        }
+        ToServerCommand::TSChatMessage(specbox) => {
+            serverbound_translator::send_message(mc_client, specbox)
+        }
+        ToServerCommand::Interact(specbox) => {
+            serverbound_translator::interact_generic(mc_client, specbox, mt_server_state).await
+        }
+        ToServerCommand::PlayerItem(specbox) => {
+            serverbound_translator::set_mainhand(mc_client, specbox)
+        }
+        ToServerCommand::InventoryAction(specbox) => {
+            serverbound_translator::inventory_generic(mc_client, mt_conn, specbox, mt_server_state)
+                .await
+        }
         ToServerCommand::GotBlocks(_) => (), // Gotblocks just confirms to the server that blocks were received
-        _ => utils::logger(&format!("[Minetest] Got unimplemented command, dropping {}", command.command_name()), 2) // Drop packet if unable to match
+        _ => utils::logger(
+            &format!(
+                "[Minetest] Got unimplemented command, dropping {}",
+                command.command_name()
+            ),
+            2,
+        ), // Drop packet if unable to match
     }
 }
 
@@ -64,7 +96,7 @@ pub async fn mc_auto(
             clientbound_translator::add_player(player_data, mt_conn, mt_server_state).await
         }
         Event::Chat(message) => clientbound_translator::send_message(mt_conn, message).await,
-        Event::Tick => on_minecraft_tick(mt_conn, mc_client, mt_server_state).await,
+        Event::Tick => (), // our on-tick actions are handled by a separate timer
         Event::Death(_) => {
             clientbound_translator::death(mt_conn, mt_server_state, &mc_client).await
         }
@@ -176,23 +208,6 @@ pub async fn mc_auto(
             2,
         ),
     };
-}
-
-pub async fn on_minecraft_tick(
-    mt_conn: &mut LuantiConnection,
-    mc_client: &Client,
-    mt_server_state: &mut MTServerState,
-) {
-    // resync client position if the difference is above .5
-    // needed because client-side physics arent exact.
-    if mt_server_state.has_moved_since_sync {
-        clientbound_translator::sync_client_pos(mc_client, mt_conn, mt_server_state).await;
-        mt_server_state.has_moved_since_sync = false;
-    }
-    // update the MT clients inventory if it changed
-    // for stupid reasons, we don't use packets for this, instead on every tick
-    // and whenever the player crafted something
-    clientbound_translator::refresh_inv(mc_client, mt_conn, mt_server_state).await;
 }
 
 pub async fn handshake(

@@ -5,11 +5,11 @@
 
 extern crate alloc;
 
+use crate::MTServerState;
 use crate::commands;
 use crate::mt_definitions;
 use crate::settings;
 use crate::utils;
-use crate::MTServerState;
 
 use azalea::core::delta::PositionDelta8;
 use azalea::entity::{EntityDataItem, EntityDataValue};
@@ -27,21 +27,22 @@ use glam::Vec3 as v3f;
 use azalea::registry::EntityKind;
 use luanti_core::ContentId;
 use luanti_core::MapNode;
+use luanti_protocol::LuantiConnection;
 use luanti_protocol::commands::server_to_client;
 use luanti_protocol::commands::server_to_client::ToClientCommand;
 use luanti_protocol::types::{
-    aabb3f, ActiveObjectCommand, AddedObject, GenericInitData, InventoryEntry, InventoryList,
-    ItemStack, ItemStackUpdate, MapNodesBulk, NodeMetadataList, SColor, TransferrableMapBlock,
+    ActiveObjectCommand, AddedObject, GenericInitData, InventoryEntry, InventoryList, ItemStack,
+    ItemStackUpdate, MapNodesBulk, NodeMetadataList, SColor, TransferrableMapBlock, aabb3f,
 };
-use luanti_protocol::LuantiConnection;
 
 use azalea_client::chat::ChatPacket;
-use azalea_client::{inventory, Client, PlayerInfo};
+use azalea_client::{Client, PlayerInfo, inventory};
 use azalea_language;
 
 use azalea::protocol::packets::game::{
-    c_add_entity::ClientboundAddEntity, c_block_update::ClientboundBlockUpdate,
-    c_entity_event::ClientboundEntityEvent, c_move_entity_pos::ClientboundMoveEntityPos,
+    ClientboundGamePacket, c_add_entity::ClientboundAddEntity,
+    c_block_update::ClientboundBlockUpdate, c_entity_event::ClientboundEntityEvent,
+    c_move_entity_pos::ClientboundMoveEntityPos,
     c_move_entity_pos_rot::ClientboundMoveEntityPosRot,
     c_move_entity_rot::ClientboundMoveEntityRot, c_open_screen::ClientboundOpenScreen,
     c_player_position::ClientboundPlayerPosition, c_remove_entities::ClientboundRemoveEntities,
@@ -49,7 +50,7 @@ use azalea::protocol::packets::game::{
     c_set_default_spawn_position::ClientboundSetDefaultSpawnPosition,
     c_set_entity_data::ClientboundSetEntityData, c_set_entity_motion::ClientboundSetEntityMotion,
     c_set_health::ClientboundSetHealth, c_set_time::ClientboundSetTime, c_sound::ClientboundSound,
-    c_teleport_entity::ClientboundTeleportEntity, ClientboundGamePacket,
+    c_teleport_entity::ClientboundTeleportEntity,
 };
 use azalea_client::Event;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -282,10 +283,10 @@ pub async fn set_time(source_packet: &ClientboundSetTime, conn: &LuantiConnectio
         day_time,
         tick_day_time: _,
     } = source_packet; // likely wrong to ignore tick_day_time FIXME
-                       // day_time seems to be the world age in ticks, so mod 24000 is the age of the day
-                       // age of the day is 0..23999
-                       // where 0 is 06:00, 6000 is 12:00, 12000 is 18:00, 18000 is 24:00 and 23999 is 05:59
-                       // minecraft uses morning as 0, minetest uses midnight. accounted by -6000
+    // day_time seems to be the world age in ticks, so mod 24000 is the age of the day
+    // age of the day is 0..23999
+    // where 0 is 06:00, 6000 is 12:00, 12000 is 18:00, 18000 is 24:00 and 23999 is 05:59
+    // minecraft uses morning as 0, minetest uses midnight. accounted by -6000
 
     let mt_time: u16 = (*day_time - 6000 % 24000) as u16;
     utils::logger(&format!("[Minetest] S->C TimeOfDay: {}", mt_time), 0);
@@ -702,9 +703,9 @@ pub async fn add_entity(
                 visual = String::from("mesh");
                 (mesh, textures) = utils::get_entity_model(entity_type);
             }
-            mt_server_state.entity_meta_map.insert(
-                *serverside_id,
-                EntityMetadata {
+            mt_server_state
+                .entity_meta_map
+                .insert(*serverside_id, EntityMetadata {
                     position: *vec_pos,
                     velocity: Vec3 {
                         x: *x_vel as f64,
@@ -713,8 +714,7 @@ pub async fn add_entity(
                     },
                     rotation: (*x_rot, *y_rot),
                     entity_kind,
-                },
-            );
+                });
         }
         None => {
             // use the mt_server_state and lucky guesses
@@ -1048,7 +1048,10 @@ pub async fn entity_event(
     };
 
     let entity_kind = metadata_item.entity_kind;
-    let bad_id_for_entity = format!("[Minecraft] Got entity event for entity ID {} referring to a entity of type {}, this event isn't implemented for that entity.", entity_id, entity_kind);
+    let bad_id_for_entity = format!(
+        "[Minecraft] Got entity event for entity ID {} referring to a entity of type {}, this event isn't implemented for that entity.",
+        entity_id, entity_kind
+    );
     // https://wiki.vg/Entity_statuses
     match event_id {
         0 => (), // Tipped Arrow particles
@@ -1136,13 +1139,27 @@ pub async fn set_entity_data(
         metadata_item = &packed_items[i];
         let EntityDataItem { index: _, value } = metadata_item;
         match value {
-            EntityDataValue::ItemStack(data) => {
-                match entity_kind {
-                    EntityKind::Item => set_entity_texture(*clientside_id, utils::texture_from_itemstack(data, mt_server_state), conn).await,
-                    _ => utils::logger("[Minecraft] Server sent SetEntityData with ItemStack, but this is only implemented for dropped items! Dropping this EntityDataItem.", 2)
+            EntityDataValue::ItemStack(data) => match entity_kind {
+                EntityKind::Item => {
+                    set_entity_texture(
+                        *clientside_id,
+                        utils::texture_from_itemstack(data, mt_server_state),
+                        conn,
+                    )
+                    .await
                 }
+                _ => utils::logger(
+                    "[Minecraft] Server sent SetEntityData with ItemStack, but this is only implemented for dropped items! Dropping this EntityDataItem.",
+                    2,
+                ),
             },
-            _ => utils::logger(&format!("[Minecraft] Server sent SetEntityData with unsupported EntityDataValue ({:?})! Dropping this EntityDataItem.", value), 2),
+            _ => utils::logger(
+                &format!(
+                    "[Minecraft] Server sent SetEntityData with unsupported EntityDataValue ({:?})! Dropping this EntityDataItem.",
+                    value
+                ),
+                2,
+            ),
         }
     }
 }
@@ -1242,6 +1259,7 @@ pub async fn refresh_inv(
     mt_conn: &mut LuantiConnection,
     mt_server_state: &mut MTServerState,
 ) {
+    println!("menu // {:?}", mc_client.menu());
     let mut to_update: Vec<(&str, Vec<inventory::ItemStack>)> = vec![];
     match mc_client.menu() {
         inventory::Menu::Player(serverside_inventory) => {
@@ -1249,10 +1267,9 @@ pub async fn refresh_inv(
             if serverside_inventory.craft_result
                 != mt_server_state.mt_clientside_player_inv.craft_result
             {
-                to_update.push((
-                    "craftpreview",
-                    vec![serverside_inventory.craft_result.clone()],
-                ));
+                to_update.push(("craftpreview", vec![
+                    serverside_inventory.craft_result.clone(),
+                ]));
             }
             if serverside_inventory.craft.as_slice()
                 != mt_server_state.mt_clientside_player_inv.craft.as_slice()
@@ -1270,7 +1287,6 @@ pub async fn refresh_inv(
                     .inventory
                     .as_slice()
             {
-
                 to_update.push(("main", serverside_inventory.inventory.to_vec()));
             }
             if serverside_inventory.offhand != mt_server_state.mt_clientside_player_inv.offhand {

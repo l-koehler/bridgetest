@@ -4,26 +4,26 @@
  * Also, this file is badly named (as you might have noticed).
  */
 
+use crate::MTServerState;
 use crate::clientbound_translator;
 use crate::commands;
 use crate::mt_definitions;
 use crate::on_tick;
 use crate::settings;
 use crate::textures;
-use crate::utils;
-use crate::MTServerState; // ok this is stupid to do whatever it works (i need global variables) (for normal reasons)
+use crate::utils; // ok this is stupid to do whatever it works (i need global variables) (for normal reasons)
 
-use luanti_protocol::commands::client_to_server::ToServerCommand;
-use luanti_protocol::commands::CommandProperties;
-use luanti_protocol::peer::PeerError;
 use luanti_protocol::LuantiConnection;
 use luanti_protocol::LuantiServer;
+use luanti_protocol::commands::CommandProperties;
+use luanti_protocol::commands::client_to_server::ToServerCommand;
+use luanti_protocol::peer::PeerError;
 
 use azalea_client::Event;
 use config::Config;
 use std::time::Duration;
-use tokio_stream::wrappers::IntervalStream;
 use tokio_stream::StreamExt;
+use tokio_stream::wrappers::IntervalStream;
 
 pub async fn client_handler(
     _mt_server: LuantiServer,
@@ -44,7 +44,13 @@ pub async fn client_handler(
                 command = _t; // Cannot use _t directly, _t is valid only in the scope of the match
                 match command {
                     ToServerCommand::Init(_) => break,
-                    _ => utils::logger(&format!("[Minetest] Dropping unexpected packet! Got serverbound \"{}\", expected \"Init\"", command.command_name()), 2),
+                    _ => utils::logger(
+                        &format!(
+                            "[Minetest] Dropping unexpected packet! Got serverbound \"{}\", expected \"Init\"",
+                            command.command_name()
+                        ),
+                        2,
+                    ),
                 }
             }
         };
@@ -60,7 +66,13 @@ pub async fn client_handler(
         match command {
             // Recieved login packet from minecraft server
             Event::Login => break,
-            _ => utils::logger(&format!("[Minetest] Dropping unexpected packet! Got serverbound \"{}\", expected \"Init\"", utils::mc_packet_name(&command)), 1),
+            _ => utils::logger(
+                &format!(
+                    "[Minetest] Dropping unexpected packet! Got serverbound \"{}\", expected \"Init\"",
+                    utils::mc_packet_name(&command)
+                ),
+                1,
+            ),
         }
     }
 
@@ -119,10 +131,16 @@ pub async fn client_handler(
         let command = t.unwrap();
         match command {
             ToServerCommand::RequestMedia(packet) => {
-                mt_conn.send(textures::handle_request( packet)).unwrap();
-            },
+                mt_conn.send(textures::handle_request(packet)).unwrap();
+            }
             ToServerCommand::ClientReady(_) => break,
-            _ => utils::logger(&format!("[Minetest] Dropping unexpected packet! Got serverbound \"{}\", expected \"ClientReady\"!", command.command_name()), 2)
+            _ => utils::logger(
+                &format!(
+                    "[Minetest] Dropping unexpected packet! Got serverbound \"{}\", expected \"ClientReady\"!",
+                    command.command_name()
+                ),
+                2,
+            ),
         }
     }
 

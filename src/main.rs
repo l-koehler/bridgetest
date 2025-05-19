@@ -17,8 +17,8 @@ mod utils;
 
 use azalea::container::ContainerHandle;
 use azalea_client::inventory;
-use luanti_protocol::types::NodeBox;
 use luanti_protocol::LuantiServer;
+use luanti_protocol::types::NodeBox;
 use mt_definitions::{Dimensions, EntityMetadata};
 use textures::{BlockMapping, LuantiTexture};
 

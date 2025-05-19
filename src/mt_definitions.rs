@@ -11,8 +11,8 @@ use luanti_protocol::types::{
 };
 
 use config::Config;
-use minecraft_data_rs::models;
 use minecraft_data_rs::Api;
+use minecraft_data_rs::models;
 
 // same fucking name as in azalea :sob:
 // i am lazy, so this gets renamed to the old minetest-protocol types
@@ -23,10 +23,10 @@ use glam::Vec3 as v3f;
 
 use crate::settings;
 use crate::textures::{self, get_empty_tiledefs};
-use crate::{utils, MTServerState};
+use crate::{MTServerState, utils};
 
-use azalea::registry::{Block, EntityKind, MenuKind};
 use azalea::Vec3;
+use azalea::registry::{Block, EntityKind, MenuKind};
 
 #[derive(Clone)]
 pub struct EntityMetadata {
@@ -150,7 +150,7 @@ pub fn get_container_formspec(container: &MenuKind, title: &str) -> String {
     // TODO: Sanitize the title, currently someone could name a chest "hi]list[...]" to break a lot of stuff.
     match container {
         MenuKind::Generic9x3 => format!(
-"formspec_version[7]\
+            "formspec_version[7]\
 size[11.5,11]\
 background[0,0;17.5,17.5;gui-container-shulker_box.png]\
 style_type[list;spacing=0.135,0.135;size=1.09,1.09;border=false]\
@@ -160,28 +160,41 @@ list[current_player;main;0.55,9.7;9,1]\
 list[current_player;main;0.55,5.75;9,3;9]\
 label[0.55,0.5;{}]\
 ",
-            title),
+            title
+        ),
         MenuKind::Generic9x6 => format!(
-"size[9,6]\
+            "size[9,6]\
 label[0,0;{}]\
 list[current_player;main;0,0;9,6;]",
-            title),
+            title
+        ),
         MenuKind::Generic3x3 => format!(
-"size[3,3]\
+            "size[3,3]\
 label[0,0;{}]\
 list[current_player;main;0,0;3,3;]",
-            title),
+            title
+        ),
         MenuKind::Crafter3x3 => format!(
-"size[4.5,3]\
+            "size[4.5,3]\
 label[0,0;{}]\
 list[current_player;main;0,0;3,3;]\
 list[current_player;main;3.5,1;1,1;]",
-            title),
-        MenuKind::BlastFurnace => format!("size[3,2]label[0,0;{}]list[current_player;main;0,0;1,2;]list[current_player;main;2,0.5;1,1;]", title),
-        MenuKind::Furnace => format!("size[3,2]label[0,0;{}]list[current_player;main;0,0;1,2;]list[current_player;main;2,0.5;1,1;]", title),
-        MenuKind::Smoker => format!("size[3,2]label[0,0;{}]list[current_player;main;0,0;1,2;]list[current_player;main;2,0.5;1,1;]", title),
+            title
+        ),
+        MenuKind::BlastFurnace => format!(
+            "size[3,2]label[0,0;{}]list[current_player;main;0,0;1,2;]list[current_player;main;2,0.5;1,1;]",
+            title
+        ),
+        MenuKind::Furnace => format!(
+            "size[3,2]label[0,0;{}]list[current_player;main;0,0;1,2;]list[current_player;main;2,0.5;1,1;]",
+            title
+        ),
+        MenuKind::Smoker => format!(
+            "size[3,2]label[0,0;{}]list[current_player;main;0,0;1,2;]list[current_player;main;2,0.5;1,1;]",
+            title
+        ),
         MenuKind::Crafting => format!(
-"formspec_version[7]\
+            "formspec_version[7]\
 size[11.5,11]\
 background[0,0;17.5,17.5;gui-container-crafting_table.png]\
 style_type[list;spacing=0.135,0.135;size=1.09,1.09;border=false]\
@@ -192,8 +205,12 @@ list[current_player;main;0.55,9.7;9,1]\
 list[current_player;main;0.55,5.75;9,3;9]\
 label[0.55,0.5;{}]\
 ",
-            title),
-        _ => format!("size[5,1]label[0,0;Error!\nAs-of-now unsupported MenuKind,\nUI cannot be shown!\nMenu Title: {}]", title),
+            title
+        ),
+        _ => format!(
+            "size[5,1]label[0,0;Error!\nAs-of-now unsupported MenuKind,\nUI cannot be shown!\nMenu Title: {}]",
+            title
+        ),
     }
 }
 
@@ -651,65 +668,62 @@ pub async fn get_node_def_command(
         tiledef.clone(),
         tiledef.clone(),
     ];
-    content_features.push((
-        120,
-        ContentFeatures {
-            version: 13,
-            name: String::from("bridgetest:glowing_air"),
-            groups: vec![(String::from(""), 1)],
-            param_type: 0,
-            param_type_2: 0,
-            drawtype: DrawType::AirLike,
-            mesh: String::from(""),
-            visual_scale: 1.0,
-            unused_six: 6,
-            tiledef: tiledef_sides.clone(),
-            tiledef_overlay: tiledef_sides.clone(),
-            tiledef_special: tiledef_sides.to_vec(),
-            alpha_for_legacy: 20,
-            red: 100,
-            green: 70,
-            blue: 85,
-            palette_name: String::from(""),
-            waving: 0,
-            connect_sides: 0,
-            connects_to_ids: Vec::new(),
-            post_effect_color: SColor::new(100, 70, 85, 20),
-            leveled: 0,
-            light_propagates: 15,
-            sunlight_propagates: 15,
-            light_source: 15,
-            is_ground_content: false,
-            walkable: false,
-            pointable: false,
-            diggable: false,
-            climbable: false,
-            buildable_to: false,
-            rightclickable: false,
-            damage_per_second: 0,
-            liquid_type_bc: 0,
-            liquid_alternative_flowing: String::from(""),
-            liquid_alternative_source: String::from(""),
-            liquid_viscosity: 0,
-            liquid_renewable: false,
-            liquid_range: 0,
-            drowning: 0,
-            floodable: false,
-            node_box: types::NodeBox::Regular,
-            selection_box: types::NodeBox::Regular,
-            collision_box: types::NodeBox::Regular,
-            sound_footstep: simplesound_placeholder.clone(),
-            sound_dig: simplesound_placeholder.clone(),
-            sound_dug: simplesound_placeholder.clone(),
-            legacy_facedir_simple: false,
-            legacy_wallmounted: false,
-            node_dig_prediction: String::new(),
-            leveled_max: 0,
-            alpha: types::AlphaMode::Opaque,
-            move_resistance: 0,
-            liquid_move_physics: false,
-        },
-    ));
+    content_features.push((120, ContentFeatures {
+        version: 13,
+        name: String::from("bridgetest:glowing_air"),
+        groups: vec![(String::from(""), 1)],
+        param_type: 0,
+        param_type_2: 0,
+        drawtype: DrawType::AirLike,
+        mesh: String::from(""),
+        visual_scale: 1.0,
+        unused_six: 6,
+        tiledef: tiledef_sides.clone(),
+        tiledef_overlay: tiledef_sides.clone(),
+        tiledef_special: tiledef_sides.to_vec(),
+        alpha_for_legacy: 20,
+        red: 100,
+        green: 70,
+        blue: 85,
+        palette_name: String::from(""),
+        waving: 0,
+        connect_sides: 0,
+        connects_to_ids: Vec::new(),
+        post_effect_color: SColor::new(100, 70, 85, 20),
+        leveled: 0,
+        light_propagates: 15,
+        sunlight_propagates: 15,
+        light_source: 15,
+        is_ground_content: false,
+        walkable: false,
+        pointable: false,
+        diggable: false,
+        climbable: false,
+        buildable_to: false,
+        rightclickable: false,
+        damage_per_second: 0,
+        liquid_type_bc: 0,
+        liquid_alternative_flowing: String::from(""),
+        liquid_alternative_source: String::from(""),
+        liquid_viscosity: 0,
+        liquid_renewable: false,
+        liquid_range: 0,
+        drowning: 0,
+        floodable: false,
+        node_box: types::NodeBox::Regular,
+        selection_box: types::NodeBox::Regular,
+        collision_box: types::NodeBox::Regular,
+        sound_footstep: simplesound_placeholder.clone(),
+        sound_dig: simplesound_placeholder.clone(),
+        sound_dug: simplesound_placeholder.clone(),
+        legacy_facedir_simple: false,
+        legacy_wallmounted: false,
+        node_dig_prediction: String::new(),
+        leveled_max: 0,
+        alpha: types::AlphaMode::Opaque,
+        move_resistance: 0,
+        liquid_move_physics: false,
+    }));
 
     ToClientCommand::Nodedef(Box::new(server_to_client::NodedefSpec {
         node_def: types::NodeDefManager { content_features },

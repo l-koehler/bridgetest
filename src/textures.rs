@@ -1,11 +1,11 @@
 // code to get media to the client
-use base64::{engine::general_purpose, Engine};
+use base64::{Engine, engine::general_purpose};
 use glam::Vec3 as v3f32;
 use luanti_protocol::commands::client_to_server;
 use luanti_protocol::commands::{server_to_client, server_to_client::ToClientCommand};
 use luanti_protocol::types::{
-    aabb3f, AlignStyle, DrawType, MediaAnnouncement, MediaFileData, NodeBox, NodeBoxFixed,
-    TileAnimationParams, TileDef,
+    AlignStyle, DrawType, MediaAnnouncement, MediaFileData, NodeBox, NodeBoxFixed,
+    TileAnimationParams, TileDef, aabb3f,
 };
 use serde::Deserialize;
 use serde_json;
