@@ -180,6 +180,19 @@ list[current_player;main;3.5,1;1,1;]",
         MenuKind::BlastFurnace => format!("size[3,2]label[0,0;{}]list[current_player;main;0,0;1,2;]list[current_player;main;2,0.5;1,1;]", title),
         MenuKind::Furnace => format!("size[3,2]label[0,0;{}]list[current_player;main;0,0;1,2;]list[current_player;main;2,0.5;1,1;]", title),
         MenuKind::Smoker => format!("size[3,2]label[0,0;{}]list[current_player;main;0,0;1,2;]list[current_player;main;2,0.5;1,1;]", title),
+        MenuKind::Crafting => format!(
+"formspec_version[7]\
+size[11.5,11]\
+background[0,0;17.5,17.5;gui-container-crafting_table.png]\
+style_type[list;spacing=0.135,0.135;size=1.09,1.09;border=false]\
+listcolors[#0000;#0002]\
+list[current_player;container;2.05,1.17;3,3]\
+list[current_player;container;8.45,2.4;1,1;9]\
+list[current_player;main;0.55,9.7;9,1]\
+list[current_player;main;0.55,5.75;9,3;9]\
+label[0.55,0.5;{}]\
+",
+            title),
         _ => format!("size[5,1]label[0,0;Error!\nAs-of-now unsupported MenuKind,\nUI cannot be shown!\nMenu Title: {}]", title),
     }
 }

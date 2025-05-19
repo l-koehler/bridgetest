@@ -1270,13 +1270,8 @@ pub async fn refresh_inv(
                     .inventory
                     .as_slice()
             {
-                // we need to shift the inventory that is sent to the client
-                // because the hotbar for some reason isnt the first (or even last!) row in the sent data
-                let mut sent_data = serverside_inventory.inventory.to_vec();
-                // if we ever use indexes on "main" that were sent by the minetest client,
-                // we first need to fix these: serverside = (clientside - 9) % 36
-                sent_data.rotate_right(9);
-                to_update.push(("main", sent_data));
+
+                to_update.push(("main", serverside_inventory.inventory.to_vec()));
             }
             if serverside_inventory.offhand != mt_server_state.mt_clientside_player_inv.offhand {
                 to_update.push(("offhand", vec![serverside_inventory.offhand.clone()]))
@@ -1454,6 +1449,15 @@ pub async fn refresh_inv(
         }
     }
     if !to_update.is_empty() {
+        // we need to shift the inventory that is sent to the client
+        // because the hotbar for some reason isnt the first (or even last!) row in the sent data
+        // if we ever use indexes on "main" that were sent by the minetest client,
+        // we first need to fix these: serverside = (clientside - 9) % 36
+        for list in to_update.iter_mut() {
+            if list.0 == "main" {
+                list.1.rotate_right(9);
+            }
+        }
         update_inventory(mt_conn, to_update).await;
     }
 }
