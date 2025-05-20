@@ -75,6 +75,7 @@ pub struct MTServerState {
     entities_update_scheduled: Vec<u32>,
     // never read, only used to not drop the handle
     inventory_handle: Option<Arc<Mutex<ContainerHandle>>>,
+    container_id: Option<i32>,
     // used to not attack on every left click, only on ones that aren't breaking blocks
     next_click_no_attack: bool,
     // used to only attack on the rising edge, not constantly
@@ -126,6 +127,7 @@ async fn start_client_handler(settings: Config) {
         entity_meta_map: HashMap::new(),
         entities_update_scheduled: Vec::new(),
         inventory_handle: None,
+        container_id: None,
         next_click_no_attack: false,
         previous_dig_held: false,
         item_texture_map: HashMap::new(),

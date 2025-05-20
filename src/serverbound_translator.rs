@@ -38,15 +38,15 @@ pub async fn playerpos(
 ) {
     // the player moved, if a handle to the inventory is kept we may now drop it.
     // this is needed as (unlike the minecraft client) the minetest client does not seem to send packets on container close
-    if let Some(container_handle) = &mt_server_state.inventory_handle {
-        //FIXME: unreachable for some reason
-        let handle = container_handle.lock().unwrap();
+    mt_server_state.inventory_handle = None;
+    // for the same reason, close containers
+    if let Some(container_id) = mt_server_state.container_id {
         mc_client.ecs.lock().send_event(CloseContainerEvent {
             entity: mc_client.entity,
-            id: handle.id(),
+            id: container_id,
         });
-    }
-    mt_server_state.inventory_handle = None;
+        mt_server_state.container_id = None;
+    };
 
     let PlayerPosCommand { player_pos } = *specbox;
     let PlayerPos {

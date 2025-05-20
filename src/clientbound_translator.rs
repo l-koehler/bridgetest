@@ -1212,10 +1212,11 @@ pub async fn open_screen(
     _mt_server_state: &mut MTServerState,
 ) {
     let ClientboundOpenScreen {
-        container_id: _,
+        container_id,
         menu_type,
         title,
     } = packet_data;
+    _mt_server_state.container_id = Some(*container_id);
     let form_spec = mt_definitions::get_container_formspec(menu_type, &title.to_string());
     utils::logger("[Minetest] Showing Formspec for opened container", 1);
     let formspec_command =
@@ -1259,7 +1260,6 @@ pub async fn refresh_inv(
     mt_conn: &mut LuantiConnection,
     mt_server_state: &mut MTServerState,
 ) {
-    println!("menu // {:?}", mc_client.menu());
     let mut to_update: Vec<(&str, Vec<inventory::ItemStack>)> = vec![];
     match mc_client.menu() {
         inventory::Menu::Player(serverside_inventory) => {
