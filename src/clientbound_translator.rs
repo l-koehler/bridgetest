@@ -421,7 +421,7 @@ pub async fn send_message(conn: &mut LuantiConnection, message: ChatPacket) {
         ToClientCommand::TCChatMessage(Box::new(server_to_client::TCChatMessageSpec {
             version: 1,      // idk what this or message_type do
             message_type: 1, // but it works, dont touch it
-            sender: message.username().unwrap_or(String::from("")),
+            sender: String::from(""), // already in message
             message: message.message().to_string(),
             timestamp: chrono::Utc::now().timestamp().try_into().unwrap_or(0),
         }));
