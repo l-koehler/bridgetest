@@ -1,4 +1,5 @@
-# Brigetest
+**This is a mirror of https://codeberg.org/l-koehler/bridgetest**  
+**I likely won't see pull requests / issues here!**  
 
 This program is supposed to let a unmodified [Minetest](https://github.com/minetest/minetest) client connect to  
 another (mostly) unmodified Minecraft (Java Edition) server.  
