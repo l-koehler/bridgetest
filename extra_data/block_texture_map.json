@@ -1627,6 +1627,17 @@
     },
     "drawtype": "full"
   },
+  "minecraft:bush": {
+    "textures": {
+      "up": "./block/bush.png",
+      "down": "./block/bush.png",
+      "north": "./block/bush.png",
+      "south": "./block/bush.png",
+      "east": "./block/bush.png",
+      "west": "./block/bush.png"
+    },
+    "drawtype": "flower"
+  },
   "minecraft:cactus": {
     "textures": {
       "up": "block/cactus_top.png",
@@ -1637,6 +1648,17 @@
       "west": "block/cactus_side.png"
     },
     "drawtype": "NB_9b396163"
+  },
+  "minecraft:cactus_flower": {
+    "textures": {
+      "up": "./block/cactus_flower.png",
+      "down": "./block/cactus_flower.png",
+      "north": "./block/cactus_flower.png",
+      "south": "./block/cactus_flower.png",
+      "east": "./block/cactus_flower.png",
+      "west": "./block/cactus_flower.png"
+    },
+    "drawtype": "flower"
   },
   "minecraft:cake": {
     "textures": {
@@ -2531,12 +2553,12 @@
   },
   "minecraft:creaking_heart": {
     "textures": {
-      "up": "./block/creaking_heart_top.png",
-      "down": "./block/creaking_heart_top.png",
-      "north": "./block/creaking_heart.png",
-      "south": "./block/creaking_heart.png",
-      "east": "./block/creaking_heart.png",
-      "west": "./block/creaking_heart.png"
+      "up": "./block/creaking_heart_top_awake.png",
+      "down": "./block/creaking_heart_top_awake.png",
+      "north": "./block/creaking_heart_awake.png",
+      "south": "./block/creaking_heart_awake.png",
+      "east": "./block/creaking_heart_awake.png",
+      "west": "./block/creaking_heart_awake.png"
     },
     "drawtype": "full"
   },
@@ -4179,6 +4201,17 @@
     },
     "drawtype": "NB_96522710"
   },
+  "minecraft:firefly_bush": {
+    "textures": {
+      "up": "./block/firefly_bush.png",
+      "down": "./block/firefly_bush.png",
+      "north": "./block/firefly_bush.png",
+      "south": "./block/firefly_bush.png",
+      "east": "./block/firefly_bush.png",
+      "west": "./block/firefly_bush.png"
+    },
+    "drawtype": "NB_2fa16e19"
+  },
   "minecraft:fletching_table": {
     "textures": {
       "up": "./block/fletching_table_top.png",
@@ -5333,6 +5366,17 @@
       "west": "./block/cauldron_side.png"
     },
     "drawtype": "NB_d8093eb7"
+  },
+  "minecraft:leaf_litter": {
+    "textures": {
+      "up": "./block/leaf_litter.png",
+      "down": "./block/leaf_litter.png",
+      "north": "./block/leaf_litter.png",
+      "south": "./block/leaf_litter.png",
+      "east": "./block/leaf_litter.png",
+      "west": "./block/leaf_litter.png"
+    },
+    "drawtype": "NB_dd863b2e"
   },
   "minecraft:lectern": {
     "textures": {
@@ -9536,6 +9580,17 @@
     },
     "drawtype": "NB_9f3dd2a0"
   },
+  "minecraft:short_dry_grass": {
+    "textures": {
+      "up": "./block/short_dry_grass.png",
+      "down": "./block/short_dry_grass.png",
+      "north": "./block/short_dry_grass.png",
+      "south": "./block/short_dry_grass.png",
+      "east": "./block/short_dry_grass.png",
+      "west": "./block/short_dry_grass.png"
+    },
+    "drawtype": "flower"
+  },
   "minecraft:short_grass": {
     "textures": {
       "up": "./block/short_grass.png",
@@ -10559,6 +10614,17 @@
     },
     "drawtype": "flower"
   },
+  "minecraft:tall_dry_grass": {
+    "textures": {
+      "up": "./block/tall_dry_grass.png",
+      "down": "./block/tall_dry_grass.png",
+      "north": "./block/tall_dry_grass.png",
+      "south": "./block/tall_dry_grass.png",
+      "east": "./block/tall_dry_grass.png",
+      "west": "./block/tall_dry_grass.png"
+    },
+    "drawtype": "flower"
+  },
   "minecraft:tall_grass": {
     "textures": {
       "up": "./block/tall_grass_bottom.png",
@@ -10600,6 +10666,28 @@
       "south": "./block/terracotta.png",
       "east": "./block/terracotta.png",
       "west": "./block/terracotta.png"
+    },
+    "drawtype": "full"
+  },
+  "minecraft:test_block": {
+    "textures": {
+      "up": "./block/test_block_accept.png",
+      "down": "./block/test_block_accept.png",
+      "north": "./block/test_block_accept.png",
+      "south": "./block/test_block_accept.png",
+      "east": "./block/test_block_accept.png",
+      "west": "./block/test_block_accept.png"
+    },
+    "drawtype": "full"
+  },
+  "minecraft:test_instance_block": {
+    "textures": {
+      "up": "./block/test_instance_block.png",
+      "down": "./block/test_instance_block.png",
+      "north": "./block/test_instance_block.png",
+      "south": "./block/test_instance_block.png",
+      "east": "./block/test_instance_block.png",
+      "west": "./block/test_instance_block.png"
     },
     "drawtype": "full"
   },
@@ -11856,6 +11944,17 @@
       "west": "./block/white_wool.png"
     },
     "drawtype": "full"
+  },
+  "minecraft:wildflowers": {
+    "textures": {
+      "up": "./block/wildflowers.png",
+      "down": "./block/wildflowers.png",
+      "north": "./block/wildflowers.png",
+      "south": "./block/wildflowers.png",
+      "east": "./block/wildflowers.png",
+      "west": "./block/wildflowers.png"
+    },
+    "drawtype": "NB_c3d05d31"
   },
   "minecraft:wither_rose": {
     "textures": {

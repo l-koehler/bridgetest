@@ -2,8 +2,17 @@
 import json
 import hashlib
 from pathlib import Path
+import argparse
 
-asset_root = Path("/home/user/Code/minecraft-1.21.4-client")
+parser = argparse.ArgumentParser(
+    prog="texture_maps.py",
+    description="Generate bridgetest texture mappings",
+    epilog="Do not move this program from its place in the repository!"
+)
+parser.add_argument('asset_root', help="Path to a unpacked Minecraft 1.21.5 client jar")
+args = parser.parse_args()
+
+asset_root = Path(args.asset_root)
 blockstates_dir = asset_root / "assets/minecraft/blockstates"
 models_dir = asset_root / "assets/minecraft/models/block"
 item_dir = asset_root / "assets/minecraft/models/item"

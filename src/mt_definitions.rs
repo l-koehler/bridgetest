@@ -20,6 +20,7 @@ use minecraft_data_rs::models;
 use glam::IVec2 as v2i32;
 use glam::Vec2 as v2f;
 use glam::Vec3 as v3f;
+use log::*;
 
 use crate::settings;
 use crate::textures::{self, get_empty_tiledefs};
@@ -817,7 +818,10 @@ pub fn generate_contentfeature(
         // TODO level 1 skipped, boring :(
         _ => 0,
     };
-    let texture = mt_server_state.block_texture_map.get(&mc_name).unwrap();
+    let Some(texture) = mt_server_state.block_texture_map.get(&mc_name) else {
+        error!("Block texture not mapped to path: {}", mc_name);
+        std::process::exit(1)
+    };
 
     let sunlight_propagates = match texture.drawtype {
         DrawType::AirLike => 15,
