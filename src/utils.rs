@@ -162,29 +162,20 @@ pub fn texture_from_itemstack(item: &ItemStack, mt_server_state: &MTServerState)
         ItemStack::Present(slot_data) => {
             let item_name = slot_data.kind.to_string();
             let inventory_image: String;
-            if item_name.ends_with("_spawn_egg") {
+            if mt_server_state.item_texture_map.contains_key(&item_name) {
                 inventory_image = mt_server_state
                     .item_texture_map
-                    .get("minecraft:template_spawn_egg")
+                    .get(&item_name)
                     .unwrap()
                     .clone()
                     .to_luanti_safe();
             } else {
-                if mt_server_state.item_texture_map.contains_key(&item_name) {
-                    inventory_image = mt_server_state
-                        .item_texture_map
-                        .get(&item_name)
-                        .unwrap()
-                        .clone()
-                        .to_luanti_safe();
-                } else {
-                    inventory_image = mt_server_state
-                        .block_texture_map
-                        .get(&item_name)
-                        .unwrap()
-                        .clone()
-                        .to_safe_cube();
-                }
+                inventory_image = mt_server_state
+                    .block_texture_map
+                    .get(&item_name)
+                    .unwrap()
+                    .clone()
+                    .to_safe_cube();
             }
             return inventory_image;
         }

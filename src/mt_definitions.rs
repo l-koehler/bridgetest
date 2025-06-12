@@ -510,29 +510,20 @@ pub async fn get_item_def_command(mt_server_state: &MTServerState) -> ToClientCo
         // generate inventory image
         // if only present as block mapping, use inventory cube
         // this logic is duplicated in utils::texture_from_itemstack
-        if mc_name.ends_with("_spawn_egg") {
+        if mt_server_state.item_texture_map.contains_key(&mc_name) {
             inventory_image = mt_server_state
                 .item_texture_map
-                .get("minecraft:template_spawn_egg")
+                .get(&mc_name)
                 .unwrap()
                 .clone()
                 .to_luanti_safe();
         } else {
-            if mt_server_state.item_texture_map.contains_key(&mc_name) {
-                inventory_image = mt_server_state
-                    .item_texture_map
-                    .get(&mc_name)
-                    .unwrap()
-                    .clone()
-                    .to_luanti_safe();
-            } else {
-                inventory_image = mt_server_state
-                    .block_texture_map
-                    .get(&mc_name)
-                    .unwrap()
-                    .clone()
-                    .to_safe_cube();
-            }
+            inventory_image = mt_server_state
+                .block_texture_map
+                .get(&mc_name)
+                .unwrap()
+                .clone()
+                .to_safe_cube();
         }
 
         item_definitions.push(generate_itemdef(
