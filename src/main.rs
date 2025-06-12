@@ -1,5 +1,6 @@
 #![feature(variant_count)]
 #![feature(slice_as_array)]
+#![feature(slice_pattern)]
 #![feature(string_remove_matches)]
 // fuck this warning.
 // sure the language doesn't need the parens, but this isn't codegolf. i need legible code
@@ -16,12 +17,13 @@ mod translator;
 mod utils;
 
 use azalea::container::ContainerHandle;
+use azalea::world::MinecraftEntityId;
 use azalea_client::inventory;
+use log::*;
 use luanti_protocol::LuantiServer;
 use luanti_protocol::types::NodeBox;
 use mt_definitions::{Dimensions, EntityMetadata};
 use textures::{BlockMapping, LuantiTexture};
-use log::*;
 
 use bimap::BiMap;
 use config::Config;
@@ -61,7 +63,7 @@ pub struct MTServerState {
     has_moved_since_sync: bool,
     keys_pressed: u32,
     // 32 bit server-side ID <-> 16 bit client-side ID
-    entity_id_map: BiMap<u32, u16>,
+    entity_id_map: BiMap<MinecraftEntityId, u16>,
     // allocatable (free) ID ranges on the client
     // adjacent free ranges are joined on entity removal, range is inclusive on both sides
     // adding a entity will pick the lowest ID of the smallest range to prevent fragmentation
@@ -70,11 +72,11 @@ pub struct MTServerState {
     // position/velocity in ECS-format in case a entity scheduled for update causes a ECS miss
     // mapped by the server-side ID
     // also EntityKind for some other stuff
-    entity_meta_map: HashMap<u32, EntityMetadata>,
+    entity_meta_map: HashMap<MinecraftEntityId, EntityMetadata>,
     // entities that will be updated in the next tick
     // used to prevent flooding the client with thousands of packets
     // side effect: we only iterate the ECS once
-    entities_update_scheduled: Vec<u32>,
+    entities_update_scheduled: Vec<MinecraftEntityId>,
     // never read, only used to not drop the handle
     inventory_handle: Option<Arc<Mutex<ContainerHandle>>>,
     container_id: Option<i32>,

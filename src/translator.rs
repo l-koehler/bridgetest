@@ -19,9 +19,9 @@ use luanti_protocol::commands::CommandProperties;
 use luanti_protocol::commands::client_to_server::ToServerCommand;
 use luanti_protocol::peer::PeerError;
 
-use log::*;
 use azalea_client::Event;
 use config::Config;
+use log::*;
 use std::time::Duration;
 use tokio_stream::StreamExt;
 use tokio_stream::wrappers::IntervalStream;

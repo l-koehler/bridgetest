@@ -1,6 +1,9 @@
 // code to get media to the client
+use crate::utils::{find_suffix_match, sanitize_model_name};
+use crate::{settings, utils};
 use base64::{Engine, engine::general_purpose};
 use glam::Vec3 as v3f32;
+use log::*;
 use luanti_protocol::commands::client_to_server;
 use luanti_protocol::commands::{server_to_client, server_to_client::ToClientCommand};
 use luanti_protocol::types::{
@@ -15,9 +18,6 @@ use std::ffi::OsStr;
 use std::fs;
 use std::io::{Cursor, Read};
 use std::path::PathBuf;
-use log::*;
-use crate::utils::{find_suffix_match, sanitize_model_name};
-use crate::{settings, utils};
 
 // resolves ambiguity in mapping minecraft:thing to textures
 // important! only stores paths relative to the texture pack root.
@@ -383,9 +383,10 @@ pub async fn fetch_models() {
     // attempt to get zip
     let model_url =
         "https://codeberg.org/mineclonia/mineclonia/archive/main:mods/ENTITIES/mobs_mc/models.zip";
-    let resp = reqwest::get(model_url)
-        .await
-        .expect(&format!("Failed to request mineclonia 3D models ({})!", model_url));
+    let resp = reqwest::get(model_url).await.expect(&format!(
+        "Failed to request mineclonia 3D models ({})!",
+        model_url
+    ));
     let texture_pack_data = resp.bytes().await.unwrap();
     debug!("Extracting downloaded zip file...");
     zip_extract::extract(Cursor::new(texture_pack_data), &models_folder, true).unwrap();

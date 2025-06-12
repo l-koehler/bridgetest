@@ -46,7 +46,6 @@ pub async fn server(
     }
 
     // update all entities that moved this tick
-    mt_server_state.entities_update_scheduled.sort();
     mt_server_state.entities_update_scheduled.dedup();
     let mut chunks: Vec<Vec<ActiveObjectMessage>> = Vec::new();
     let mut aom_vector: Vec<ActiveObjectMessage> = Vec::new();
@@ -62,7 +61,7 @@ pub async fn server(
         let index_in_sched = mt_server_state
             .entities_update_scheduled
             .iter()
-            .position(|n| *n == entity_id.0);
+            .position(|n| *n == entity_id);
         if index_in_sched.is_some() {
             mt_server_state
                 .entities_update_scheduled
@@ -70,7 +69,7 @@ pub async fn server(
             aom_vector.push(ActiveObjectMessage {
                 id: *mt_server_state
                     .entity_id_map
-                    .get_by_left(&entity_id.0)
+                    .get_by_left(&entity_id)
                     .unwrap(),
                 data: types::ActiveObjectCommand::UpdatePosition(types::AOCUpdatePosition {
                     position: utils::vec3_to_v3f(position, 0.1),

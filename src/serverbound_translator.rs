@@ -221,9 +221,7 @@ pub async fn interact_generic(
             )
             .await
         }
-        _ => warn!(
-            "Client tried to interact with object, this is not yet supported!",
-        ),
+        _ => warn!("Client tried to interact with object, this is not yet supported!",),
     }
 }
 
@@ -276,10 +274,7 @@ async fn interact_node(
         types::InteractAction::Place => {
             node_rightclick(mc_client, under_blockpos, above_blockpos).await
         }
-        _ => warn!(
-            "Client sent unsupported node interaction: {:?}",
-            action
-        ),
+        _ => warn!("Client sent unsupported node interaction: {:?}", action),
     }
 }
 
@@ -351,9 +346,7 @@ pub fn drop_item(count: u16, from_list: String, from_i: i16, mc_client: &mut Cli
             }
             let handle = maybe_handle.unwrap();
             if handle.contents().is_none() {
-                info!(
-                    "Client attempted to drop items from a container without contents"
-                );
+                info!("Client attempted to drop items from a container without contents");
                 return;
             }
             if handle.contents().unwrap()[from_i as usize].count() <= count.into() {
@@ -437,9 +430,7 @@ pub fn move_item(
             }
             let handle = maybe_handle.unwrap();
             if handle.contents().is_none() {
-                info!(
-                    "Client attempted to take items from a container without contents"
-                );
+                info!("Client attempted to take items from a container without contents");
                 return;
             }
             pickupclick_c(&handle, from_i, count);
@@ -475,9 +466,7 @@ pub fn move_item(
             }
             let handle = maybe_handle.unwrap();
             if handle.contents().is_none() {
-                info!(
-                    "Client attempted to take items from a container without contents"
-                );
+                info!("Client attempted to take items from a container without contents");
                 return;
             }
             handle.click(ClickOperation::Pickup(PickupClick::Left {
@@ -532,9 +521,7 @@ pub async fn craft_item(
             }
         }
         None => {
-            info!(
-                "Client attempted to craft without a present inventory handle!"
-            );
+            info!("Client attempted to craft without a present inventory handle!");
         }
     }
     clientbound_translator::refresh_inv(mc_client, mt_conn, mt_server_state).await;

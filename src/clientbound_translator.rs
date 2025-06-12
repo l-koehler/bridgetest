@@ -14,11 +14,12 @@ use crate::utils;
 use azalea::core::delta::PositionDelta8;
 use azalea::entity::{EntityDataItem, EntityDataValue};
 use azalea::{BlockPos, Vec3};
+use core::slice::SlicePattern;
+use log::*;
 use luanti_protocol::peer::PeerError;
 use luanti_protocol::types::ItemStackMetadata;
 use luanti_protocol::types::ObjectProperties;
 use mt_definitions::{Dimensions, EntityMetadata, FoodDisplay, HeartDisplay};
-use log::*;
 
 use glam::I16Vec2 as v2i16;
 use glam::I16Vec3 as v3i16;
@@ -99,9 +100,7 @@ pub async fn update_dimension(
             _ => Dimensions::Custom,
         };
     }
-    info!(
-        "Client changed dimension: {}:{}", namespace, path
-    )
+    info!("Client changed dimension: {}:{}", namespace, path)
 }
 
 pub async fn set_spawn(
@@ -289,7 +288,10 @@ pub async fn set_time(source_packet: &ClientboundSetTime, conn: &LuantiConnectio
     // minecraft uses morning as 0, minetest uses midnight. accounted by -6000
 
     let mt_time: u16 = (*day_time - 6000 % 24000) as u16;
-    trace!("Sending S2C TimeOfDay: {} (server time was {})", mt_time, day_time);
+    trace!(
+        "Sending S2C TimeOfDay: {} (server time was {})",
+        mt_time, day_time
+    );
     let settime_packet = ToClientCommand::TimeOfDay(Box::new(server_to_client::TimeOfDaySpec {
         time_of_day: mt_time,
         time_speed: Some(1.0), // time does pass, but we move it forward manually by resending this packet
@@ -413,8 +415,8 @@ pub async fn update_inventory(
 pub async fn send_message(conn: &mut LuantiConnection, message: ChatPacket) {
     let chat_packet =
         ToClientCommand::TCChatMessage(Box::new(server_to_client::TCChatMessageSpec {
-            version: 1,      // idk what this or message_type do
-            message_type: 1, // but it works, dont touch it
+            version: 1,               // idk what this or message_type do
+            message_type: 1,          // but it works, dont touch it
             sender: String::from(""), // already in message
             message: message.message().to_string(),
             timestamp: chrono::Utc::now().timestamp().try_into().unwrap_or(0),
@@ -459,7 +461,10 @@ pub async fn initialize_16node_chunk(
      * z=1: 0,0,0, 0,0,0, 0,0,0, \___ gets repeated for each Z, to be a 3^3 cube
      * z=0: 0,0,0, 0,0,0, 0,0,0, /
      */
-    trace!("Sending S2C Blockdata (16^3 nodes at {}|{}|{})", x_pos, y_pos, z_pos);
+    trace!(
+        "Sending S2C Blockdata (16^3 nodes at {}|{}|{})",
+        x_pos, y_pos, z_pos
+    );
 
     let mut nodes: [MapNode; 4096] = [MapNode {
         content_id: ContentId::AIR,
@@ -666,13 +671,11 @@ pub async fn add_entity(
                 y_rot,
                 y_head_rot: _,
                 data: _,
-                x_vel,
-                y_vel,
-                z_vel,
+                velocity: vel,
             } = packet_data;
             is_player = false;
             name = format!("UUID-{}", uuid);
-            c_id = utils::allocate_id(*serverside_id, mt_server_state);
+            c_id = utils::allocate_id(serverside_id.0 as u32, mt_server_state);
             position = utils::vec3_to_v3f(vec_pos, 0.1);
             entity_kind = *entity_type;
             if *entity_type == EntityKind::Item {
@@ -685,18 +688,19 @@ pub async fn add_entity(
                 visual = String::from("mesh");
                 (mesh, textures) = utils::get_entity_model(entity_type);
             }
-            mt_server_state
-                .entity_meta_map
-                .insert(*serverside_id, EntityMetadata {
+            mt_server_state.entity_meta_map.insert(
+                *serverside_id,
+                EntityMetadata {
                     position: *vec_pos,
                     velocity: Vec3 {
-                        x: *x_vel as f64,
-                        y: *y_vel as f64,
-                        z: *z_vel as f64,
+                        x: vel.xa as f64,
+                        y: vel.ya as f64,
+                        z: vel.za as f64,
                     },
                     rotation: (*x_rot, *y_rot),
                     entity_kind,
-                });
+                },
+            );
         }
         None => {
             // use the mt_server_state and lucky guesses
@@ -852,7 +856,7 @@ pub async fn remove_entity(
             continue;
         };
         entity_ids_adjusted.push(*clientside_id);
-        utils::free_id(*entity_id, mt_server_state);
+        utils::free_id(entity_id.0 as u32, mt_server_state);
     }
     if !entity_ids_adjusted.is_empty() {
         let clientbound_removeentity = ToClientCommand::ActiveObjectRemoveAdd(Box::new(
@@ -975,7 +979,7 @@ pub async fn entity_setmotion(
     packet_data: &ClientboundSetEntityMotion,
     mt_server_state: &mut MTServerState,
 ) {
-    let ClientboundSetEntityMotion { id, xa, ya, za } = packet_data;
+    let ClientboundSetEntityMotion { id, delta } = packet_data;
 
     let Some(metadata_item) = mt_server_state.entity_meta_map.get_mut(id) else {
         warn!("Got S2C SetEntityMotion for unknown ID, skipping!");
@@ -983,9 +987,9 @@ pub async fn entity_setmotion(
     };
 
     metadata_item.velocity = Vec3 {
-        x: *xa as f64,
-        y: *ya as f64,
-        z: *za as f64,
+        x: delta.xa as f64,
+        y: delta.ya as f64,
+        z: delta.za as f64,
     };
 
     mt_server_state.entities_update_scheduled.push(*id);
@@ -1215,9 +1219,10 @@ pub async fn refresh_inv(
             if serverside_inventory.craft_result
                 != mt_server_state.mt_clientside_player_inv.craft_result
             {
-                to_update.push(("craftpreview", vec![
-                    serverside_inventory.craft_result.clone(),
-                ]));
+                to_update.push((
+                    "craftpreview",
+                    vec![serverside_inventory.craft_result.clone()],
+                ));
             }
             if serverside_inventory.craft.as_slice()
                 != mt_server_state.mt_clientside_player_inv.craft.as_slice()
@@ -1443,7 +1448,7 @@ pub async fn show_sound(
         seed: _,
     } = packet_data;
     trace!("[Minetest] New Subtitle: {:?}", sound);
-    let key = sound.to_string().replace("minecraft:", "subtitles.");
+    let key = format!("{:?}", sound).replace("minecraft:", "subtitles.");
     let Some(subtitle_str) = azalea_language::get(&key) else {
         trace!("Did not find subtitle in azalea_language, using key as value!");
         mt_server_state.subtitles.push((key, Instant::now()));

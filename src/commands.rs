@@ -36,9 +36,7 @@ pub async fn mt_auto(
     mt_server_state: &mut MTServerState,
 ) {
     match command {
-        ToServerCommand::Init(_) => error!(
-            "Client sent Init, but handshake already done!"
-        ),
+        ToServerCommand::Init(_) => error!("Client sent Init, but handshake already done!"),
         ToServerCommand::Init2(_) => debug!(
             "[Minetest] Client sent Init2 (preferred language), this is not implemented and will be ignored."
         ),
@@ -71,7 +69,7 @@ pub async fn mt_auto(
         _ => warn!(
             "[Minetest] Got unimplemented command, dropping {}",
             command.command_name()
-        )
+        ),
     }
 }
 
@@ -124,7 +122,9 @@ pub async fn mc_auto(
             }
 
             ClientboundGamePacket::KeepAlive(_) => trace!("Got S2C KeepAlive packet, ignoring it."),
-            ClientboundGamePacket::ContainerSetContent(_) => trace!("Got S2C ContainerSetContent packet, syncing next tick."),
+            ClientboundGamePacket::ContainerSetContent(_) => {
+                trace!("Got S2C ContainerSetContent packet, syncing next tick.")
+            }
             ClientboundGamePacket::AddEntity(addentity_packet) => {
                 clientbound_translator::add_entity(
                     Some(&addentity_packet),
@@ -184,10 +184,7 @@ pub async fn mc_auto(
                 command_name
             ),
         },
-        _ => warn!(
-            "Got unimplemented S2C command, dropping {}",
-            command_name
-        ),
+        _ => warn!("Got unimplemented S2C command, dropping {}", command_name),
     };
 }
 
@@ -202,9 +199,7 @@ pub async fn handshake(
     if let ToServerCommand::Init(extracted_box) = command {
         init_command = extracted_box;
     } else {
-        error!(
-            "commands::handshake() got called with a ToServerCommand that was not a C->S Init"
-        );
+        error!("commands::handshake() got called with a ToServerCommand that was not a C->S Init");
         std::process::exit(1);
     }
 
