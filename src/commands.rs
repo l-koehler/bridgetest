@@ -18,6 +18,7 @@ use luanti_protocol::commands::{server_to_client, server_to_client::ToClientComm
 use luanti_protocol::types;
 
 use azalea_client::{Account, Client};
+use log::*;
 
 use alloc::boxed::Box;
 use azalea::protocol::packets::game::ClientboundGamePacket;
@@ -35,25 +36,20 @@ pub async fn mt_auto(
     mt_server_state: &mut MTServerState,
 ) {
     match command {
-        ToServerCommand::Init(_) => utils::logger(
-            "[Minetest] Client sent Init, but handshake already done!",
-            2,
+        ToServerCommand::Init(_) => error!(
+            "Client sent Init, but handshake already done!"
         ),
-        ToServerCommand::Init2(_) => utils::logger(
-            "[Minetest] Client sent Init2 (preferred language), this is not implemented and will be ignored.",
-            2,
+        ToServerCommand::Init2(_) => debug!(
+            "[Minetest] Client sent Init2 (preferred language), this is not implemented and will be ignored."
         ),
-        ToServerCommand::ModchannelJoin(_) => utils::logger(
-            "[Minetest] Client sent ModchannelJoin, this does not exist in MC",
-            2,
+        ToServerCommand::ModchannelJoin(_) => trace!(
+            "[Minetest] Client sent ModchannelJoin, this is not implemented and will be ignored."
         ),
-        ToServerCommand::ModchannelLeave(_) => utils::logger(
-            "[Minetest] Client sent ModchannelLeave, this does not exist in MC",
-            2,
+        ToServerCommand::ModchannelLeave(_) => trace!(
+            "[Minetest] Client sent ModchannelLeave, this is not implemented and will be ignored."
         ),
-        ToServerCommand::TSModchannelMsg(_) => utils::logger(
-            "[Minetest] Client sent TSModchannelMsg, this does not exist in MC",
-            2,
+        ToServerCommand::TSModchannelMsg(_) => trace!(
+            "[Minetest] Client sent TSModchannelMsg, this is not implemented and will be ignored."
         ),
         ToServerCommand::Playerpos(specbox) => {
             serverbound_translator::playerpos(mc_client, specbox, mt_server_state).await
@@ -72,13 +68,10 @@ pub async fn mt_auto(
                 .await
         }
         ToServerCommand::GotBlocks(_) => (), // Gotblocks just confirms to the server that blocks were received
-        _ => utils::logger(
-            &format!(
-                "[Minetest] Got unimplemented command, dropping {}",
-                command.command_name()
-            ),
-            2,
-        ), // Drop packet if unable to match
+        _ => warn!(
+            "[Minetest] Got unimplemented command, dropping {}",
+            command.command_name()
+        )
     }
 }
 
@@ -130,14 +123,8 @@ pub async fn mc_auto(
                 clientbound_translator::update_dimension(&respawn_packet, mt_server_state).await
             }
 
-            ClientboundGamePacket::KeepAlive(_) => {
-                utils::logger("[Minecraft] Got KeepAlive packet, ignoring it.", 0)
-            }
-            ClientboundGamePacket::ContainerSetContent(_) => utils::logger(
-                "[Minecraft] Got ContainerSetContent packet, syncing next tick.",
-                0,
-            ),
-
+            ClientboundGamePacket::KeepAlive(_) => trace!("Got S2C KeepAlive packet, ignoring it."),
+            ClientboundGamePacket::ContainerSetContent(_) => trace!("Got S2C ContainerSetContent packet, syncing next tick."),
             ClientboundGamePacket::AddEntity(addentity_packet) => {
                 clientbound_translator::add_entity(
                     Some(&addentity_packet),
@@ -192,20 +179,14 @@ pub async fn mc_auto(
             ClientboundGamePacket::Sound(sound_packet) => {
                 clientbound_translator::show_sound(&sound_packet, mt_conn, mt_server_state).await
             }
-            _ => utils::logger(
-                &format!(
-                    "[Minecraft] Got unimplemented command, dropping {}",
-                    command_name
-                ),
-                2,
-            ),
-        },
-        _ => utils::logger(
-            &format!(
-                "[Minecraft] Got unimplemented command, dropping {}",
+            _ => warn!(
+                "Got unimplemented S2C ClientboundGamePacket, dropping {}",
                 command_name
             ),
-            2,
+        },
+        _ => warn!(
+            "Got unimplemented S2C command, dropping {}",
+            command_name
         ),
     };
 }
@@ -221,11 +202,10 @@ pub async fn handshake(
     if let ToServerCommand::Init(extracted_box) = command {
         init_command = extracted_box;
     } else {
-        utils::logger(
-            "commands::handshake() got called with a ToServerCommand that was not a C->S Init",
-            3,
+        error!(
+            "commands::handshake() got called with a ToServerCommand that was not a C->S Init"
         );
-        panic!("handshake() got called with non-init packet!")
+        std::process::exit(1);
     }
 
     let mut player_name = init_command.user_name;
@@ -233,7 +213,7 @@ pub async fn handshake(
     mt_server_state.this_player.0 = player_name.clone();
     if player_name == "random" {
         player_name = utils::get_random_username();
-        utils::logger(&format!("Using random username: {}", player_name), 1);
+        info!("Using random username: {}", player_name);
     }
     mt_server_state.this_player.1 = player_name.clone();
     mt_server_state.players.push(player_name.clone());
@@ -250,8 +230,8 @@ pub async fn handshake(
         },
         username_legacy: player_name.clone(),
     }));
+    debug!("Sending S2C Hello");
     conn.send(hello_command).unwrap();
-    utils::logger("[Minetest] S->C Hello", 1);
     // Wait for a C->S FirstSrp
     // TODO: this is right now just assuming the response is part of the authentication
     let second_response = conn
@@ -273,9 +253,9 @@ pub async fn handshake(
             recommended_send_interval: 0.1,
             sudo_auth_methods: 0,
         }));
+    debug!("Sending S2C AuthAccept");
     conn.send(auth_accept_command).unwrap();
-    utils::logger("[Minetest] S->C AuthAccept", 1);
-    utils::logger("[Minecraft] Logging in...", 1);
+    info!("Connecting to Minecraft server");
 
     // TODO: Change this line to allow online accounts
     let mc_server_addr: SocketAddr = settings

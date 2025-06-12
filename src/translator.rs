@@ -19,6 +19,7 @@ use luanti_protocol::commands::CommandProperties;
 use luanti_protocol::commands::client_to_server::ToServerCommand;
 use luanti_protocol::peer::PeerError;
 
+use log::*;
 use azalea_client::Event;
 use config::Config;
 use std::time::Duration;
@@ -39,17 +40,14 @@ pub async fn client_handler(
     loop {
         let t = mt_conn.recv().await;
         match t {
-            Err(_) => utils::logger("[Minetest] got Error from conn.recv(), skipping!", 2),
+            Err(_) => warn!("Got error from mt_conn.recv(), skipping!"),
             Ok(_t) => {
                 command = _t; // Cannot use _t directly, _t is valid only in the scope of the match
                 match command {
                     ToServerCommand::Init(_) => break,
-                    _ => utils::logger(
-                        &format!(
-                            "[Minetest] Dropping unexpected packet! Got serverbound \"{}\", expected \"Init\"",
-                            command.command_name()
-                        ),
-                        2,
+                    _ => warn!(
+                        "Dropping unexpected C2S packet! Got serverbound \"{}\", expected \"Init\"",
+                        command.command_name()
                     ),
                 }
             }
@@ -59,29 +57,20 @@ pub async fn client_handler(
         commands::handshake(command, &mut mt_conn, &mut mt_server_state, &settings).await;
     // Await a LOGIN packet
     // It verifies that the client is now in the server world
-    utils::logger("[Minecraft] Awaiting S->C Login confirmation...", 1);
+    debug!("Awaiting S2C Login confirmation...");
     loop {
         let t = mc_conn.recv().await;
         let command = t.expect("[Minecraft] Server sent disconnect while awaiting login");
         match command {
             // Recieved login packet from minecraft server
             Event::Login => break,
-            _ => utils::logger(
-                &format!(
-                    "[Minetest] Dropping unexpected packet! Got serverbound \"{}\", expected \"Init\"",
-                    utils::mc_packet_name(&command)
-                ),
-                1,
+            _ => warn!(
+                "Dropping unexpected C2S packet! Got serverbound \"{:?}\", expected \"Init\"",
+                command
             ),
         }
     }
 
-    // let media_packets = mt_definitions::get_texture_media_commands(&settings, &mut mt_server_state).await;
-    // let packet_names = ["MediaAnnouncement", "Media (Blocks)", "Media (Particle)", "Media (Entity)", "Media (Item)", "Media (Other)"];
-    // for index in 0..media_packets.len() {
-    //     utils::logger(&format!("[Minetest] S->C {}", packet_names[index]), 1);
-    //     let _ = mt_conn.send(media_packets[index].clone()).await;
-    // }
     mt_server_state.item_texture_map = textures::load_item_mappings();
     mt_server_state.nodebox_lookup = textures::load_nodeboxes();
     mt_server_state.block_texture_map =
@@ -89,43 +78,43 @@ pub async fn client_handler(
 
     mt_conn.send(textures::get_announcement()).unwrap();
 
-    utils::logger("[Minetest] S->C Itemdef", 1);
+    debug!("Sending S2C Itemdef");
     mt_conn
         .send(mt_definitions::get_item_def_command(&mt_server_state).await)
         .unwrap();
-    utils::logger("[Minetest] S->C Nodedef", 1);
+    debug!("Sending S2C Nodedef");
     mt_conn
         .send(mt_definitions::get_node_def_command(&settings, &mut mt_server_state).await)
         .unwrap();
 
-    utils::logger("[Minetest] S->C Movement", 1);
+    debug!("Sending S2C MovementSpec");
     mt_conn
         .send(mt_definitions::get_movementspec(4.317))
         .unwrap();
 
-    utils::logger("[Minetest] S->C SetPriv", 1);
+    debug!("Sending S2C SetPriv");
     mt_conn.send(mt_definitions::get_defaultpriv()).unwrap();
 
-    utils::logger("[Minetest] S->C AddHud Healthbar", 1);
+    debug!("Sending S2C AddHUD (HealthBar)");
     mt_conn.send(mt_definitions::add_healthbar()).unwrap();
-    utils::logger("[Minetest] S->C AddHud Foodbar", 1);
+    debug!("Sending S2C AddHUD (FoodBar)");
     mt_conn.send(mt_definitions::add_foodbar()).unwrap();
-    utils::logger("[Minetest] S->C AddHud Airbar", 1);
+    debug!("Sending S2C AddHUD (AirBar)");
     mt_conn.send(mt_definitions::add_airbar()).unwrap();
-    utils::logger("[Minetest] S->C AddHud Subtitles", 1);
+    debug!("Sending S2C AddHUD (Subtitles)");
     mt_conn.send(mt_definitions::add_subtitlebox()).unwrap();
 
-    utils::logger("[Minetest] S->C Formspec", 1);
+    debug!("Sending S2C Formspec (Inventory)");
     mt_conn
         .send(mt_definitions::get_inventory_formspec(
             settings::PLAYER_INV_FORMSPEC,
         ))
         .unwrap();
 
-    utils::logger("[Minetest] S->C CsmRestrictions", 1);
+    debug!("Sending S2C CsmRestrictions");
     mt_conn.send(mt_definitions::get_csmrestrictions()).unwrap();
 
-    utils::logger("Awaiting ClientReady", 1);
+    info!("Awaiting C2S ClientReady");
     loop {
         let t = mt_conn.recv().await;
         let command = t.unwrap();
@@ -134,33 +123,27 @@ pub async fn client_handler(
                 mt_conn.send(textures::handle_request(packet)).unwrap();
             }
             ToServerCommand::ClientReady(_) => break,
-            _ => utils::logger(
-                &format!(
-                    "[Minetest] Dropping unexpected packet! Got serverbound \"{}\", expected \"ClientReady\"!",
-                    command.command_name()
-                ),
-                2,
+            _ => warn!(
+                "Dropping unexpected C2S packet! Got serverbound \"{}\", expected \"ClientReady\"",
+                command.command_name()
             ),
         }
     }
 
-    utils::logger("[Minetest] S->C Hotbar Definition", 1);
+    debug!("Sending S2C Hotbar Definition");
     mt_conn.send(mt_definitions::set_hotbar_size()).unwrap();
     mt_conn.send(mt_definitions::set_hotbar_texture()).unwrap();
     mt_conn.send(mt_definitions::set_hotbar_selected()).unwrap();
 
-    utils::logger("[Minetest] S->C Inventory", 1);
+    debug!("Sending S2C Inventory Data");
     mt_conn.send(mt_definitions::empty_inventory()).unwrap();
 
-    utils::logger(
-        "[Minetest] S->C SetSky, SetSun, SetMoon, SetStars, OverrideDayNightRatio ",
-        1,
-    );
+    debug!("Sending S2C SetSky, SetSun, SetMoon, SetStars, OverrideDayNightRatio");
     for thing in mt_definitions::get_sky_stuff() {
         mt_conn.send(thing).unwrap();
     }
 
-    utils::logger("[Minetest] S->C ActiveObjectRemoveAdd LocalPlayer", 1);
+    debug!("Sending S2C ActiveObjectRemoveAdd (add LocalPlayer)");
     clientbound_translator::add_entity(None, &mut mt_conn, &mut mt_server_state).await;
     /*
      * Main Loop.
@@ -185,9 +168,9 @@ pub async fn client_handler(
                             true
                         };
                         if show_err {
-                            utils::logger(&format!("[Minetest] Client Disconnected: {:?}", err), 1)
+                            error!("Client Disconnected: {:?}", err);
                         } else {
-                            utils::logger("[Minetest] Client Disconnected", 1)
+                            println!("Client Disconnected");
                         }
                         break; // Exit the client handler on client disconnect
                     }
@@ -204,7 +187,7 @@ pub async fn client_handler(
                         utils::show_mc_command(&mc_command);
                         commands::mc_auto(mc_command, &mut mt_conn, &mut mc_client, &mut mt_server_state, &mut mc_conn).await;
                     },
-                    None => utils::logger(&format!("[Minecraft] Recieved empty/none, skipping: {:#?}", t), 2),
+                    None => info!("Received empty C2S packet, skipping: {:#?}", t),
                 }
             },
             // or run the tick function if no packets are waiting to be processed

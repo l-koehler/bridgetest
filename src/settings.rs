@@ -84,17 +84,5 @@ list[current_player;container;0,0;0,0]
 ";
 pub const HOTBAR_SIZE: i32 = 9;
 
-/*
- * 0: Display every recieved packet
- * 1: Display some extra status messages
- * 2: Display dropped packets/calls to unimplemented stuff
- * 3: Only display fatal errors
- * +: Disable utils::logger entirely
- *
- * This is not in the config file yet, mostly due to concerns on
- * how to implement that without performance drop. (currently messages that don't get displayed get optimized out)
- */
-pub const DROP_LOG_BELOW: i8 = 3;
-
 // How many layers deep we recurse into the assets when building the announcement
 pub const TEXTURE_MAX_RECURSION: u8 = 6;

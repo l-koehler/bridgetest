@@ -15,7 +15,7 @@ use std::ffi::OsStr;
 use std::fs;
 use std::io::{Cursor, Read};
 use std::path::PathBuf;
-
+use log::*;
 use crate::utils::{find_suffix_match, sanitize_model_name};
 use crate::{settings, utils};
 
@@ -378,13 +378,16 @@ pub async fn fetch_models() {
     if models_folder.exists() {
         return;
     }
+    warn!("Models missing, downloading...");
     std::fs::create_dir_all(&models_folder).unwrap();
     // attempt to get zip
     let model_url =
         "https://codeberg.org/mineclonia/mineclonia/archive/main:mods/ENTITIES/mobs_mc/models.zip";
     let resp = reqwest::get(model_url)
         .await
-        .expect("Failed to request texture pack!");
+        .expect(&format!("Failed to request mineclonia 3D models ({})!", model_url));
     let texture_pack_data = resp.bytes().await.unwrap();
+    debug!("Extracting downloaded zip file...");
     zip_extract::extract(Cursor::new(texture_pack_data), &models_folder, true).unwrap();
+    info!("Models downloaded!");
 }

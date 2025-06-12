@@ -21,6 +21,7 @@ use luanti_protocol::LuantiServer;
 use luanti_protocol::types::NodeBox;
 use mt_definitions::{Dimensions, EntityMetadata};
 use textures::{BlockMapping, LuantiTexture};
+use log::*;
 
 use bimap::BiMap;
 use config::Config;
@@ -34,6 +35,7 @@ use std::time::Instant;
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
     let settings: Config = load_config();
     textures::fetch_models().await;
     start_client_handler(settings).await;
@@ -95,10 +97,7 @@ async fn start_client_handler(settings: Config) {
     let mt_server_addr: String = settings
         .get_string("mt_server_addr")
         .expect("Failed to read config!");
-    utils::logger(
-        &format!("[Minetest] Creating Server ({})...", mt_server_addr),
-        1,
-    );
+    info!("Creating Minetest Server ({})...", mt_server_addr);
     let mut mt_server = LuantiServer::new(mt_server_addr.parse().unwrap());
     // Define a server state with stuff to keep track of
     // Sane defaults aren't possible, all this will be overwritten before getting read anyways
@@ -138,13 +137,14 @@ async fn start_client_handler(settings: Config) {
     };
 
     // Wait for a client to join
+    println!("Waiting for client to connect...");
     tokio::select! {
         conn = mt_server.accept() => {
-            utils::logger(&format!("[Minetest] Client connected from {:?}", conn.remote_addr()), 1);
+            info!("Client connected from {:?}", conn.remote_addr());
             translator::client_handler(mt_server, conn, mt_server_state, settings).await;
             // The infinite loop of the client handler has returned, presumably due to a disconnect.
             // exit after this.
-            utils::logger("Client Handler returned, exiting.", 1)
+            debug!("Client Handler returned, exiting.");
         }
     }
 }

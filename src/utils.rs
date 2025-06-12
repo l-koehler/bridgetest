@@ -7,6 +7,7 @@ use crate::mt_definitions;
 use crate::settings;
 use crate::textures;
 
+use log::*;
 use azalea::BlockPos;
 use azalea::Client;
 use azalea::core::{aabb::AABB, position::Vec3};
@@ -17,7 +18,6 @@ use azalea_block::BlockState;
 use azalea_client::Event;
 use luanti_core::ContentId;
 use luanti_core::MapNode;
-use luanti_protocol::CommandDirection;
 use luanti_protocol::CommandRef;
 use minecraft_data_rs::models::version::Version;
 use minecraft_data_rs::{Api, api};
@@ -228,6 +228,14 @@ pub fn vec3_to_v3f(input_vector: &Vec3, scale: f64) -> v3f {
     }
 }
 
+pub fn show_mt_command(command: &dyn CommandRef) {
+    trace!("Got C2S command: {}", command.command_name());
+}
+
+pub fn show_mc_command(command: &Event) {
+    trace!("Got S2C packet: {}", mc_packet_name(command));
+}
+
 pub fn get_colormap(texture: &LuantiTexture) -> Option<(u8, u8, u8)> {
     // use the "Plains" texture. per-biome textures dont really work in mt afaik
     // https://minecraft.fandom.com/wiki/Color#Block_and_fluid_colors - what blocks use the colormaps
@@ -292,54 +300,6 @@ pub fn get_block_at(mc_client: &mut Client, pos: &BlockPos) -> Option<Block> {
         return Some(Block::from(state_u));
     } else {
         return None;
-    }
-}
-
-pub fn show_mt_command(command: &dyn CommandRef) {
-    let dir = match command.direction() {
-        CommandDirection::ToClient => "S->C",
-        CommandDirection::ToServer => "C->S",
-    };
-    logger(&format!("[Minetest] {} {}", dir, command.command_name()), 0);
-    //println!("{} {:#?}", dir, command); // overly verbose
-}
-
-pub fn logger(text: &str, level: i8) {
-    /*
-     * Level 0: Debug - Everything that makes some sense to have
-     * Level 1: Stats - Status updates and other sort-of-useful stuff
-     * Level 2: Error - Packet got dropped or something
-     * Level 3: Fatal - Cannot recover, will panic or drop connections
-     */
-    if settings::DROP_LOG_BELOW <= level {
-        if level == 0 {
-            println!(
-                "\x1b[0;37m[{:?}] [DEBUG] {}\x1b[0m",
-                chrono::Utc::now().timestamp(),
-                text
-            )
-        } else if level == 1 {
-            println!("[{:?}] [STATS] {}", chrono::Utc::now().timestamp(), text)
-        } else if level == 2 {
-            println!(
-                "\x1b[1;33m[{:?}] [ERROR] {}\x1b[0m",
-                chrono::Utc::now().timestamp(),
-                text
-            )
-        } else {
-            println!(
-                "\x1b[0;31m[{:?}] [FATAL] {}\x1b[0m",
-                chrono::Utc::now().timestamp(),
-                text
-            )
-        }
-    }
-}
-
-pub fn show_mc_command(command: &Event) {
-    match command {
-        Event::Tick => (), // Don't log ticks, these happen far too often for that
-        _ => logger(&format!("[Minecraft] S->C {}", mc_packet_name(command)), 1),
     }
 }
 
@@ -633,11 +593,9 @@ pub fn mc_packet_name(command: &Event) -> &str {
         Event::Login => "Login",
         Event::Chat(_) => "Chat",
         Event::Tick => "Tick",
-        Event::Packet(packet_value) => match **packet_value {
-            // There are 117 possible cases here and most of them do not matter
-            // Can't be bothered to keep this up to date tbh
-            _ => "GamePacket (no detail)",
-        },
+        // There are 117 possible cases here and most of them do not matter
+        // Can't be bothered to keep this up to date tbh
+        Event::Packet(_) => "GamePacket (no detail)",
         Event::AddPlayer(_) => "AddPlayer",
         Event::RemovePlayer(_) => "RemovePlayer",
         Event::UpdatePlayer(_) => "UpdatePlayer",
@@ -652,7 +610,8 @@ pub fn mc_packet_name(command: &Event) -> &str {
 
 pub fn compatible_data_api() -> Api {
     let Ok(versions) = api::versions() else {
-        panic!("Failed to retrieve minecraft data versions!");
+        error!("Failed to retrieve minecraft data versions!");
+        std::process::exit(1)
     };
     assert!(versions.len() != 0);
     let azalea_ver = azalea::protocol::packets::PROTOCOL_VERSION;

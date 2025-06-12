@@ -11,6 +11,7 @@ use azalea::inventory::operations::{ClickOperation, PickupClick, ThrowClick};
 use azalea::protocol::packets::game::ServerboundSetCarriedItem;
 use azalea::world::{InstanceName, MinecraftEntityId};
 use azalea_client::Client;
+use log::*;
 
 use crate::MTServerState;
 use luanti_protocol::LuantiConnection;
@@ -26,7 +27,7 @@ use std::sync::{Arc, Mutex};
 use glam::I16Vec3 as v3i16;
 
 pub fn send_message(mc_client: &Client, specbox: Box<TSChatMessageSpec>) {
-    utils::logger("[Minetest] C->S Forwarding Message sent by client", 1);
+    debug!("Forwarding chat message sent by client");
     let TSChatMessageSpec { message } = *specbox;
     mc_client.chat(&message);
 }
@@ -220,9 +221,8 @@ pub async fn interact_generic(
             )
             .await
         }
-        _ => utils::logger(
-            "[Minetest] Interacting with objects is currently unsupported/done some other hacky way!",
-            2,
+        _ => warn!(
+            "Client tried to interact with object, this is not yet supported!",
         ),
     }
 }
@@ -276,12 +276,9 @@ async fn interact_node(
         types::InteractAction::Place => {
             node_rightclick(mc_client, under_blockpos, above_blockpos).await
         }
-        _ => utils::logger(
-            &format!(
-                "[Minetest] Client sent unsupported node interaction: {:?}",
-                action
-            ),
-            2,
+        _ => warn!(
+            "Client sent unsupported node interaction: {:?}",
+            action
         ),
     }
 }
@@ -347,17 +344,15 @@ pub fn drop_item(count: u16, from_list: String, from_i: i16, mc_client: &mut Cli
         "container" => {
             let maybe_handle = mc_client.get_open_container();
             if maybe_handle.is_none() {
-                utils::logger(
-                    "[Minetest] Client attempted to drop items from a container while no container was opened",
-                    2,
+                info!(
+                    "[Minetest] Client attempted to drop items from a container while no container was opened"
                 );
                 return;
             }
             let handle = maybe_handle.unwrap();
             if handle.contents().is_none() {
-                utils::logger(
-                    "[Minetest] Client attempted to drop items from a container without contents",
-                    2,
+                info!(
+                    "Client attempted to drop items from a container without contents"
                 );
                 return;
             }
@@ -376,9 +371,8 @@ pub fn drop_item(count: u16, from_list: String, from_i: i16, mc_client: &mut Cli
         "main" | "armor" | "offhand" | "craft" | "craftpreview" => {
             let maybe_handle = mc_client.open_inventory();
             if maybe_handle.is_none() {
-                utils::logger(
+                info!(
                     "[Minetest] Client attempted to drop items from the inventory while a container was opened",
-                    2,
                 );
                 return;
             }
@@ -436,17 +430,15 @@ pub fn move_item(
         "container" => {
             let maybe_handle = mc_client.get_open_container();
             if maybe_handle.is_none() {
-                utils::logger(
-                    "[Minetest] Client attempted to take items from a container while no container was opened",
-                    2,
+                info!(
+                    "Client attempted to take items from a container while no container was opened"
                 );
                 return;
             }
             let handle = maybe_handle.unwrap();
             if handle.contents().is_none() {
-                utils::logger(
-                    "[Minetest] Client attempted to take items from a container without contents",
-                    2,
+                info!(
+                    "Client attempted to take items from a container without contents"
                 );
                 return;
             }
@@ -463,7 +455,7 @@ pub fn move_item(
                 None => {
                     let maybe_handle = mc_client.open_inventory();
                     if maybe_handle.is_none() {
-                        utils::logger("[Minetest] Client attempted something silly", 2);
+                        info!("Client attempted something silly");
                         return;
                     }
                     let handle = maybe_handle.unwrap();
@@ -476,17 +468,15 @@ pub fn move_item(
         "container" => {
             let maybe_handle = mc_client.get_open_container();
             if maybe_handle.is_none() {
-                utils::logger(
-                    "[Minetest] Client attempted to take items from a container while no container was opened",
-                    2,
+                info!(
+                    "Client attempted to take items from a container while no container was opened"
                 );
                 return;
             }
             let handle = maybe_handle.unwrap();
             if handle.contents().is_none() {
-                utils::logger(
-                    "[Minetest] Client attempted to take items from a container without contents",
-                    2,
+                info!(
+                    "Client attempted to take items from a container without contents"
                 );
                 return;
             }
@@ -507,7 +497,7 @@ pub fn move_item(
                 None => {
                     let maybe_handle = mc_client.open_inventory();
                     if maybe_handle.is_none() {
-                        utils::logger("[Minetest] Client attempted something silly", 2);
+                        info!("Client attempted something silly");
                         return;
                     }
                     let handle = maybe_handle.unwrap();
@@ -530,12 +520,11 @@ pub async fn craft_item(
     mt_conn: &mut LuantiConnection,
     mt_server_state: &mut MTServerState,
     count: u16,
-    craft_location: InventoryLocation,
+    _craft_location: InventoryLocation,
 ) {
     // we are not deleting the inventory handle, as the user might click craft repeatedly
     match &mt_server_state.inventory_handle {
         Some(arc_mtx_cht) => {
-            println!("location: {:?}", craft_location);
             let guard = arc_mtx_cht.lock();
             let handle = guard.unwrap();
             for _ in 0..count {
@@ -543,9 +532,8 @@ pub async fn craft_item(
             }
         }
         None => {
-            utils::logger(
-                "[Minetest] Client attempted to craft without a present inventory handle!",
-                2,
+            info!(
+                "Client attempted to craft without a present inventory handle!"
             );
         }
     }

@@ -18,6 +18,7 @@ use luanti_protocol::peer::PeerError;
 use luanti_protocol::types::ItemStackMetadata;
 use luanti_protocol::types::ObjectProperties;
 use mt_definitions::{Dimensions, EntityMetadata, FoodDisplay, HeartDisplay};
+use log::*;
 
 use glam::I16Vec2 as v2i16;
 use glam::I16Vec3 as v3i16;
@@ -98,9 +99,8 @@ pub async fn update_dimension(
             _ => Dimensions::Custom,
         };
     }
-    utils::logger(
-        &format!("[Minetest] New Dimension: {}:{}", namespace, path),
-        1,
+    info!(
+        "Client changed dimension: {}:{}", namespace, path
     )
 }
 
@@ -289,7 +289,7 @@ pub async fn set_time(source_packet: &ClientboundSetTime, conn: &LuantiConnectio
     // minecraft uses morning as 0, minetest uses midnight. accounted by -6000
 
     let mt_time: u16 = (*day_time - 6000 % 24000) as u16;
-    utils::logger(&format!("[Minetest] S->C TimeOfDay: {}", mt_time), 0);
+    trace!("Sending S2C TimeOfDay: {} (server time was {})", mt_time, day_time);
     let settime_packet = ToClientCommand::TimeOfDay(Box::new(server_to_client::TimeOfDaySpec {
         time_of_day: mt_time,
         time_speed: Some(1.0), // time does pass, but we move it forward manually by resending this packet
@@ -347,13 +347,7 @@ pub async fn sync_client_pos(
         { (x_y_euclid_diff.powi(2) + ((serverpos.1 - clientpos.1).abs() / 2.0).powi(2)).sqrt() };
 
     if distance > settings::POS_DIFF_TOLERANCE {
-        utils::logger(
-            &format!(
-                "[Minetest] Re-Syncing Player Position: {} difference.",
-                distance
-            ),
-            1,
-        );
+        info!("Re-Syncing Player Position: {} difference", distance);
         let setpos_packet =
             ToClientCommand::MovePlayer(Box::new(server_to_client::MovePlayerSpec {
                 pos: v3f {
@@ -465,13 +459,7 @@ pub async fn initialize_16node_chunk(
      * z=1: 0,0,0, 0,0,0, 0,0,0, \___ gets repeated for each Z, to be a 3^3 cube
      * z=0: 0,0,0, 0,0,0, 0,0,0, /
      */
-    utils::logger(
-        &format!(
-            "[Minetest] S->C Initializing 16^3 nodes at {}/{}/{}",
-            x_pos, y_pos, z_pos
-        ),
-        0,
-    );
+    trace!("Sending S2C Blockdata (16^3 nodes at {}|{}|{})", x_pos, y_pos, z_pos);
 
     let mut nodes: [MapNode; 4096] = [MapNode {
         content_id: ContentId::AIR,
@@ -515,8 +503,8 @@ pub async fn add_player(
             typ: 0,
             players: mt_server_state.players.clone(),
         }));
+    debug!("Sending S2C UpdatePlayerList");
     conn.send(add_player_command).unwrap();
-    utils::logger("[Minetest] S->C UpdatePlayerList", 1);
 }
 
 pub async fn chunkbatch(
@@ -525,7 +513,7 @@ pub async fn chunkbatch(
     mt_server_state: &mut MTServerState,
     mc_client: &mut Client,
 ) {
-    utils::logger("[Minetest] Forwarding ChunkBatch...", 1);
+    debug!("Forwarding S2C ChunkBatch");
     loop {
         tokio::select! {
             t = mc_conn.recv() => {
@@ -536,18 +524,18 @@ pub async fn chunkbatch(
                         if let Event::Packet(packet_value) = mc_command {
                             match Arc::unwrap_or_clone(packet_value) {
                                 ClientboundGamePacket::LevelChunkWithLight(packet_data) => {
-                                    utils::logger("[Minecraft] S->C LevelchunkWithLight", 1);
+                                    trace!("Forwarding S2C LevelchunkWithLight");
                                     send_level_chunk(&packet_data, mt_conn, mt_server_state).await;
                                 },
                                 ClientboundGamePacket::ChunkBatchFinished(_) => {
-                                    utils::logger("[Minecraft] S->C ChunkBatchFinished", 1);
+                                    debug!("Got S2C ChunkBatchFinished");
                                     return; // Done
                                 },
-                                _ => (),
+                                _ => warn!("Got unexpected S2C packet during ChunkBatch"),
                             }
                         }
                     },
-                    None => utils::logger(&format!("[Minecraft] Recieved empty/none, skipping: {:#?}", t), 2),
+                    None => trace!("Minecraft] Recieved empty packet, skipping: {:#?}", t),
                 }
             },
             t = mt_conn.recv() => {
@@ -561,9 +549,9 @@ pub async fn chunkbatch(
                             true
                         };
                         if show_err {
-                            utils::logger(&format!("[Minetest] Client Disconnected: {:?}", err), 1)
+                            error!("Client Disconnected: {:?}", err);
                         } else {
-                            utils::logger("[Minetest] Client Disconnected", 1)
+                            println!("Client Disconnected");
                         }
                         break; // Exit the client handler on client disconnect
                     }
@@ -595,13 +583,7 @@ pub async fn send_level_chunk(
         data: chunk_data,
         block_entities: _,
     } = chunk_packet_data;
-    utils::logger(
-        &format!(
-            "[Minecraft] Server sent chunk x/z {}/{}",
-            chunk_x_pos, chunk_z_pos
-        ),
-        1,
-    );
+
     //let chunk_location: ChunkPos = ChunkPos { x: *chunk_x_pos, z: *chunk_z_pos }; // unused
     // send chunk to the MT client
     let mut nodearr: [BlockState; 4096] = [BlockState { id: 125 }; 4096];
@@ -866,10 +848,7 @@ pub async fn remove_entity(
     let mut entity_ids_adjusted: Vec<u16> = vec![];
     for entity_id in entity_ids {
         let Some(clientside_id) = mt_server_state.entity_id_map.get_by_left(entity_id) else {
-            utils::logger(
-                "[Minecraft] Server sent RemoveEntity with unknown ID, skipping",
-                2,
-            );
+            warn!("Got S2C RemoveEntity with unknown ID, skipping!");
             continue;
         };
         entity_ids_adjusted.push(*clientside_id);
@@ -884,10 +863,7 @@ pub async fn remove_entity(
         ));
         conn.send(clientbound_removeentity).unwrap();
     } else {
-        utils::logger(
-            "[Minetest] Skipping RemoveEntitiesPacket, no entities to remove!",
-            2,
-        );
+        info!("Got S2C RemoveEntity without entity IDs to remove");
     }
 }
 
@@ -903,10 +879,7 @@ pub async fn entity_setpos(
     let PositionDelta8 { xa, ya, za } = *delta;
 
     let Some(metadata_item) = mt_server_state.entity_meta_map.get(entity_id) else {
-        utils::logger(
-            "[Minecraft] Server sent MoveEntityPos for unknown ID, skipping",
-            2,
-        );
+        warn!("Got S2C MoveEntityPos for unknown ID, skipping!");
         return;
     };
     let old_position = metadata_item.position;
@@ -940,10 +913,7 @@ pub async fn entity_teleport(
         z: change.delta.z as f64 / 40.0,
     };
     let Some(metadata_item) = mt_server_state.entity_meta_map.get_mut(id) else {
-        utils::logger(
-            "[Minecraft] Server sent TeleportEntity for unknown ID, skipping",
-            2,
-        );
+        warn!("Got S2C TeleportEntity for unknown ID, skipping!");
         return;
     };
     metadata_item.position = change.pos;
@@ -966,10 +936,7 @@ pub async fn entity_setposrot(
     let PositionDelta8 { xa, ya, za } = *delta;
 
     let Some(metadata_item) = mt_server_state.entity_meta_map.get(entity_id) else {
-        utils::logger(
-            "[Minecraft] Server sent MoveEntityPosRot for unknown ID, skipping",
-            2,
-        );
+        warn!("Got S2C MoveEntityPosRot for unknown ID, skipping!");
         return;
     };
     let old_position = metadata_item.position;
@@ -996,10 +963,7 @@ pub async fn entity_setrot(
     } = packet_data;
 
     let Some(metadata_item) = mt_server_state.entity_meta_map.get_mut(entity_id) else {
-        utils::logger(
-            "[Minecraft] Server sent MoveEntityRot for unknown ID, skipping",
-            2,
-        );
+        warn!("Got S2C MoveEntityRot for unknown ID, skipping!");
         return;
     };
     metadata_item.rotation = (*x_rot, *y_rot);
@@ -1014,10 +978,7 @@ pub async fn entity_setmotion(
     let ClientboundSetEntityMotion { id, xa, ya, za } = packet_data;
 
     let Some(metadata_item) = mt_server_state.entity_meta_map.get_mut(id) else {
-        utils::logger(
-            "[Minecraft] Server sent SetEntityMotion for unknown ID, skipping",
-            2,
-        );
+        warn!("Got S2C SetEntityMotion for unknown ID, skipping!");
         return;
     };
 
@@ -1040,16 +1001,13 @@ pub async fn entity_event(
         event_id,
     } = packet_data;
     let Some(metadata_item) = mt_server_state.entity_meta_map.get(entity_id) else {
-        utils::logger(
-            "[Minecraft] Server sent EntityEvent for unknown ID, skipping",
-            2,
-        );
+        warn!("Got S2C EntityEvent for unknown ID, skipping!");
         return;
     };
 
     let entity_kind = metadata_item.entity_kind;
     let bad_id_for_entity = format!(
-        "[Minecraft] Got entity event for entity ID {} referring to a entity of type {}, this event isn't implemented for that entity.",
+        "Got entity event for entity ID {} referring to a entity of type {}, this event isn't implemented for that entity.",
         entity_id, entity_kind
     );
     // https://wiki.vg/Entity_statuses
@@ -1059,7 +1017,7 @@ pub async fn entity_event(
             match entity_kind {
                 EntityKind::Rabbit => (),          // Rabbit Jump animation
                 EntityKind::SpawnerMinecart => (), // Reset cooldown to 200 ticks, only relevant to server
-                _ => utils::logger(&bad_id_for_entity, 2),
+                _ => warn!("{}", &bad_id_for_entity),
             }
         }
         3 => {
@@ -1076,7 +1034,7 @@ pub async fn entity_event(
                 EntityKind::IronGolem => (),   // Attack animation and sound
                 EntityKind::Ravager => (),     // Attack animation for 10 ticks
                 EntityKind::Zoglin => (),      // Attack animation and sound
-                _ => utils::logger(&bad_id_for_entity, 2),
+                _ => warn!("{}", &bad_id_for_entity),
             }
         }
         6 => (), // Taming Fail particles (smoke)
@@ -1087,7 +1045,7 @@ pub async fn entity_event(
             match entity_kind {
                 EntityKind::Sheep => (),       // Sheep eating grass animation
                 EntityKind::TntMinecart => (), // Ignite TntMinecart
-                _ => utils::logger(&bad_id_for_entity, 2),
+                _ => warn!("{}", &bad_id_for_entity),
             }
         }
         11 => (),      // Iron golem holding flower for 20 seconds animation
@@ -1105,12 +1063,9 @@ pub async fn entity_event(
         24..29 => (),  // OP permission level 0..4
         29 | 30 => (), // shield block / break sounds
         47..53 => (),  // equipment break sound (mainhand, offhand, head..feet slot)
-        _ => utils::logger(
-            &format!(
-                "[Minecraft] Got unsupported Entity Event (Event ID: {}, Entity ID: {})",
-                event_id, entity_id
-            ),
-            2,
+        _ => warn!(
+            "Got S2C unsupported Entity Event (Event ID: {}, Entity ID: {})",
+            event_id, entity_id
         ),
     }
 }
@@ -1125,10 +1080,7 @@ pub async fn set_entity_data(
     let ClientboundSetEntityData { id, packed_items } = packet_data;
 
     let Some(clientside_id) = mt_server_state.entity_id_map.get_by_left(id) else {
-        utils::logger(
-            "[Minecraft] Server sent SetEntityData for unknown ID, skipping",
-            2,
-        );
+        warn!("Got S2C SetEntityData for unknown ID, skipping!");
         return;
     };
 
@@ -1148,17 +1100,13 @@ pub async fn set_entity_data(
                     )
                     .await
                 }
-                _ => utils::logger(
-                    "[Minecraft] Server sent SetEntityData with ItemStack, but this is only implemented for dropped items! Dropping this EntityDataItem.",
-                    2,
+                _ => info!(
+                    "Got S2C SetEntityData with ItemStack, but this is only implemented for dropped items! Dropping this EntityDataItem"
                 ),
             },
-            _ => utils::logger(
-                &format!(
-                    "[Minecraft] Server sent SetEntityData with unsupported EntityDataValue ({:?})! Dropping this EntityDataItem.",
-                    value
-                ),
-                2,
+            _ => info!(
+                "Got S2C SetEntityData with unsupported EntityDataValue ({:?})! Dropping this EntityDataItem",
+                value
             ),
         }
     }
@@ -1218,7 +1166,7 @@ pub async fn open_screen(
     } = packet_data;
     _mt_server_state.container_id = Some(*container_id);
     let form_spec = mt_definitions::get_container_formspec(menu_type, &title.to_string());
-    utils::logger("[Minetest] Showing Formspec for opened container", 1);
+    debug!("Sending S2C ShowFormspec for opened container");
     let formspec_command =
         ToClientCommand::ShowFormspec(Box::new(server_to_client::ShowFormspecSpec {
             form_spec,
@@ -1494,9 +1442,10 @@ pub async fn show_sound(
         pitch: _,
         seed: _,
     } = packet_data;
-    utils::logger(&format!("[Minetest] New Subtitle: {:?}", sound), 1);
+    trace!("[Minetest] New Subtitle: {:?}", sound);
     let key = sound.to_string().replace("minecraft:", "subtitles.");
     let Some(subtitle_str) = azalea_language::get(&key) else {
+        trace!("Did not find subtitle in azalea_language, using key as value!");
         mt_server_state.subtitles.push((key, Instant::now()));
         return;
     };
