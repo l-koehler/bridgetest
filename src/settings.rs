@@ -21,9 +21,12 @@ local_only = true
 [auth]
 # username 'random' selects a random username
 allow_random_user = true
-# this will require interaction for microsoft auth
-# it also disables the allow_random_user function above
+# this requires some interaction with the proxy for microsoft auth
+# it also disables the allow_random_user function above, as the chosen name in luanti will not matter anymore
 online_mode = false
+# only used to log into microsoft when online_mode = true
+# _technically_ only a cache key, but use your email to avoid confusion
+microsoft_email = \"\"
 
 [media]
 # url to a zip file containing the mineclonia models

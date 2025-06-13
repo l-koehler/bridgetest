@@ -227,8 +227,6 @@ pub async fn handshake(
             warn!("Using literal username \"random\", random usernames are disabled!");
         }
     }
-    mt_server_state.this_player.1 = player_name.clone();
-    mt_server_state.players.push(player_name.clone());
 
     // Send S->C Hello
     let hello_command = ToClientCommand::Hello(Box::new(server_to_client::HelloSpec {
@@ -275,9 +273,23 @@ pub async fn handshake(
         .parse()
         .unwrap();
     let mc_account: Account = match settings.get_bool("auth.online_mode").unwrap() {
-        true => todo!("Online accounts are not yet implemented!"), //TODO
+        true => {
+            let email = settings.get_string("auth.microsoft_email").unwrap();
+            if !email.contains('@') {
+                println!("Bad email! Use --account or set your E-Mail in the config file.");
+                std::process::exit(1)
+            }
+            Account::microsoft(&email).await.unwrap_or_else(|_| {
+                error!("Microsoft auth failed!");
+                std::process::exit(1)
+            })
+        }
         false => Account::offline(player_name.as_str()),
     };
+
+    mt_server_state.this_player.1 = mc_account.username.clone();
+    mt_server_state.players.push(mc_account.username.clone());
+
     Client::join(&mc_account, mc_server_addr)
         .await
         .expect("[Minecraft] Failed to log in!")

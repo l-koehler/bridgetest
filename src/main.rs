@@ -193,6 +193,13 @@ fn load_config() -> Config {
                 .value_parser(clap::builder::BoolishValueParser::new())
                 .value_hint(clap::ValueHint::Other),
         )
+        .arg(
+            Arg::new("account")
+                .long("account")
+                .value_name("E-MAIL")
+                .help("If set, use that microsoft account. Overrides address set in config file.")
+                .value_hint(clap::ValueHint::EmailAddress),
+        )
         .get_matches();
     let config_path: PathBuf = dirs::config_dir().unwrap();
     let config_file_path: PathBuf = config_path.join("bridgetest.toml");
@@ -232,6 +239,12 @@ fn load_config() -> Config {
     }
     if let Some(local) = command_line_matches.get_one::<bool>("local") {
         builder = builder.set_override("net.local_only", *local).unwrap()
+    }
+    if let Some(email) = command_line_matches.get_one::<String>("account") {
+        builder = builder.set_override("auth.online_mode", true).unwrap();
+        builder = builder
+            .set_override("auth.microsoft_email", email.clone())
+            .unwrap()
     }
     builder.build().expect("Failed to create config!")
 }
