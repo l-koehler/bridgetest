@@ -67,7 +67,7 @@ pub async fn mt_auto(
         }
         ToServerCommand::GotBlocks(_) => (), // Gotblocks just confirms to the server that blocks were received
         _ => warn!(
-            "[Minetest] Got unimplemented command, dropping {}",
+            "Got unimplemented C2S command, dropping {}",
             command.command_name()
         ),
     }

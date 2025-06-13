@@ -65,8 +65,8 @@ pub async fn client_handler(
             // Recieved login packet from minecraft server
             Event::Login => break,
             _ => warn!(
-                "Dropping unexpected C2S packet! Got serverbound \"{:?}\", expected \"Init\"",
-                command
+                "Dropping unexpected S2C packet! Got clientbound \"{}\", expected \"Init\"",
+                utils::mc_packet_name(&command)
             ),
         }
     }

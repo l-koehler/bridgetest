@@ -681,17 +681,21 @@ pub fn sanitize_model_name(mut name: String) -> String {
     return name;
 }
 
-// these can't be printed any sane way, so have this nonsense
-pub fn mc_packet_name(command: &Event) -> &str {
-    match command {
+pub fn mc_packet_name(command: &Event) -> String {
+    return String::from(match command {
         Event::Init => "Init",
         Event::Login => "Login",
         Event::Spawn => "Spawn",
         Event::Chat(_) => "Chat",
         Event::Tick => "Tick",
-        // There are 117 possible cases here and most of them do not matter
-        // Can't be bothered to keep this up to date tbh
-        Event::Packet(_) => "GamePacket (no detail)",
+        // There are 117 possible cases here
+        // pattern matching would get really boring
+        Event::Packet(packet) => {
+            let s = format!("{:?}", **packet);
+            return s.split('(').next() // for data variants
+            .or_else(|| s.split_whitespace().next()) // for unit variants
+            .unwrap().to_owned();
+        },
         Event::AddPlayer(_) => "AddPlayer",
         Event::RemovePlayer(_) => "RemovePlayer",
         Event::UpdatePlayer(_) => "UpdatePlayer",
@@ -699,7 +703,7 @@ pub fn mc_packet_name(command: &Event) -> &str {
         Event::KeepAlive(_) => "KeepAlive",
         Event::Disconnect(_) => "Disconnect",
         _ => "Unknown", // should be exhaustive idk what the compiler wants here
-    }
+    })
 }
 
 // select data API (from https://github.com/PrismarineJS/minecraft-data) based on azalea version
