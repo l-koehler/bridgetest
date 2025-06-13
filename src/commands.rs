@@ -154,7 +154,13 @@ pub async fn mc_auto(
                 clientbound_translator::entity_sync(&entitysync_packet, mt_server_state)
             }
             // would need a better implementation of models and bones than this
-            ClientboundGamePacket::RotateHead(_) => trace!("Got S2C RotateHead packet, ignoring it."),
+            ClientboundGamePacket::RotateHead(_) => {
+                trace!("Got S2C RotateHead packet, ignoring it.")
+            }
+            // should mostly not matter, server-controlled stuff
+            ClientboundGamePacket::UpdateAttributes(_) => {
+                trace!("Got S2C UpdateAttributes, ignoring it.")
+            }
             ClientboundGamePacket::RemoveEntities(removeentity_packet) => {
                 clientbound_translator::remove_entity(
                     &removeentity_packet,
@@ -212,8 +218,14 @@ pub async fn handshake(
     // if the name is "random", the random result only affects the MC server. the MT client will think the name is literal "random".
     mt_server_state.this_player.0 = player_name.clone();
     if player_name == "random" {
-        player_name = utils::get_random_username();
-        info!("Using random username: {}", player_name);
+        if settings.get_bool("auth.allow_random_user").unwrap()
+            && !settings.get_bool("auth.online_mode").unwrap()
+        {
+            player_name = utils::get_random_username();
+            info!("Using random username: {}", player_name);
+        } else {
+            warn!("Using literal username \"random\", random usernames are disabled!");
+        }
     }
     mt_server_state.this_player.1 = player_name.clone();
     mt_server_state.players.push(player_name.clone());
@@ -257,13 +269,15 @@ pub async fn handshake(
     conn.send(auth_accept_command).unwrap();
     info!("Connecting to Minecraft server");
 
-    // TODO: Change this line to allow online accounts
     let mc_server_addr: SocketAddr = settings
-        .get_string("mc_server_addr")
-        .expect("Failed to read config!")
+        .get_string("net.mc_server")
+        .unwrap()
         .parse()
-        .expect("Failed to parse mc_server_addr!");
-    let mc_account: Account = Account::offline(player_name.as_str());
+        .unwrap();
+    let mc_account: Account = match settings.get_bool("auth.online_mode").unwrap() {
+        true => todo!("Online accounts are not yet implemented!"), //TODO
+        false => Account::offline(player_name.as_str()),
+    };
     Client::join(&mc_account, mc_server_addr)
         .await
         .expect("[Minecraft] Failed to log in!")

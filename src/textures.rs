@@ -2,6 +2,7 @@
 use crate::utils::{find_suffix_match, sanitize_model_name};
 use crate::{settings, utils};
 use base64::{Engine, engine::general_purpose};
+use config::Config;
 use glam::Vec3 as v3f32;
 use log::*;
 use luanti_protocol::commands::client_to_server;
@@ -370,7 +371,7 @@ pub fn get_empty_tiledefs() -> [TileDef; 6] {
     ];
 }
 
-pub async fn fetch_models() {
+pub async fn fetch_models(settings: &Config) {
     // ensure data dir exists
     let _ = std::fs::create_dir_all(dirs::data_local_dir().unwrap().join("bridgetest/"));
     // if the models are already downloaded, exit.
@@ -378,11 +379,10 @@ pub async fn fetch_models() {
     if models_folder.exists() {
         return;
     }
-    warn!("Models missing, downloading...");
+    let model_url = &settings.get_string("model_url").unwrap();
+    warn!("Models missing, downloading ({})", model_url);
     std::fs::create_dir_all(&models_folder).unwrap();
     // attempt to get zip
-    let model_url =
-        "https://codeberg.org/mineclonia/mineclonia/archive/main:mods/ENTITIES/mobs_mc/models.zip";
     let resp = reqwest::get(model_url).await.expect(&format!(
         "Failed to request mineclonia 3D models ({})!",
         model_url

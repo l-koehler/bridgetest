@@ -45,6 +45,7 @@ use azalea_language;
 use azalea::protocol::packets::game::{
     ClientboundGamePacket, c_add_entity::ClientboundAddEntity,
     c_block_update::ClientboundBlockUpdate, c_entity_event::ClientboundEntityEvent,
+    c_entity_position_sync::ClientboundEntityPositionSync,
     c_move_entity_pos::ClientboundMoveEntityPos,
     c_move_entity_pos_rot::ClientboundMoveEntityPosRot,
     c_move_entity_rot::ClientboundMoveEntityRot, c_open_screen::ClientboundOpenScreen,
@@ -54,7 +55,6 @@ use azalea::protocol::packets::game::{
     c_set_entity_data::ClientboundSetEntityData, c_set_entity_motion::ClientboundSetEntityMotion,
     c_set_health::ClientboundSetHealth, c_set_time::ClientboundSetTime, c_sound::ClientboundSound,
     c_teleport_entity::ClientboundTeleportEntity,
-    c_entity_position_sync::ClientboundEntityPositionSync,
 };
 use azalea_client::Event;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -997,8 +997,15 @@ pub async fn entity_setmotion(
     mt_server_state.entities_update_scheduled.push(*id);
 }
 
-pub fn entity_sync(packet_data: &ClientboundEntityPositionSync, mt_server_state: &mut MTServerState) {
-    let ClientboundEntityPositionSync { id, values, on_ground: _ } = packet_data;
+pub fn entity_sync(
+    packet_data: &ClientboundEntityPositionSync,
+    mt_server_state: &mut MTServerState,
+) {
+    let ClientboundEntityPositionSync {
+        id,
+        values,
+        on_ground: _,
+    } = packet_data;
     let Some(metadata_item) = mt_server_state.entity_meta_map.get_mut(&id) else {
         warn!("Got S2C SetEntityMotion for unknown ID, skipping!");
         return;

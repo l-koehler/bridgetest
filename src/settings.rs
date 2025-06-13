@@ -5,17 +5,32 @@
  * Also some other constants and hacks
  */
 
-// default text for config file
+// default contents of config file
 pub const CONF_FALLBACK: &str ="\
-## feel free to change these values, shouldn't break anything important.
-# download link to a complete minecraft texture pack
-texture_pack_url = \"https://database.faithfulpack.net/packs/32x-Java/December%202023/Faithful%2032x%20-%201.20.4.zip\"
-# resolution of the texture pack
-texture_pack_res = 32
-# IP address of the minecraft server. domains DO NOT work.
-mc_server_addr = \"127.0.0.1:25565\"
-# address you will need to point your minetest client to
-mt_server_addr = \"127.0.0.1:30000\"
+[net]
+# must be IPv4:PORT, domains are not supported (yet)
+# can be overridden on command line (-s/--server)
+mc_server = \"127.0.0.1:25565\"
+# port the proxy will listen on
+# can be overridden on command line (-p/--port)
+luanti_port = 30000
+# binds to 127.0.0.1 (local loopback) if true, else 0.0.0.0 (all available addresses)
+# can be overridden on command line (--local-only)
+local_only = true
+
+[auth]
+# username 'random' selects a random username
+allow_random_user = true
+# this will require interaction for microsoft auth
+# it also disables the allow_random_user function above
+online_mode = false
+
+[media]
+# url to a zip file containing the mineclonia models
+model_url = \"https://codeberg.org/mineclonia/mineclonia/archive/main:mods/ENTITIES/mobs_mc/models.zip\"
+# resolution of installed textures
+# should be 16 unless you changed them
+texture_pack_res = 16
 ";
 
 // IDs for various HUD things
@@ -30,6 +45,7 @@ pub const SUBTITLE_ID: u32 = 3;
 pub const POS_DIFF_TOLERANCE: f32 = 0.5;
 
 // names to use for random name generation
+// these get three random digits appended
 pub const HS_NAMES: [&str; 26] = [
     "Aradia_Megido",
     "Tavros_Nitram",

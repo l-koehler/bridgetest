@@ -617,9 +617,7 @@ pub async fn get_node_def_command(
 ) -> ToClientCommand {
     let mut content_features: Vec<(u16, ContentFeatures)> = Vec::new();
     let mut content_feature: ContentFeatures;
-    let texture_pack_res: u16 = settings
-        .get_int("texture_pack_res")
-        .expect("Failed to read config!") as u16;
+    let texture_pack_res: u16 = settings.get_int("media.texture_pack_res").unwrap() as u16;
 
     // Azalea provides no nicer way to iterate over blocks, as far as I know.
     for mc_id in 0..std::mem::variant_count::<azalea::registry::Block>() {
