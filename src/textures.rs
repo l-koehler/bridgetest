@@ -385,10 +385,12 @@ pub async fn fetch_models(settings: &Config) {
     warn!("Models missing/outdated, downloading ({})", model_url);
     std::fs::create_dir_all(&models_folder).unwrap();
     // attempt to get zip
-    let resp = reqwest::get(model_url).await.expect(&format!(
-        "Failed to request mineclonia 3D models ({})!",
-        model_url
-    ));
+    let resp = reqwest::get(model_url).await.unwrap_or_else(|_| {
+        error!(
+            "Failed to get missing models. Retry later or check the model_url in the config file."
+        );
+        std::process::exit(1)
+    });
     let texture_pack_data = resp.bytes().await.unwrap();
     debug!("Extracting downloaded zip file...");
     zip_extract::extract(Cursor::new(texture_pack_data), &models_folder, true).unwrap();
