@@ -13,6 +13,7 @@ use crate::utils;
 
 use azalea::core::delta::PositionDelta8;
 use azalea::entity::{EntityDataItem, EntityDataValue};
+use azalea::registry::Holder;
 use azalea::{BlockPos, Vec3};
 use core::slice::SlicePattern;
 use log::*;
@@ -1448,7 +1449,14 @@ pub async fn show_sound(
         seed: _,
     } = packet_data;
     trace!("[Minetest] New Subtitle: {:?}", sound);
-    let key = format!("{:?}", sound).replace("minecraft:", "subtitles.");
+    let key = match sound {
+        Holder::Reference(sound_ref) => sound_ref.to_string().replace("minecraft:", "subtitles."),
+        Holder::Direct(_) => {
+            // shouldn't happen on vanilla server i think
+            String::from("custom sound (unsupported)")
+        }
+    };
+
     let Some(subtitle_str) = azalea_language::get(&key) else {
         trace!("Did not find subtitle in azalea_language, using key as value!");
         mt_server_state.subtitles.push((key, Instant::now()));

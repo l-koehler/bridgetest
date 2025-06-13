@@ -692,10 +692,13 @@ pub fn mc_packet_name(command: &Event) -> String {
         // pattern matching would get really boring
         Event::Packet(packet) => {
             let s = format!("{:?}", **packet);
-            return s.split('(').next() // for data variants
-            .or_else(|| s.split_whitespace().next()) // for unit variants
-            .unwrap().to_owned();
-        },
+            return s
+                .split('(')
+                .next() // for data variants
+                .or_else(|| s.split_whitespace().next()) // for unit variants
+                .unwrap()
+                .to_owned();
+        }
         Event::AddPlayer(_) => "AddPlayer",
         Event::RemovePlayer(_) => "RemovePlayer",
         Event::UpdatePlayer(_) => "UpdatePlayer",
@@ -703,7 +706,7 @@ pub fn mc_packet_name(command: &Event) -> String {
         Event::KeepAlive(_) => "KeepAlive",
         Event::Disconnect(_) => "Disconnect",
         _ => "Unknown", // should be exhaustive idk what the compiler wants here
-    })
+    });
 }
 
 // select data API (from https://github.com/PrismarineJS/minecraft-data) based on azalea version
