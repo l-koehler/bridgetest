@@ -150,6 +150,11 @@ pub async fn mc_auto(
                 clientbound_translator::entity_setmotion(&entitymotion_packet, mt_server_state)
                     .await
             }
+            ClientboundGamePacket::EntityPositionSync(entitysync_packet) => {
+                clientbound_translator::entity_sync(&entitysync_packet, mt_server_state)
+            }
+            // would need a better implementation of models and bones than this
+            ClientboundGamePacket::RotateHead(_) => trace!("Got S2C RotateHead packet, ignoring it."),
             ClientboundGamePacket::RemoveEntities(removeentity_packet) => {
                 clientbound_translator::remove_entity(
                     &removeentity_packet,

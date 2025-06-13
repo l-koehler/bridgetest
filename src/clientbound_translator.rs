@@ -54,6 +54,7 @@ use azalea::protocol::packets::game::{
     c_set_entity_data::ClientboundSetEntityData, c_set_entity_motion::ClientboundSetEntityMotion,
     c_set_health::ClientboundSetHealth, c_set_time::ClientboundSetTime, c_sound::ClientboundSound,
     c_teleport_entity::ClientboundTeleportEntity,
+    c_entity_position_sync::ClientboundEntityPositionSync,
 };
 use azalea_client::Event;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -996,6 +997,18 @@ pub async fn entity_setmotion(
     mt_server_state.entities_update_scheduled.push(*id);
 }
 
+pub fn entity_sync(packet_data: &ClientboundEntityPositionSync, mt_server_state: &mut MTServerState) {
+    let ClientboundEntityPositionSync { id, values, on_ground: _ } = packet_data;
+    let Some(metadata_item) = mt_server_state.entity_meta_map.get_mut(&id) else {
+        warn!("Got S2C SetEntityMotion for unknown ID, skipping!");
+        return;
+    };
+
+    metadata_item.position = values.pos;
+    metadata_item.velocity = values.delta;
+    mt_server_state.entities_update_scheduled.push(*id);
+}
+
 pub async fn entity_event(
     packet_data: &ClientboundEntityEvent,
     _conn: &mut LuantiConnection,
@@ -1458,7 +1471,7 @@ pub async fn show_sound(
     };
 
     let Some(subtitle_str) = azalea_language::get(&key) else {
-        trace!("Did not find subtitle in azalea_language, using key as value!");
+        info!("Did not find subtitle in azalea_language, using key as value!");
         mt_server_state.subtitles.push((key, Instant::now()));
         return;
     };
