@@ -40,6 +40,10 @@ It will be created on the first start, alternatively you can create it yourself.
 
 Some models are also needed and will be downloaded on the first start.  
 
+If you want to use a microsoft account, you'll need to add your e-mail address to  
+the config file. You will also need to visit `microsoft.com/link` and enter a code  
+provided by this program to authenticate your account on the first launch.  
+
 ## Troubleshooting Steps
 
 * Ensure you are running the latest commit for bridgetest.  
@@ -61,13 +65,10 @@ Some models are also needed and will be downloaded on the first start.
 * Particles (will suck to implement, delayed until i cant do other stuff instead)  
 * Imprecisions in the movement (the client speed/gravity etc is not exact, so  
   server/client will drift out of sync for up to half a block, at which point the  
-  proxy re-positions the client)
+  proxy re-positions the client)  
+* Entities are a mess.  
 
 ## Even more limitations (ones that don't affect gameplay)
-
-* The Minecraft server needs to be in offline-mode. I could fix that  
-  with `azalea-auth` but most people who might use this probably do not  
-  have a minecraft account. TODO later  
 
 * Any Anticheats are ~~likely~~ near-certain to ban you.  
   (if they don't, you probably found a bug in the anticheat? the traffic sent  
@@ -79,10 +80,6 @@ Some models are also needed and will be downloaded on the first start.
   If you find a windows bug, feel free to open a issue, but I will only work  
   on that if it won't take too long. PRs fixing windows will be accepted.  
   for now, i'd prefer getting this mess to work at all :3  
-
-* The upstream library for the minecraft protocol  
-  needs to be the bleeding-edge git version, but you can simply ignore  
-  this warning here if you only want to *use* this program.  
 
 * The proxy can only handle one client at a time, but could probably be  
   rewritten to handle more clients without changing that much.  
