@@ -376,11 +376,13 @@ pub async fn fetch_models(settings: &Config) {
     let _ = std::fs::create_dir_all(dirs::data_local_dir().unwrap().join("bridgetest/"));
     // if the models are already downloaded, exit.
     let models_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/models/");
-    if models_folder.exists() {
+    let url_file = models_folder.join("url.txt");
+    let model_url = &settings.get_string("media.model_url").unwrap();
+    if url_file.exists() && fs::read(&url_file).unwrap() == model_url.clone().into_bytes() {
+        debug!("Not downloading models: url.txt exists and is up-to-date.");
         return;
     }
-    let model_url = &settings.get_string("model_url").unwrap();
-    warn!("Models missing, downloading ({})", model_url);
+    warn!("Models missing/outdated, downloading ({})", model_url);
     std::fs::create_dir_all(&models_folder).unwrap();
     // attempt to get zip
     let resp = reqwest::get(model_url).await.expect(&format!(
@@ -390,5 +392,7 @@ pub async fn fetch_models(settings: &Config) {
     let texture_pack_data = resp.bytes().await.unwrap();
     debug!("Extracting downloaded zip file...");
     zip_extract::extract(Cursor::new(texture_pack_data), &models_folder, true).unwrap();
+    debug!("Creating url.txt file");
+    fs::write(url_file, model_url).unwrap();
     info!("Models downloaded!");
 }
