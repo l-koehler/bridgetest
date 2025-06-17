@@ -41,6 +41,7 @@ pub const HEALTHBAR_ID: u32 = 0;
 pub const FOODBAR_ID: u32 = 1;
 pub const AIRBAR_ID: u32 = 2;
 pub const SUBTITLE_ID: u32 = 3;
+pub const EFFECTS_ID: u32 = 4;
 
 // max "disagreement" between server and client about position
 // y distance is only weighted half:
@@ -87,6 +88,7 @@ pub const ALL_INV_FIELDS: [&str; 6] = [
     "craftpreview",
     "container",
 ]; // container is dynamic in size
+
 pub const PLAYER_INV_FORMSPEC: &str = "\
 formspec_version[7]
 size[12,11.3]
@@ -102,6 +104,5 @@ list[current_player;main;0.55,5.75;9,3;9]
 list[current_player;container;0,0;0,0]
 ";
 pub const HOTBAR_SIZE: i32 = 9;
-
 // How many layers deep we recurse into the assets when building the announcement
 pub const TEXTURE_MAX_RECURSION: u8 = 6;

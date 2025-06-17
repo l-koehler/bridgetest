@@ -190,6 +190,16 @@ pub async fn mc_auto(
             ClientboundGamePacket::Sound(sound_packet) => {
                 clientbound_translator::show_sound(&sound_packet, mt_conn, mt_server_state).await
             }
+            ClientboundGamePacket::UpdateMobEffect(mobeffect_packet) => {
+                println!("commands: updatemobeffect");
+                clientbound_translator::update_mob_effect(
+                    &mobeffect_packet,
+                    mt_server_state,
+                    mt_conn,
+                    mc_client,
+                )
+                .await
+            }
             _ => warn!(
                 "Got unimplemented S2C ClientboundGamePacket, dropping {}",
                 command_name

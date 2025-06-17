@@ -300,41 +300,31 @@ pub fn empty_inventory() -> ToClientCommand {
     ToClientCommand::Inventory(Box::new(server_to_client::InventorySpec {
         inventory: Inventory {
             entries: vec![
-                InventoryEntry::Update {
-                    0: InventoryList {
-                        name: String::from("main"),
-                        width: 0,
-                        items: vec![ItemStackUpdate::Empty; 36],
-                    },
-                },
-                InventoryEntry::Update {
-                    0: InventoryList {
-                        name: String::from("armor"),
-                        width: 0,
-                        items: vec![ItemStackUpdate::Empty; 4],
-                    },
-                },
-                InventoryEntry::Update {
-                    0: InventoryList {
-                        name: String::from("offhand"),
-                        width: 0,
-                        items: vec![ItemStackUpdate::Empty],
-                    },
-                },
-                InventoryEntry::Update {
-                    0: InventoryList {
-                        name: String::from("craft"),
-                        width: 3,
-                        items: vec![ItemStackUpdate::Empty; 4],
-                    },
-                },
-                InventoryEntry::Update {
-                    0: InventoryList {
-                        name: String::from("craftpreview"),
-                        width: 0,
-                        items: vec![ItemStackUpdate::Empty],
-                    },
-                },
+                InventoryEntry::Update(InventoryList {
+                    name: String::from("main"),
+                    width: 0,
+                    items: vec![ItemStackUpdate::Empty; 36],
+                }),
+                InventoryEntry::Update(InventoryList {
+                    name: String::from("armor"),
+                    width: 0,
+                    items: vec![ItemStackUpdate::Empty; 4],
+                }),
+                InventoryEntry::Update(InventoryList {
+                    name: String::from("offhand"),
+                    width: 0,
+                    items: vec![ItemStackUpdate::Empty],
+                }),
+                InventoryEntry::Update(InventoryList {
+                    name: String::from("craft"),
+                    width: 3,
+                    items: vec![ItemStackUpdate::Empty; 4],
+                }),
+                InventoryEntry::Update(InventoryList {
+                    name: String::from("craftpreview"),
+                    width: 0,
+                    items: vec![ItemStackUpdate::Empty],
+                }),
             ],
         },
     }))
@@ -439,6 +429,28 @@ pub fn add_subtitlebox() -> ToClientCommand {
         z_index: Some(0),
         text2: None,
         style: Some(0),
+    }))
+}
+
+pub fn add_effect_img() -> ToClientCommand {
+    ToClientCommand::Hudadd(Box::new(server_to_client::HudaddSpec {
+        server_id: settings::EFFECTS_ID,
+        typ: 0,
+        pos: v2f { x: 1.0, y: 0.0 },
+        name: String::new(),
+        scale: v2f { x: 2.0, y: 2.0 },
+        text: String::from(""),
+        number: 0,
+        item: 20,
+        dir: 0,
+        // offset is top-right corner
+        align: v2f { x: 1.0, y: 1.0 },
+        offset: v2f { x: -54.0, y: 6.0 },
+        world_pos: None,
+        size: Some(v2i32 { x: 24, y: 24 }),
+        z_index: Some(0),
+        text2: None,
+        style: None,
     }))
 }
 

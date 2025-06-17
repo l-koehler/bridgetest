@@ -103,6 +103,8 @@ pub async fn client_handler(
     mt_conn.send(mt_definitions::add_airbar()).unwrap();
     debug!("Sending S2C AddHUD (Subtitles)");
     mt_conn.send(mt_definitions::add_subtitlebox()).unwrap();
+    debug!("Sending S2C AddHUD (Effects)");
+    mt_conn.send(mt_definitions::add_effect_img()).unwrap();
 
     debug!("Sending S2C Formspec (Inventory)");
     mt_conn

@@ -2,6 +2,7 @@
 #![feature(slice_as_array)]
 #![feature(slice_pattern)]
 #![feature(string_remove_matches)]
+#![feature(string_into_chars)]
 // fuck this warning.
 // sure the language doesn't need the parens, but this isn't codegolf. i need legible code
 #![allow(unused_parens)]
@@ -17,6 +18,7 @@ mod translator;
 mod utils;
 
 use azalea::container::ContainerHandle;
+use azalea::registry::MobEffect;
 use azalea::world::MinecraftEntityId;
 use azalea_client::inventory;
 use log::*;
@@ -28,7 +30,6 @@ use textures::{BlockMapping, LuantiTexture};
 use bimap::BiMap;
 use clap::Arg;
 use config::Config;
-use dirs;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
@@ -87,6 +88,9 @@ pub struct MTServerState {
     next_click_no_attack: bool,
     // used to only attack on the rising edge, not constantly
     previous_dig_held: bool,
+    // (potion_effect, ends_at, flags) on the client
+    // used to update the formspec each tick
+    client_effects: Vec<(MobEffect, Instant, u8)>,
     // maps "minecraft:item"
     item_texture_map: HashMap<String, LuantiTexture>,
     // maps "minecraft:block"
@@ -137,6 +141,7 @@ async fn start_client_handler(settings: Config) {
         container_id: None,
         next_click_no_attack: false,
         previous_dig_held: false,
+        client_effects: Vec::new(),
         item_texture_map: HashMap::new(),
         block_texture_map: HashMap::new(),
         nodebox_lookup: HashMap::new(),

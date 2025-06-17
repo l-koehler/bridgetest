@@ -12,7 +12,6 @@ use luanti_protocol::types::{
     TileAnimationParams, TileDef, aabb3f,
 };
 use serde::Deserialize;
-use serde_json;
 use sha1::{Digest, Sha1};
 use std::collections::HashMap;
 use std::ffi::OsStr;

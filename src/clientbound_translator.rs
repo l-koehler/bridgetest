@@ -13,7 +13,8 @@ use crate::utils;
 
 use azalea::core::delta::PositionDelta8;
 use azalea::entity::{EntityDataItem, EntityDataValue};
-use azalea::registry::Holder;
+use azalea::registry::{Holder, MobEffect};
+use azalea::world::MinecraftEntityId;
 use azalea::{BlockPos, Vec3};
 use core::slice::SlicePattern;
 use log::*;
@@ -21,6 +22,7 @@ use luanti_protocol::peer::PeerError;
 use luanti_protocol::types::ItemStackMetadata;
 use luanti_protocol::types::ObjectProperties;
 use mt_definitions::{Dimensions, EntityMetadata, FoodDisplay, HeartDisplay};
+use std::time::Duration;
 
 use glam::I16Vec2 as v2i16;
 use glam::I16Vec3 as v3i16;
@@ -54,7 +56,7 @@ use azalea::protocol::packets::game::{
     c_set_default_spawn_position::ClientboundSetDefaultSpawnPosition,
     c_set_entity_data::ClientboundSetEntityData, c_set_entity_motion::ClientboundSetEntityMotion,
     c_set_health::ClientboundSetHealth, c_set_time::ClientboundSetTime, c_sound::ClientboundSound,
-    c_teleport_entity::ClientboundTeleportEntity,
+    c_teleport_entity::ClientboundTeleportEntity, c_update_mob_effect::ClientboundUpdateMobEffect,
 };
 use azalea_client::Event;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -170,17 +172,17 @@ pub async fn edit_healthbar(mode: HeartDisplay, num: u32, conn: &LuantiConnectio
     // num is from 0 to 20
     // above 20: no change will be made to the number of hearts
     let heart_texture: &str = match mode {
-        HeartDisplay::Absorb => "heart-absorbing_full.png",
-        HeartDisplay::Frozen => "heart-frozen_full.png",
-        HeartDisplay::Normal => "heart-full.png",
-        HeartDisplay::Poison => "heart-poisoned_full.png",
-        HeartDisplay::Wither => "heart-withered_full.png",
-        HeartDisplay::HardcoreAbsorb => "heart-absorbing_hardcore_full.png",
-        HeartDisplay::HardcoreFrozen => "heart-frozen_hardcore_full.png",
-        HeartDisplay::HardcoreNormal => "heart-hardcore_full.png",
-        HeartDisplay::HardcorePoison => "heart-poisoned_hardcore_full.png",
-        HeartDisplay::HardcoreWither => "heart-withered_hardcore_full.png",
-        HeartDisplay::Vehicle => "heart-vehicle_full.png",
+        HeartDisplay::Absorb => "gui-sprites-hud-heart-absorbing_full.png",
+        HeartDisplay::Frozen => "gui-sprites-hud-heart-frozen_full.png",
+        HeartDisplay::Normal => "gui-sprites-hud-heart-full.png",
+        HeartDisplay::Poison => "gui-sprites-hud-heart-poisoned_full.png",
+        HeartDisplay::Wither => "gui-sprites-hud-heart-withered_full.png",
+        HeartDisplay::HardcoreAbsorb => "gui-sprites-hud-heart-absorbing_hardcore_full.png",
+        HeartDisplay::HardcoreFrozen => "gui-sprites-hud-heart-frozen_hardcore_full.png",
+        HeartDisplay::HardcoreNormal => "gui-sprites-hud-heart-hardcore_full.png",
+        HeartDisplay::HardcorePoison => "gui-sprites-hud-heart-poisoned_hardcore_full.png",
+        HeartDisplay::HardcoreWither => "gui-sprites-hud-heart-withered_hardcore_full.png",
+        HeartDisplay::Vehicle => "gui-sprites-hud-heart-vehicle_full.png",
         HeartDisplay::NoChange => "",
     };
     if !heart_texture.is_empty() {
@@ -203,8 +205,8 @@ pub async fn edit_healthbar(mode: HeartDisplay, num: u32, conn: &LuantiConnectio
 
 pub async fn edit_foodbar(mode: FoodDisplay, num: u32, conn: &LuantiConnection) {
     let food_texture: &str = match mode {
-        FoodDisplay::Normal => "hud-food_full.png",
-        FoodDisplay::Hunger => "hud-food_full_hunger.png",
+        FoodDisplay::Normal => "gui-sprites-hud-food_full.png",
+        FoodDisplay::Hunger => "gui-sprites-hud-food_full_hunger.png",
         FoodDisplay::NoChange => "",
     };
     if !food_texture.is_empty() {
@@ -246,6 +248,64 @@ pub async fn edit_airbar(num: u32, conn: &LuantiConnection, prev_num: u32) {
         conn.send(set_bar_item).unwrap();
     };
     conn.send(set_bar_number).unwrap();
+}
+
+pub async fn update_effects(
+    mt_conn: &mut LuantiConnection,
+    effects: &Vec<(MobEffect, Instant, u8)>,
+) {
+    let mut y_offset = 0;
+    let mut combined_texture = format!("[combine:24x{}", effects.len() * 30);
+    if effects.is_empty() {
+        combined_texture = String::from("");
+    }
+    // we don't dedup the list itself, but refuse to draw the same icon twice
+    let mut prevent_dup: Vec<MobEffect> = Vec::new();
+    for effect_t in effects {
+        let (effect, _, flags) = effect_t;
+        if prevent_dup.contains(effect) {
+            continue;
+        } else {
+            prevent_dup.push(*effect);
+        }
+        // 0x01: is ambient effect
+        // 0x02: show particles
+        // 0x04: show icon
+        // 0x08: some darkness-specific thing
+        let use_ambient_frame = (flags & 0x01) != 0;
+        let show_icon = (flags & 0x04) != 0;
+        if !show_icon {
+            continue;
+        };
+        let frame_icon = match use_ambient_frame {
+            false => "gui-sprites-hud-effect_background.png",
+            true => "gui-sprites-hud-effect_background_ambient.png",
+        };
+        let mut effect_icon = format!("{:?}", effect).replace("MobEffect::", "");
+        effect_icon = effect_icon
+            .into_chars()
+            .map(|c| {
+                if c.is_uppercase() {
+                    format!("_{}", c.to_lowercase())
+                } else {
+                    c.to_string()
+                }
+            })
+            .collect();
+        effect_icon.remove(0);
+        let texture = format!(
+            ":0,{}=({}^mob_effect-{}.png)",
+            y_offset, frame_icon, effect_icon
+        );
+        combined_texture.push_str(&texture);
+        y_offset += 30; // 6px padding
+    }
+    trace!("New effect texture: {}", combined_texture);
+    let upd_texture = ToClientCommand::Hudchange(Box::new(server_to_client::HudchangeCommand {
+        server_id: settings::EFFECTS_ID,
+        stat: server_to_client::HudStat::Text(combined_texture),
+    }));
+    mt_conn.send(upd_texture).unwrap();
 }
 
 pub async fn set_health(
@@ -1156,6 +1216,44 @@ async fn set_entity_texture(id: u16, texture: String, conn: &LuantiConnection) {
         },
     ));
     conn.send(update_texture_packet).unwrap();
+}
+
+pub async fn update_mob_effect(
+    packet_data: &ClientboundUpdateMobEffect,
+    mt_server_state: &mut MTServerState,
+    conn: &mut LuantiConnection,
+    mc_client: &Client,
+) {
+    let ClientboundUpdateMobEffect {
+        entity_id,
+        mob_effect,
+        effect_amplifier: _,
+        effect_duration_ticks,
+        flags,
+    } = packet_data;
+    // if player is affected, we may need to update the formspecs
+    if (*entity_id == mc_client.get_component::<MinecraftEntityId>().unwrap()) {
+        let health: u32 = mt_server_state.mt_last_known_health.into();
+        match mob_effect {
+            MobEffect::Wither => edit_healthbar(HeartDisplay::Wither, health, conn).await,
+            MobEffect::Poison => edit_healthbar(HeartDisplay::Poison, health, conn).await,
+            MobEffect::Absorption => edit_healthbar(HeartDisplay::Absorb, health, conn).await,
+            MobEffect::Hunger => {
+                edit_foodbar(FoodDisplay::Hunger, mc_client.hunger().food, conn).await
+            }
+            _ => (),
+        }
+        let duration_ms = Duration::from_millis((effect_duration_ticks * 50).into());
+        let expires_at = Instant::now().checked_add(duration_ms).unwrap();
+        mt_server_state
+            .client_effects
+            .push((*mob_effect, expires_at, *flags));
+        // update effects immediately, don't wait up to a second for the tick
+        update_effects(conn, &mt_server_state.client_effects).await;
+    }
+
+    // also spawn particles at the mob
+    //TODO
 }
 
 // block placement/destruction
