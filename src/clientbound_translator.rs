@@ -52,7 +52,7 @@ use azalea::protocol::packets::game::{
     c_move_entity_pos_rot::ClientboundMoveEntityPosRot,
     c_move_entity_rot::ClientboundMoveEntityRot, c_open_screen::ClientboundOpenScreen,
     c_player_position::ClientboundPlayerPosition, c_remove_entities::ClientboundRemoveEntities,
-    c_respawn::ClientboundRespawn,
+    c_remove_mob_effect::ClientboundRemoveMobEffect, c_respawn::ClientboundRespawn,
     c_set_default_spawn_position::ClientboundSetDefaultSpawnPosition,
     c_set_entity_data::ClientboundSetEntityData, c_set_entity_motion::ClientboundSetEntityMotion,
     c_set_health::ClientboundSetHealth, c_set_time::ClientboundSetTime, c_sound::ClientboundSound,
@@ -260,10 +260,13 @@ pub async fn update_effects(
         combined_texture = String::from("");
     }
     // we don't dedup the list itself, but refuse to draw the same icon twice
+    // there _could_ be the same effect twice with different levels.
+    // vanilla servers won't do that, but i can't prove it won't happen
     let mut prevent_dup: Vec<MobEffect> = Vec::new();
     for effect_t in effects {
         let (effect, _, flags) = effect_t;
         if prevent_dup.contains(effect) {
+            warn!("Found duplicate effects in mt_server_state.client_effects!");
             continue;
         } else {
             prevent_dup.push(*effect);
@@ -1254,6 +1257,20 @@ pub async fn update_mob_effect(
 
     // also spawn particles at the mob
     //TODO
+}
+
+pub async fn remove_mob_effect(
+    packet_data: &ClientboundRemoveMobEffect,
+    conn: &mut LuantiConnection,
+    mt_server_state: &mut MTServerState,
+    mc_client: &Client,
+) {
+    let ClientboundRemoveMobEffect { entity_id, effect } = packet_data;
+    if (*entity_id == mc_client.get_component::<MinecraftEntityId>().unwrap()) {
+        // remove effect from state and update HUD
+        mt_server_state.client_effects.retain(|i| i.0 != *effect);
+        update_effects(conn, &mt_server_state.client_effects).await;
+    }
 }
 
 // block placement/destruction

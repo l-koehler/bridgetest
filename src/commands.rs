@@ -191,11 +191,19 @@ pub async fn mc_auto(
                 clientbound_translator::show_sound(&sound_packet, mt_conn, mt_server_state).await
             }
             ClientboundGamePacket::UpdateMobEffect(mobeffect_packet) => {
-                println!("commands: updatemobeffect");
                 clientbound_translator::update_mob_effect(
                     &mobeffect_packet,
                     mt_server_state,
                     mt_conn,
+                    mc_client,
+                )
+                .await
+            }
+            ClientboundGamePacket::RemoveMobEffect(mobeffect_packet) => {
+                clientbound_translator::remove_mob_effect(
+                    &mobeffect_packet,
+                    mt_conn,
+                    mt_server_state,
                     mc_client,
                 )
                 .await
