@@ -91,38 +91,10 @@ pub async fn server(
             }
         }
     }
-    drop(ecs); // we need to drop the ECS as soon a possible to not cause locks
-    // for each entity not in the ECS (weird unloading bs can happen)
-    for serverside_id in mt_server_state.entities_update_scheduled.drain(..) {
-        let clientside_id = mt_server_state
-            .entity_id_map
-            .get_by_left(&serverside_id)
-            .unwrap();
-        let meta_entry = mt_server_state.entity_meta_map.get(&serverside_id).unwrap();
-        let position: v3f = utils::vec3_to_v3f(&meta_entry.position, 0.1);
-        let velocity: v3f = utils::vec3_to_v3f(&meta_entry.velocity, 0.0025);
-        let r: (f32, f32) = (meta_entry.rotation.0 as f32, meta_entry.rotation.1 as f32);
-        aom_vector.push(ActiveObjectMessage {
-            id: *clientside_id,
-            data: types::ActiveObjectCommand::UpdatePosition(types::AOCUpdatePosition {
-                position,
-                velocity,
-                acceleration: v3f::ZERO,
-                rotation: v3f {
-                    x: r.0,
-                    y: r.1,
-                    z: 0.0,
-                },
-                do_interpolate: false,
-                is_end_position: true,
-                update_interval: 1.0,
-            }),
-        });
-        if aom_vector.len() == 20 {
-            chunks.push(aom_vector);
-            aom_vector = Vec::new();
-        }
-    }
+    drop(ecs);
+    if !aom_vector.is_empty() {
+        chunks.push(aom_vector);
+    };
     // sending all updates at once can exceed minetests packet processing budget
     // send at most 20/packet
     for aom_vector in chunks {
