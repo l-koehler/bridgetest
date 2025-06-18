@@ -3,7 +3,6 @@
  */
 
 use crate::MTServerState;
-use crate::mt_definitions;
 use crate::settings;
 use crate::textures;
 
@@ -21,7 +20,6 @@ use luanti_core::MapNode;
 use luanti_protocol::CommandRef;
 use minecraft_data_rs::models::version::Version;
 use minecraft_data_rs::{Api, api};
-use mt_definitions::EntityMetadata;
 use rand::Rng;
 use std::path::PathBuf;
 use textures::LuantiTexture;
@@ -105,9 +103,6 @@ pub fn allocate_id(serverside_id: u32, mt_server_state: &mut MTServerState) -> u
     mt_server_state
         .entity_id_map
         .insert(serverside_id.into(), clientside_id);
-    mt_server_state
-        .entity_meta_map
-        .insert(serverside_id.into(), EntityMetadata::default());
     return clientside_id;
 }
 
@@ -116,9 +111,6 @@ pub fn free_id(serverside_id: u32, mt_server_state: &mut MTServerState) {
     let id_pair = mt_server_state
         .entity_id_map
         .remove_by_left(&serverside_id.into());
-    mt_server_state
-        .entity_meta_map
-        .remove(&serverside_id.into());
     mt_server_state
         .entities_update_scheduled
         .retain(|x| *x != serverside_id.into()); // may be scheduled several times

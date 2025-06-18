@@ -11,17 +11,16 @@ use crate::mt_definitions;
 use crate::settings;
 use crate::utils;
 
-use azalea::core::delta::PositionDelta8;
 use azalea::entity::{EntityDataItem, EntityDataValue};
 use azalea::registry::{Holder, MobEffect};
 use azalea::world::MinecraftEntityId;
-use azalea::{BlockPos, Vec3};
+use azalea::BlockPos;
 use core::slice::SlicePattern;
 use log::*;
 use luanti_protocol::peer::PeerError;
 use luanti_protocol::types::ItemStackMetadata;
 use luanti_protocol::types::ObjectProperties;
-use mt_definitions::{Dimensions, EntityMetadata, FoodDisplay, HeartDisplay};
+use mt_definitions::{Dimensions, FoodDisplay, HeartDisplay};
 use std::time::Duration;
 
 use glam::I16Vec2 as v2i16;
@@ -723,7 +722,6 @@ pub async fn add_entity(
     let mesh: &str;
     let textures: Vec<String>;
     let visual: String;
-    let entity_kind: EntityKind;
     match optional_packet {
         Some(packet_data) => {
             // use a network packet
@@ -732,17 +730,16 @@ pub async fn add_entity(
                 uuid,
                 entity_type, // TODO: textures and models depend on this thing
                 position: vec_pos,
-                x_rot,
-                y_rot,
+                x_rot: _,
+                y_rot: _,
                 y_head_rot: _,
                 data: _,
-                velocity: vel,
+                velocity: _,
             } = packet_data;
             is_player = false;
             name = format!("UUID-{}", uuid);
             c_id = utils::allocate_id(serverside_id.0 as u32, mt_server_state);
             position = utils::vec3_to_v3f(vec_pos, 0.1);
-            entity_kind = *entity_type;
             if *entity_type == EntityKind::Item {
                 visual = String::from("sprite");
                 mesh = "";
@@ -753,19 +750,6 @@ pub async fn add_entity(
                 visual = String::from("mesh");
                 (mesh, textures) = utils::get_entity_model(entity_type);
             }
-            mt_server_state.entity_meta_map.insert(
-                *serverside_id,
-                EntityMetadata {
-                    position: *vec_pos,
-                    velocity: Vec3 {
-                        x: vel.xa as f64,
-                        y: vel.ya as f64,
-                        z: vel.za as f64,
-                    },
-                    rotation: (*x_rot, *y_rot),
-                    entity_kind,
-                },
-            );
         }
         None => {
             // use the mt_server_state and lucky guesses
@@ -942,26 +926,9 @@ pub async fn entity_setpos(
 ) {
     let ClientboundMoveEntityPos {
         entity_id,
-        delta,
+        delta: _,
         on_ground: _,
     } = packet_data;
-    let PositionDelta8 { xa, ya, za } = *delta;
-
-    let Some(metadata_item) = mt_server_state.entity_meta_map.get(entity_id) else {
-        warn!("Got S2C MoveEntityPos for unknown ID, skipping!");
-        return;
-    };
-    let old_position = metadata_item.position;
-    mt_server_state
-        .entity_meta_map
-        .get_mut(entity_id)
-        .unwrap()
-        .position = Vec3 {
-        x: old_position.x + xa as f64 / 409.6,
-        y: old_position.y + ya as f64 / 409.6,
-        z: old_position.z + za as f64 / 409.6,
-    };
-
     mt_server_state.entities_update_scheduled.push(*entity_id);
 }
 
@@ -971,23 +938,10 @@ pub async fn entity_teleport(
 ) {
     let ClientboundTeleportEntity {
         id,
-        change,
+        change: _,
         relatives: _,
         on_ground: _,
     } = packet_data;
-
-    let delta = Vec3 {
-        x: change.delta.x as f64 / 40.0,
-        y: change.delta.y as f64 / 40.0,
-        z: change.delta.z as f64 / 40.0,
-    };
-    let Some(metadata_item) = mt_server_state.entity_meta_map.get_mut(id) else {
-        warn!("Got S2C TeleportEntity for unknown ID, skipping!");
-        return;
-    };
-    metadata_item.position = change.pos;
-    metadata_item.velocity = delta;
-
     mt_server_state.entities_update_scheduled.push(*id);
 }
 
@@ -997,26 +951,11 @@ pub async fn entity_setposrot(
 ) {
     let ClientboundMoveEntityPosRot {
         entity_id,
-        delta,
-        y_rot,
-        x_rot,
+        delta: _,
+        y_rot: _,
+        x_rot: _,
         on_ground: _,
     } = packet_data;
-    let PositionDelta8 { xa, ya, za } = *delta;
-
-    let Some(metadata_item) = mt_server_state.entity_meta_map.get(entity_id) else {
-        warn!("Got S2C MoveEntityPosRot for unknown ID, skipping!");
-        return;
-    };
-    let old_position = metadata_item.position;
-    let metadata_item = mt_server_state.entity_meta_map.get_mut(entity_id).unwrap();
-    metadata_item.position = Vec3 {
-        x: old_position.x + xa as f64 / 409.6,
-        y: old_position.y + ya as f64 / 409.6,
-        z: old_position.z + za as f64 / 409.6,
-    };
-    metadata_item.rotation = (*x_rot, *y_rot);
-
     mt_server_state.entities_update_scheduled.push(*entity_id);
 }
 
@@ -1026,17 +965,10 @@ pub async fn entity_setrot(
 ) {
     let ClientboundMoveEntityRot {
         entity_id,
-        y_rot,
-        x_rot,
+        y_rot: _,
+        x_rot: _,
         on_ground: _,
     } = packet_data;
-
-    let Some(metadata_item) = mt_server_state.entity_meta_map.get_mut(entity_id) else {
-        warn!("Got S2C MoveEntityRot for unknown ID, skipping!");
-        return;
-    };
-    metadata_item.rotation = (*x_rot, *y_rot);
-
     mt_server_state.entities_update_scheduled.push(*entity_id);
 }
 
@@ -1044,19 +976,7 @@ pub async fn entity_setmotion(
     packet_data: &ClientboundSetEntityMotion,
     mt_server_state: &mut MTServerState,
 ) {
-    let ClientboundSetEntityMotion { id, delta } = packet_data;
-
-    let Some(metadata_item) = mt_server_state.entity_meta_map.get_mut(id) else {
-        warn!("Got S2C SetEntityMotion for unknown ID, skipping!");
-        return;
-    };
-
-    metadata_item.velocity = Vec3 {
-        x: delta.xa as f64,
-        y: delta.ya as f64,
-        z: delta.za as f64,
-    };
-
+    let ClientboundSetEntityMotion { id, delta: _ } = packet_data;
     mt_server_state.entities_update_scheduled.push(*id);
 }
 
@@ -1066,34 +986,30 @@ pub fn entity_sync(
 ) {
     let ClientboundEntityPositionSync {
         id,
-        values,
+        values: _,
         on_ground: _,
     } = packet_data;
-    let Some(metadata_item) = mt_server_state.entity_meta_map.get_mut(&id) else {
-        warn!("Got S2C SetEntityMotion for unknown ID, skipping!");
-        return;
-    };
-
-    metadata_item.position = values.pos;
-    metadata_item.velocity = values.delta;
     mt_server_state.entities_update_scheduled.push(*id);
 }
 
 pub async fn entity_event(
     packet_data: &ClientboundEntityEvent,
     _conn: &mut LuantiConnection,
-    mt_server_state: &MTServerState,
+    mc_client: &Client,
 ) {
     let ClientboundEntityEvent {
         entity_id,
         event_id,
     } = packet_data;
-    let Some(metadata_item) = mt_server_state.entity_meta_map.get(entity_id) else {
+    let Some(entity) = mc_client.ecs_entity_by_minecraft_entity(*entity_id) else {
         warn!("Got S2C EntityEvent for unknown ID, skipping!");
         return;
     };
+    let entity_kind = mc_client
+        .get_entity_component::<azalea::entity::EntityKind>(entity)
+        .unwrap()
+        .0;
 
-    let entity_kind = metadata_item.entity_kind;
     let bad_id_for_entity = format!(
         "Got entity event for entity ID {} referring to a entity of type {}, this event isn't implemented for that entity.",
         entity_id, entity_kind
@@ -1162,6 +1078,7 @@ pub async fn set_entity_data(
     packet_data: &ClientboundSetEntityData,
     conn: &mut LuantiConnection,
     mt_server_state: &MTServerState,
+    mc_client: &Client,
 ) {
     // Currently, the only data that will actually be used is EntityDataValue::ItemStack in EntityKind::Item
     // Everything else gets dropped.
@@ -1172,7 +1089,14 @@ pub async fn set_entity_data(
         return;
     };
 
-    let entity_kind = mt_server_state.entity_meta_map.get(id).unwrap().entity_kind;
+    let Some(entity) = mc_client.ecs_entity_by_minecraft_entity(*id) else {
+        warn!("Got S2C SetEntityData for unknown ID, skipping!");
+        return;
+    };
+    let entity_kind = mc_client
+        .get_entity_component::<azalea::entity::EntityKind>(entity)
+        .unwrap()
+        .0;
 
     let mut metadata_item: &EntityDataItem;
     for i in 0..packed_items.len() {

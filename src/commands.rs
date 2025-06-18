@@ -171,11 +171,16 @@ pub async fn mc_auto(
             }
 
             ClientboundGamePacket::EntityEvent(event_packet) => {
-                clientbound_translator::entity_event(&event_packet, mt_conn, mt_server_state).await
+                clientbound_translator::entity_event(&event_packet, mt_conn, mc_client).await
             }
             ClientboundGamePacket::SetEntityData(data_packet) => {
-                clientbound_translator::set_entity_data(&data_packet, mt_conn, mt_server_state)
-                    .await
+                clientbound_translator::set_entity_data(
+                    &data_packet,
+                    mt_conn,
+                    mt_server_state,
+                    mc_client,
+                )
+                .await
             }
 
             ClientboundGamePacket::OpenScreen(screen_packet) => {

@@ -26,27 +26,7 @@ use crate::settings;
 use crate::textures::{self, get_empty_tiledefs};
 use crate::{MTServerState, utils};
 
-use azalea::Vec3;
-use azalea::registry::{Block, EntityKind, MenuKind};
-
-#[derive(Clone)]
-pub struct EntityMetadata {
-    pub position: Vec3,
-    pub velocity: Vec3,
-    pub rotation: (i8, i8),
-    pub entity_kind: EntityKind,
-}
-
-impl Default for EntityMetadata {
-    fn default() -> Self {
-        EntityMetadata {
-            position: Vec3::ZERO,
-            velocity: Vec3::ZERO,
-            rotation: (0, 0),
-            entity_kind: EntityKind::Pig,
-        }
-    }
-}
+use azalea::registry::{Block, MenuKind};
 
 #[derive(Clone)]
 pub enum HeartDisplay {

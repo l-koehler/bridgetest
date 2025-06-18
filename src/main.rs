@@ -24,7 +24,7 @@ use azalea_client::inventory;
 use log::*;
 use luanti_protocol::LuantiServer;
 use luanti_protocol::types::NodeBox;
-use mt_definitions::{Dimensions, EntityMetadata};
+use mt_definitions::Dimensions;
 use textures::{BlockMapping, LuantiTexture};
 
 use bimap::BiMap;
@@ -73,10 +73,6 @@ pub struct MTServerState {
     // adding a entity will pick the lowest ID of the smallest range to prevent fragmentation
     // starts with 0 non-allocatable because the player doesn't properly get a server-side ID
     c_alloc_id_ranges: Vec<(u16, u16)>,
-    // position/velocity in ECS-format in case a entity scheduled for update causes a ECS miss
-    // mapped by the server-side ID
-    // also EntityKind for some other stuff
-    entity_meta_map: HashMap<MinecraftEntityId, EntityMetadata>,
     // entities that will be updated in the next tick
     // used to prevent flooding the client with thousands of packets
     // side effect: we only iterate the ECS once
@@ -135,7 +131,6 @@ async fn start_client_handler(settings: Config) {
         keys_pressed: 0,
         entity_id_map: BiMap::new(),
         c_alloc_id_ranges: vec![(2, u16::MAX)], // 0 reserved for player, 1 causes issues
-        entity_meta_map: HashMap::new(),
         entities_update_scheduled: Vec::new(),
         inventory_handle: None,
         container_id: None,
