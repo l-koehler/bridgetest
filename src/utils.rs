@@ -201,7 +201,7 @@ pub fn state_to_node(state: BlockState, cave_air_glow: bool) -> MapNode {
     }
 }
 
-pub fn vec3_to_v3f(input_vector: &Vec3, scale: f64) -> v3f {
+pub fn vec3_to_v3f(input_vector: &Vec3, scale: i32) -> v3f {
     // loss of precision, f64 -> f32
     let Vec3 {
         x: xf64,
@@ -209,9 +209,9 @@ pub fn vec3_to_v3f(input_vector: &Vec3, scale: f64) -> v3f {
         z: zf64,
     } = input_vector;
     v3f {
-        x: (*xf64 / scale) as f32,
-        y: (*yf64 / scale) as f32,
-        z: (*zf64 / scale) as f32,
+        x: (*xf64 * scale as f64) as f32,
+        y: (*yf64 * scale as f64) as f32,
+        z: (*zf64 * scale as f64) as f32,
     }
 }
 

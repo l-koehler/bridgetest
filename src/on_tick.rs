@@ -66,21 +66,28 @@ pub async fn server(
             mt_server_state
                 .entities_update_scheduled
                 .remove(index_in_sched.unwrap());
+            let acceleration = azalea::Vec3 {
+                x: physics.x_acceleration.into(),
+                y: physics.y_acceleration.into(),
+                z: physics.z_acceleration.into()
+            };
             aom_vector.push(ActiveObjectMessage {
                 id: *mt_server_state
                     .entity_id_map
                     .get_by_left(&entity_id)
                     .unwrap(),
                 data: types::ActiveObjectCommand::UpdatePosition(types::AOCUpdatePosition {
-                    position: utils::vec3_to_v3f(position, 0.1),
-                    velocity: utils::vec3_to_v3f(&physics.velocity, 0.0025),
-                    acceleration: v3f::ZERO,
+                    position: utils::vec3_to_v3f(position, 10),
+                    velocity: utils::vec3_to_v3f(&physics.velocity, 400),
+                    acceleration: utils::vec3_to_v3f(&acceleration, 10),
                     rotation: v3f {
                         x: look_direction.x_rot,
                         y: look_direction.y_rot,
                         z: 0.0,
                     },
-                    do_interpolate: false,
+                    // these values *might* be wrong in case of teleport packets
+                    // but that's not a big problem, interpolation just affects client-side graphics a tiny bit.
+                    do_interpolate: true,
                     is_end_position: false,
                     update_interval: 1.0,
                 }),

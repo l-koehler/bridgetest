@@ -739,7 +739,7 @@ pub async fn add_entity(
             is_player = false;
             name = format!("UUID-{}", uuid);
             c_id = utils::allocate_id(serverside_id.0 as u32, mt_server_state);
-            position = utils::vec3_to_v3f(vec_pos, 0.1);
+            position = utils::vec3_to_v3f(vec_pos, 10);
             if *entity_type == EntityKind::Item {
                 visual = String::from("sprite");
                 mesh = "";
