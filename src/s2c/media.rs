@@ -270,7 +270,7 @@ struct RawBlockMapping {
 pub fn load_block_mappings(
     nodebox_mapping: &HashMap<String, NodeBox>,
 ) -> HashMap<String, BlockMapping> {
-    let data = include_bytes!("../extra_data/block_texture_map.json");
+    let data = include_bytes!("../../extra_data/block_texture_map.json");
     let raw_map: HashMap<String, RawBlockMapping> = serde_json::from_slice(data).unwrap();
     let parsed_map = raw_map
         .into_iter()
@@ -302,7 +302,7 @@ pub fn load_block_mappings(
 }
 
 pub fn load_item_mappings() -> HashMap<String, LuantiTexture> {
-    let data = include_bytes!("../extra_data/item_texture_map.json");
+    let data = include_bytes!("../../extra_data/item_texture_map.json");
     let raw_map: HashMap<String, String> = serde_json::from_slice(data).unwrap();
     let parsed_map = raw_map
         .into_iter()
@@ -340,7 +340,7 @@ fn generate_nodebox(cuboids: Vec<[i8; 6]>) -> NodeBox {
 }
 
 pub fn load_nodeboxes() -> HashMap<String, NodeBox> {
-    let data = include_bytes!("../extra_data/nodeboxes.json");
+    let data = include_bytes!("../../extra_data/nodeboxes.json");
     let raw_map: HashMap<String, Vec<[i8; 6]>> = serde_json::from_slice(data).unwrap();
     let parsed_map = raw_map
         .into_iter()

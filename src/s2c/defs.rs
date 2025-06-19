@@ -1,32 +1,25 @@
-// ItemDefinitions and BlockDefinitions to be sent to the minetest client
-// the functions are actually more like consts but
-// the "String" type cant be a constant so :shrug:
-
-use luanti_protocol::commands::server_to_client::{ItemAlias, ItemDef, ItemType, ItemdefList};
-use luanti_protocol::commands::{server_to_client, server_to_client::ToClientCommand};
-use luanti_protocol::types;
+use super::super::state::MediaState;
+use crate::s2c;
+use crate::utils;
+use azalea::registry::Block;
+use config::Config;
+use log::*;
+use luanti_protocol::LuantiConnection;
+use luanti_protocol::commands::server_to_client;
+use luanti_protocol::commands::server_to_client::ItemAlias;
+use luanti_protocol::commands::server_to_client::ItemDef;
+use luanti_protocol::commands::server_to_client::ItemType;
+use luanti_protocol::commands::server_to_client::ItemdefList;
+use luanti_protocol::commands::server_to_client::ToClientCommand;
 use luanti_protocol::types::{
-    AlignStyle, ContentFeatures, DrawType, Inventory, InventoryEntry, InventoryList,
+    self, AlignStyle, ContentFeatures, DrawType, Inventory, InventoryEntry, InventoryList,
     ItemStackUpdate, SColor, SimpleSoundSpec, TileAnimationParams, TileDef,
 };
+use minecraft_data_rs::{Api, models};
 
-use config::Config;
-use minecraft_data_rs::Api;
-use minecraft_data_rs::models;
-
-// same fucking name as in azalea :sob:
-// i am lazy, so this gets renamed to the old minetest-protocol types
-// except for "v2s32", inconsistent with rust u/i for unsigned/signed. renamed to "v2i32"
 use glam::IVec2 as v2i32;
 use glam::Vec2 as v2f;
 use glam::Vec3 as v3f;
-use log::*;
-
-use crate::settings;
-use crate::textures::{self, get_empty_tiledefs};
-use crate::{MTServerState, utils};
-
-use azalea::registry::{Block, MenuKind};
 
 #[derive(Clone)]
 pub enum HeartDisplay {
@@ -54,150 +47,112 @@ pub enum FoodDisplay {
     NoChange,
 }
 
-#[derive(Clone, PartialEq, Copy)]
-pub enum Dimensions {
-    Overworld,
-    Nether,
-    End,
-    Custom, // assumes overworld height
+// Send media announcements (models and textures)
+pub fn register_media(luanti_conn: &mut LuantiConnection) {
+    debug!("Sending S2C Media Announcement");
+    luanti_conn.send(s2c::media::get_announcement()).unwrap();
 }
 
-pub const fn get_y_bounds(dimension: &Dimensions) -> (i16, i16) {
-    match dimension {
-        Dimensions::Nether => (0, 255), // worldgen limit is 128, but players can go above that
-        Dimensions::End => (0, 255),
-        Dimensions::Overworld => (-64, 320),
-        Dimensions::Custom => (-64, 320),
+// Send nodedefs
+pub async fn register_nodes(
+    luanti_conn: &mut LuantiConnection,
+    media_state: &mut MediaState,
+    settings: &Config,
+) {
+    luanti_conn
+        .send(get_node_def_command(settings, media_state).await)
+        .unwrap();
+}
+
+// Send itemdefs
+pub async fn register_items(luanti_conn: &mut LuantiConnection, media_state: &MediaState) {
+    debug!("Sending S2C Itemdef");
+    luanti_conn
+        .send(get_item_def_command(media_state).await)
+        .unwrap();
+}
+
+// to send after ClientReady
+pub fn register_misc_late(luanti_conn: &mut LuantiConnection) {
+    debug!("Sending S2C Hotbar Definition");
+    luanti_conn.send(set_hotbar_size()).unwrap();
+    luanti_conn.send(set_hotbar_texture()).unwrap();
+    luanti_conn.send(set_hotbar_selected()).unwrap();
+
+    debug!("Sending S2C Inventory Data");
+    luanti_conn.send(empty_inventory()).unwrap();
+
+    debug!("Sending S2C SetSky, SetSun, SetMoon, SetStars, OverrideDayNightRatio");
+    for rule_def in get_sky_stuff() {
+        luanti_conn.send(rule_def).unwrap();
     }
 }
 
-pub const INTERACTIVE_BLOCKS: [Block; 50] = [
-    // opens inventory
-    Block::Chest,
-    Block::EnderChest,
-    Block::EnchantingTable,
-    Block::Anvil,
-    Block::Grindstone,
-    Block::CraftingTable,
-    // changes own state
-    Block::Lever,
-    Block::Comparator,
-    Block::Repeater,
-    Block::RedstoneOre,
-    Block::RedstoneWire,
-    Block::OakButton,
-    Block::SpruceButton,
-    Block::BirchButton,
-    Block::JungleButton,
-    Block::AcaciaButton,
-    Block::DarkOakButton,
-    Block::MangroveButton,
-    Block::CherryButton,
-    Block::BambooButton,
-    Block::CrimsonButton,
-    Block::WarpedButton,
-    // other stuff
-    Block::WhiteBed,
-    Block::LightGrayBed,
-    Block::GrayBed,
-    Block::BlackBed,
-    Block::BrownBed,
-    Block::RedBed,
-    Block::OrangeBed,
-    Block::YellowBed,
-    Block::LimeBed,
-    Block::CyanBed,
-    Block::LightBlueBed,
-    Block::BlueBed,
-    Block::PurpleBed,
-    Block::MagentaBed,
-    Block::PinkBed,
-    Block::Campfire,
-    Block::SoulCampfire,
-    Block::Cauldron,
-    Block::Cake,
-    Block::CandleCake,
-    Block::RedCandleCake,
-    Block::BlueCandleCake,
-    Block::CyanCandleCake,
-    Block::GrayCandleCake,
-    Block::LimeCandleCake,
-    Block::PinkCandleCake,
-    Block::BlackCandleCake,
-    Block::BrownCandleCake,
-];
+// Send HUD definitions and various stuff (MovementSpec, day/night definition etc)
+pub fn register_rules(luanti_conn: &mut LuantiConnection) {
+    debug!("Sending S2C MovementSpec");
+    luanti_conn.send(get_movementspec(4.317)).unwrap();
 
-pub fn get_container_formspec(container: &MenuKind, title: &str) -> String {
-    // TODO: Sanitize the title, currently someone could name a chest "hi]list[...]" to break a lot of stuff.
-    match container {
-        MenuKind::Generic9x3 => format!(
-            "formspec_version[7]\
-size[11.5,11]\
-background[0,0;17.5,17.5;gui-container-shulker_box.png]\
-style_type[list;spacing=0.135,0.135;size=1.09,1.09;border=false]\
-listcolors[#0000;#0002]\
-list[current_player;container;0.55,1.3;9,3]\
-list[current_player;main;0.55,9.7;9,1]\
-list[current_player;main;0.55,5.75;9,3;9]\
-label[0.55,0.5;{}]\
-",
-            title
-        ),
-        MenuKind::Generic9x6 => format!(
-            "size[9,6]\
-label[0,0;{}]\
-list[current_player;main;0,0;9,6;]",
-            title
-        ),
-        MenuKind::Generic3x3 => format!(
-            "size[3,3]\
-label[0,0;{}]\
-list[current_player;main;0,0;3,3;]",
-            title
-        ),
-        MenuKind::Crafter3x3 => format!(
-            "size[4.5,3]\
-label[0,0;{}]\
-list[current_player;main;0,0;3,3;]\
-list[current_player;main;3.5,1;1,1;]",
-            title
-        ),
-        MenuKind::BlastFurnace => format!(
-            "size[3,2]label[0,0;{}]list[current_player;main;0,0;1,2;]list[current_player;main;2,0.5;1,1;]",
-            title
-        ),
-        MenuKind::Furnace => format!(
-            "size[3,2]label[0,0;{}]list[current_player;main;0,0;1,2;]list[current_player;main;2,0.5;1,1;]",
-            title
-        ),
-        MenuKind::Smoker => format!(
-            "size[3,2]label[0,0;{}]list[current_player;main;0,0;1,2;]list[current_player;main;2,0.5;1,1;]",
-            title
-        ),
-        MenuKind::Crafting => format!(
-            "formspec_version[7]\
-size[11.5,11]\
-background[0,0;17.5,17.5;gui-container-crafting_table.png]\
-style_type[list;spacing=0.135,0.135;size=1.09,1.09;border=false]\
-listcolors[#0000;#0002]\
-list[current_player;container;2.05,1.17;3,3]\
-list[current_player;container;8.45,2.4;1,1;9]\
-list[current_player;main;0.55,9.7;9,1]\
-list[current_player;main;0.55,5.75;9,3;9]\
-label[0.55,0.5;{}]\
-",
-            title
-        ),
-        _ => format!(
-            "size[5,1]label[0,0;Error!\nAs-of-now unsupported MenuKind,\nUI cannot be shown!\nMenu Title: {}]",
-            title
-        ),
-    }
+    debug!("Sending S2C SetPriv");
+    luanti_conn.send(get_defaultpriv()).unwrap();
+
+    debug!("Sending S2C AddHUD (HealthBar)");
+    luanti_conn.send(add_healthbar()).unwrap();
+    debug!("Sending S2C AddHUD (FoodBar)");
+    luanti_conn.send(add_foodbar()).unwrap();
+    debug!("Sending S2C AddHUD (AirBar)");
+    luanti_conn.send(add_airbar()).unwrap();
+    debug!("Sending S2C AddHUD (Subtitles)");
+    luanti_conn.send(add_subtitlebox()).unwrap();
+    debug!("Sending S2C AddHUD (Effects)");
+    luanti_conn.send(add_effect_img()).unwrap();
+
+    debug!("Sending S2C Formspec (Inventory)");
+    luanti_conn
+        .send(get_inventory_formspec(PLAYER_INV_FORMSPEC))
+        .unwrap();
+
+    debug!("Sending S2C CsmRestrictions");
+    luanti_conn.send(get_csmrestrictions()).unwrap();
 }
+
+// misc GUI/formspec stuff
+pub const HEALTHBAR_ID: u32 = 0;
+pub const FOODBAR_ID: u32 = 1;
+pub const AIRBAR_ID: u32 = 2;
+pub const SUBTITLE_ID: u32 = 3;
+pub const EFFECTS_ID: u32 = 4;
+
+pub const PLAYER_INV_FORMSPEC: &str = "\
+formspec_version[7]
+size[12,11.3]
+background[0,0;17.45,17.45;gui-container-inventory.png]
+style_type[list;spacing=0.135,0.135;size=1.09,1.09;border=false]
+listcolors[#0000;#0002]
+list[current_player;armor;0.55,0.575;1,4]
+list[current_player;craft;6.7,1.26;2,2]
+list[current_player;craftpreview;10.5,1.9;1,1]
+list[current_player;offhand;5.29,4.25;1,1]
+list[current_player;main;0.55,9.7;9,1]
+list[current_player;main;0.55,5.75;9,3;9]
+list[current_player;container;0,0;0,0]
+";
+
+// list[current_player; _NAME_ ; x,y ; size_x,size_y;]
+pub const ALL_INV_FIELDS: [&str; 6] = [
+    "main",
+    "armor",
+    "offhand",
+    "craft",
+    "craftpreview",
+    "container",
+]; // container is dynamic in size
+
+pub const HOTBAR_SIZE: i32 = 9;
 
 pub fn set_hotbar_size() -> ToClientCommand {
     ToClientCommand::HudSetParam(Box::new(server_to_client::HudSetParamSpec {
-        value: types::HudSetParam::SetHotBarItemCount(settings::HOTBAR_SIZE),
+        value: types::HudSetParam::SetHotBarItemCount(HOTBAR_SIZE),
     }))
 }
 
@@ -312,7 +267,7 @@ pub fn empty_inventory() -> ToClientCommand {
 
 pub fn add_healthbar() -> ToClientCommand {
     ToClientCommand::Hudadd(Box::new(server_to_client::HudaddSpec {
-        server_id: settings::HEALTHBAR_ID,
+        server_id: HEALTHBAR_ID,
         typ: 2,
         pos: v2f { x: 0.5, y: 1.0 },
         name: String::from(""),
@@ -340,7 +295,7 @@ pub fn add_healthbar() -> ToClientCommand {
 
 pub fn add_foodbar() -> ToClientCommand {
     ToClientCommand::Hudadd(Box::new(server_to_client::HudaddSpec {
-        server_id: settings::FOODBAR_ID,
+        server_id: FOODBAR_ID,
         typ: 2,
         pos: v2f { x: 0.5, y: 1.0 },
         name: String::from(""),
@@ -365,7 +320,7 @@ pub fn add_foodbar() -> ToClientCommand {
 
 pub fn add_airbar() -> ToClientCommand {
     ToClientCommand::Hudadd(Box::new(server_to_client::HudaddSpec {
-        server_id: settings::AIRBAR_ID,
+        server_id: AIRBAR_ID,
         typ: 2,
         pos: v2f { x: 0.5, y: 1.0 },
         name: String::from(""),
@@ -390,7 +345,7 @@ pub fn add_airbar() -> ToClientCommand {
 
 pub fn add_subtitlebox() -> ToClientCommand {
     ToClientCommand::Hudadd(Box::new(server_to_client::HudaddSpec {
-        server_id: settings::SUBTITLE_ID,
+        server_id: SUBTITLE_ID,
         typ: 1,
         pos: v2f { x: 0.5, y: 1.0 },
         name: String::from(""),
@@ -414,7 +369,7 @@ pub fn add_subtitlebox() -> ToClientCommand {
 
 pub fn add_effect_img() -> ToClientCommand {
     ToClientCommand::Hudadd(Box::new(server_to_client::HudaddSpec {
-        server_id: settings::EFFECTS_ID,
+        server_id: EFFECTS_ID,
         typ: 0,
         pos: v2f { x: 1.0, y: 0.0 },
         name: String::new(),
@@ -471,8 +426,65 @@ pub fn get_csmrestrictions() -> ToClientCommand {
     }))
 }
 
+// constants
+pub const INTERACTIVE_BLOCKS: [Block; 50] = [
+    // opens inventory
+    Block::Chest,
+    Block::EnderChest,
+    Block::EnchantingTable,
+    Block::Anvil,
+    Block::Grindstone,
+    Block::CraftingTable,
+    // changes own state
+    Block::Lever,
+    Block::Comparator,
+    Block::Repeater,
+    Block::RedstoneOre,
+    Block::RedstoneWire,
+    Block::OakButton,
+    Block::SpruceButton,
+    Block::BirchButton,
+    Block::JungleButton,
+    Block::AcaciaButton,
+    Block::DarkOakButton,
+    Block::MangroveButton,
+    Block::CherryButton,
+    Block::BambooButton,
+    Block::CrimsonButton,
+    Block::WarpedButton,
+    // other stuff
+    Block::WhiteBed,
+    Block::LightGrayBed,
+    Block::GrayBed,
+    Block::BlackBed,
+    Block::BrownBed,
+    Block::RedBed,
+    Block::OrangeBed,
+    Block::YellowBed,
+    Block::LimeBed,
+    Block::CyanBed,
+    Block::LightBlueBed,
+    Block::BlueBed,
+    Block::PurpleBed,
+    Block::MagentaBed,
+    Block::PinkBed,
+    Block::Campfire,
+    Block::SoulCampfire,
+    Block::Cauldron,
+    Block::Cake,
+    Block::CandleCake,
+    Block::RedCandleCake,
+    Block::BlueCandleCake,
+    Block::CyanCandleCake,
+    Block::GrayCandleCake,
+    Block::LimeCandleCake,
+    Block::PinkCandleCake,
+    Block::BlackCandleCake,
+    Block::BrownCandleCake,
+];
+
 // item def stuff
-pub async fn get_item_def_command(mt_server_state: &MTServerState) -> ToClientCommand {
+pub async fn get_item_def_command(media_state: &MediaState) -> ToClientCommand {
     let mc_data_api: Api = utils::compatible_data_api();
 
     // we need food- and placeable IDs to predict right-click behavior of every item
@@ -502,15 +514,15 @@ pub async fn get_item_def_command(mt_server_state: &MTServerState) -> ToClientCo
         // generate inventory image
         // if only present as block mapping, use inventory cube
         // this logic is duplicated in utils::texture_from_itemstack
-        if mt_server_state.item_texture_map.contains_key(&mc_name) {
-            inventory_image = mt_server_state
+        if media_state.item_texture_map.contains_key(&mc_name) {
+            inventory_image = media_state
                 .item_texture_map
                 .get(&mc_name)
                 .unwrap()
                 .clone()
                 .to_luanti_safe();
         } else {
-            inventory_image = mt_server_state
+            inventory_image = media_state
                 .block_texture_map
                 .get(&mc_name)
                 .unwrap()
@@ -603,10 +615,7 @@ pub fn generate_itemdef(
 }
 
 // node def stuff
-pub async fn get_node_def_command(
-    settings: &Config,
-    mt_server_state: &mut MTServerState,
-) -> ToClientCommand {
+pub async fn get_node_def_command(settings: &Config, media_state: &MediaState) -> ToClientCommand {
     let mut content_features: Vec<(u16, ContentFeatures)> = Vec::new();
     let mut content_feature: ContentFeatures;
     let texture_pack_res: u16 = settings.get_int("media.texture_pack_res").unwrap() as u16;
@@ -620,7 +629,7 @@ pub async fn get_node_def_command(
         // As we are essentially indexing the enum here, `variant_count::<Block>()-1` should be valid.
         let block = unsafe { azalea::registry::Block::from_u32_unchecked(mc_id as u32) };
         let mt_id = mc_id as u16 + 128;
-        content_feature = generate_contentfeature(block, texture_pack_res, mt_server_state);
+        content_feature = generate_contentfeature(block, texture_pack_res, media_state);
         content_features.push((mt_id, content_feature));
     }
 
@@ -718,7 +727,7 @@ pub async fn get_node_def_command(
 pub fn generate_contentfeature(
     block: azalea::registry::Block,
     texture_pack_res: u16,
-    mt_server_state: &mut MTServerState,
+    media_state: &MediaState,
 ) -> ContentFeatures {
     // If *every* possible state is solid, then walkable=true
     // for light stuff, use the "brightest" state
@@ -799,7 +808,7 @@ pub fn generate_contentfeature(
         // TODO level 1 skipped, boring :(
         _ => 0,
     };
-    let Some(texture) = mt_server_state.block_texture_map.get(&mc_name) else {
+    let Some(texture) = media_state.block_texture_map.get(&mc_name) else {
         error!("Block texture not mapped to path: {}", mc_name);
         std::process::exit(1)
     };
@@ -833,14 +842,14 @@ pub fn generate_contentfeature(
         drawtype: texture.drawtype.clone(),
         mesh: String::new(),
         visual_scale: match texture.drawtype {
-            DrawType::NodeBox => textures::NB_SCALE_FACTOR,
+            DrawType::NodeBox => s2c::media::NB_SCALE_FACTOR,
             _ => 1.0,
         },
         unused_six: 6, // unused? idk what does this even do
         tiledef: tiledef_sides.clone(),
-        tiledef_overlay: get_empty_tiledefs(),
+        tiledef_overlay: s2c::media::get_empty_tiledefs(),
         // unexplained in the minetest-protocol crate
-        tiledef_special: get_empty_tiledefs().to_vec(),
+        tiledef_special: s2c::media::get_empty_tiledefs().to_vec(),
         alpha_for_legacy: 255,
         red: 100,
         green: 70,

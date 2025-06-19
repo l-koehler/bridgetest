@@ -1,52 +1,49 @@
-use crate::{mt_definitions, utils};
+use crate::s2c;
+use crate::state;
+use crate::utils;
+use azalea::Client;
 use azalea::ecs::prelude::With;
 use azalea::entity::{LookDirection, Physics, Position, metadata::AbstractEntity};
 use azalea::world::MinecraftEntityId;
-use azalea_client::Client;
+use glam::Vec3 as v3f;
 use luanti_protocol::LuantiConnection;
 use luanti_protocol::commands::server_to_client::{self, ActiveObjectMessage, ToClientCommand};
-
-use crate::MTServerState;
-use crate::clientbound_translator;
-use crate::settings;
 use luanti_protocol::types;
 use std::time::{Duration, Instant};
 
-use glam::Vec3 as v3f;
-
-pub async fn server(
-    mt_conn: &mut LuantiConnection,
-    mc_client: &Client,
-    mt_server_state: &mut MTServerState,
+pub async fn tick(
+    luanti_conn: &mut LuantiConnection,
+    mc_client: &mut Client,
+    proxy_state: &mut state::ProxyState,
 ) {
-    if mt_server_state.has_moved_since_sync {
-        clientbound_translator::sync_client_pos(mc_client, mt_conn, mt_server_state).await;
-        mt_server_state.has_moved_since_sync = false;
+    if proxy_state.player.has_moved_since_sync {
+        s2c::player::sync_client_pos(mc_client, luanti_conn, &mut proxy_state.player).await;
+        proxy_state.player.has_moved_since_sync = false;
     }
     // update the MT clients inventory if it changed
     // for stupid reasons, we don't use packets for this, instead on every tick
     // and whenever the player crafted something
-    clientbound_translator::refresh_inv(mc_client, mt_conn, mt_server_state).await;
+    s2c::inventory::refresh_inv(mc_client, luanti_conn, &mut proxy_state.inventory).await;
     // update subtitles, removing any older than 1.5 seconds
     let cutoff = Instant::now() - Duration::from_millis(1500);
-    mt_server_state.subtitles.retain(|x| x.1 > cutoff);
+    proxy_state.chat.subtitles.retain(|x| x.1 > cutoff);
     let mut formatted_str = String::from("");
-    for (text, _) in mt_server_state.subtitles.clone() {
+    for (text, _) in proxy_state.chat.subtitles.clone() {
         formatted_str = format!("{}\n{}", formatted_str, text);
     }
-    if formatted_str != mt_server_state.prev_subtitle_string {
+    if formatted_str != proxy_state.chat.prev_subtitle_string {
         // if the subtitle actually changed, update the client
-        mt_server_state.prev_subtitle_string = formatted_str.clone();
+        proxy_state.chat.prev_subtitle_string = formatted_str.clone();
         let subtitle_update_command =
             ToClientCommand::Hudchange(Box::new(server_to_client::HudchangeCommand {
-                server_id: settings::SUBTITLE_ID,
+                server_id: s2c::defs::SUBTITLE_ID,
                 stat: server_to_client::HudStat::Text(formatted_str),
             }));
-        mt_conn.send(subtitle_update_command).unwrap();
+        luanti_conn.send(subtitle_update_command).unwrap();
     }
 
     // update all entities that moved this tick
-    mt_server_state.entities_update_scheduled.dedup();
+    proxy_state.entities.entities_update_scheduled.dedup();
     let mut chunks: Vec<Vec<ActiveObjectMessage>> = Vec::new();
     let mut aom_vector: Vec<ActiveObjectMessage> = Vec::new();
     let mut ecs = mc_client.ecs.lock();
@@ -55,15 +52,17 @@ pub async fn server(
     // check each entity in the ECS
     for (&entity_id, position, look_direction, physics) in query.iter(&ecs) {
         // this lets me remove() after checking if entity_id is present without iterating again
-        if mt_server_state.entities_update_scheduled.is_empty() {
+        if proxy_state.entities.entities_update_scheduled.is_empty() {
             break;
         }
-        let index_in_sched = mt_server_state
+        let index_in_sched = proxy_state
+            .entities
             .entities_update_scheduled
             .iter()
             .position(|n| *n == entity_id);
         if index_in_sched.is_some() {
-            mt_server_state
+            proxy_state
+                .entities
                 .entities_update_scheduled
                 .remove(index_in_sched.unwrap());
             let acceleration = azalea::Vec3 {
@@ -72,7 +71,8 @@ pub async fn server(
                 z: physics.z_acceleration.into(),
             };
             aom_vector.push(ActiveObjectMessage {
-                id: *mt_server_state
+                id: *proxy_state
+                    .entities
                     .entity_id_map
                     .get_by_left(&entity_id)
                     .unwrap(),
@@ -110,7 +110,7 @@ pub async fn server(
                 objects: aom_vector,
             },
         ));
-        mt_conn.send(clientbound_moveentity).unwrap();
+        luanti_conn.send(clientbound_moveentity).unwrap();
     }
 
     // sync air supply to client
@@ -119,35 +119,35 @@ pub async fn server(
     // 0 -> 0 bubbles displayed
     // 299 -> 20 bubbles
     let approx_bubble_count: u32 = { air_supply.abs() as f32 / 14.95 }.round() as u32;
-    if approx_bubble_count != mt_server_state.mc_last_air_supply {
-        clientbound_translator::edit_airbar(
+    if approx_bubble_count != proxy_state.player.mc_last_air_supply {
+        s2c::player::edit_airbar(
             approx_bubble_count,
-            mt_conn,
-            mt_server_state.mc_last_air_supply,
+            luanti_conn,
+            proxy_state.player.mc_last_air_supply,
         )
         .await;
-        mt_server_state.mc_last_air_supply = approx_bubble_count;
+        proxy_state.player.mc_last_air_supply = approx_bubble_count;
     };
 
     // check for sprinting/sneaking, change client movement speed if needed
     let sprinting: azalea::entity::metadata::Sprinting = mc_client.component();
-    if sprinting.0 && mt_server_state.is_sneaking {
-        mt_server_state.is_sneaking = false
+    if sprinting.0 && proxy_state.player.is_sneaking {
+        proxy_state.player.is_sneaking = false
     }
     // TODO: soul sand, cobwebs etc may also change player speed
-    let current_speed: f32 = match (sprinting.0, mt_server_state.is_sneaking) {
+    let current_speed: f32 = match (sprinting.0, proxy_state.player.is_sneaking) {
         (false, false) => 4.317,
         (false, true) => 1.295,
         (true, false) => 5.612,
         (true, true) => {
-            mt_server_state.is_sneaking = false;
+            proxy_state.player.is_sneaking = false;
             5.612
         }
     };
-    if current_speed != mt_server_state.mt_current_speed {
-        mt_server_state.mt_current_speed = current_speed;
-        mt_conn
-            .send(mt_definitions::get_movementspec(current_speed))
+    if current_speed != proxy_state.player.mt_max_speed {
+        proxy_state.player.mt_max_speed = current_speed;
+        luanti_conn
+            .send(s2c::defs::get_movementspec(current_speed))
             .unwrap();
     }
 }

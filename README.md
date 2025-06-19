@@ -1,12 +1,12 @@
 # Brigetest
 
-This program is supposed to let a unmodified [Minetest](https://github.com/minetest/minetest) client connect to  
+This program is supposed to let a unmodified [Luanti (Minetest)](https://www.luanti.org/) client connect to  
 another (mostly) unmodified Minecraft (Java Edition) server.  
 The Java Server version needed is 1.21.5, use [ViaProxy](https://github.com/ViaVersion/ViaProxy) if you need another version.  
-It compiles to a standalone executable, which will listen on 127.0.0.1:30000  
-for minetest and then proxy to a minecraft server specified in CONF_DIR/config.txt  
+Compile it using `cargo build`, the run `--help` for usage info.  
 
 You need nightly rust to build some dependencies (`rustup default nightly`).  
+You should follow the instructions below if you want to use it.  
 
 ## Installation Instructions
 
@@ -53,20 +53,16 @@ provided by this program to authenticate your account on the first launch.
 ## Things that are still missing from a usable version
 
 * Crafting (Containers work (mostly, the UI is broken))  
-* Attacking/usable combat in general  
+* Rotated Blocks (ex. ladders that have a "side")  
+* Swimming  
 
 ## Other, smaller, broken things
 
-* Rotated Blocks (ex. ladders that have a "side")  
 * Climbable Blocks (ladders/vines)  
-* Sneaking (waiting on upstream)  
-* Swimming  
-* Various block interactions like opening doors, using levers etc.  
 * Particles (will suck to implement, delayed until i cant do other stuff instead)  
 * Imprecisions in the movement (the client speed/gravity etc is not exact, so  
   server/client will drift out of sync for up to half a block, at which point the  
   proxy re-positions the client)  
-* Entities are a mess.  
 
 ## Even more limitations (ones that don't affect gameplay)
 

@@ -2,9 +2,9 @@
  * This file contains shared functions, for example logging
  */
 
-use crate::MTServerState;
+use crate::s2c;
 use crate::settings;
-use crate::textures;
+use crate::state;
 
 use azalea::BlockPos;
 use azalea::Client;
@@ -21,8 +21,8 @@ use luanti_protocol::CommandRef;
 use minecraft_data_rs::models::version::Version;
 use minecraft_data_rs::{Api, api};
 use rand::Rng;
+use s2c::media::LuantiTexture;
 use std::path::PathBuf;
-use textures::LuantiTexture;
 
 use glam::Vec3 as v3f;
 
@@ -80,9 +80,9 @@ pub fn normalize_angle(angle: f32) -> f32 {
     normalized_angle
 }
 
-pub fn allocate_id(serverside_id: u32, mt_server_state: &mut MTServerState) -> u16 {
+pub fn allocate_id(serverside_id: u32, entity_state: &mut state::EntityState) -> u16 {
     // pick smallest range
-    let i_smallest_range = mt_server_state
+    let i_smallest_range = entity_state
         .c_alloc_id_ranges
         .iter()
         .enumerate()
@@ -90,55 +90,55 @@ pub fn allocate_id(serverside_id: u32, mt_server_state: &mut MTServerState) -> u
         .map(|(index, _)| index)
         .expect("Client exhausted all available entity IDs!");
     // pick new ID
-    let clientside_id: u16 = mt_server_state.c_alloc_id_ranges[i_smallest_range].0;
+    let clientside_id: u16 = entity_state.c_alloc_id_ranges[i_smallest_range].0;
     // resize range
-    if mt_server_state.c_alloc_id_ranges[i_smallest_range].0
-        == mt_server_state.c_alloc_id_ranges[i_smallest_range].1
+    if entity_state.c_alloc_id_ranges[i_smallest_range].0
+        == entity_state.c_alloc_id_ranges[i_smallest_range].1
     {
-        mt_server_state.c_alloc_id_ranges.remove(i_smallest_range);
+        entity_state.c_alloc_id_ranges.remove(i_smallest_range);
     } else {
-        mt_server_state.c_alloc_id_ranges[i_smallest_range].0 += 1;
+        entity_state.c_alloc_id_ranges[i_smallest_range].0 += 1;
     }
     // add ID pair to maps, return
-    mt_server_state
+    entity_state
         .entity_id_map
         .insert(serverside_id.into(), clientside_id);
     return clientside_id;
 }
 
-pub fn free_id(serverside_id: u32, mt_server_state: &mut MTServerState) {
+pub fn free_id(serverside_id: u32, entity_state: &mut state::EntityState) {
     // remove from maps
-    let id_pair = mt_server_state
+    let id_pair = entity_state
         .entity_id_map
         .remove_by_left(&serverside_id.into());
-    mt_server_state
+    entity_state
         .entities_update_scheduled
         .retain(|x| *x != serverside_id.into()); // may be scheduled several times
     // add new range and re-optimize the ranges
     match id_pair {
         Some((_, clientside_id)) => {
-            mt_server_state
+            entity_state
                 .c_alloc_id_ranges
                 .push((clientside_id, clientside_id));
-            defrag_ranges(mt_server_state);
+            defrag_ranges(entity_state);
         }
         None => (),
     }
 }
 
-fn defrag_ranges(mt_server_state: &mut MTServerState) {
-    mt_server_state.c_alloc_id_ranges.sort_by_key(|r| r.0);
-    let mut index_lim = mt_server_state.c_alloc_id_ranges.len() - 1;
-    let mut p = mt_server_state.c_alloc_id_ranges[0];
+fn defrag_ranges(entity_state: &mut state::EntityState) {
+    entity_state.c_alloc_id_ranges.sort_by_key(|r| r.0);
+    let mut index_lim = entity_state.c_alloc_id_ranges.len() - 1;
+    let mut p = entity_state.c_alloc_id_ranges[0];
     let mut r_index: usize = 1;
     loop {
         if r_index > index_lim {
             break;
         }
-        let r = mt_server_state.c_alloc_id_ranges[r_index];
+        let r = entity_state.c_alloc_id_ranges[r_index];
         if r.0 == p.1 + 1 {
-            mt_server_state.c_alloc_id_ranges[r_index - 1].1 = r.1;
-            mt_server_state.c_alloc_id_ranges.remove(r_index);
+            entity_state.c_alloc_id_ranges[r_index - 1].1 = r.1;
+            entity_state.c_alloc_id_ranges.remove(r_index);
             index_lim -= 1;
             p = (p.0, r.1);
         } else {
@@ -148,21 +148,21 @@ fn defrag_ranges(mt_server_state: &mut MTServerState) {
     }
 }
 
-pub fn texture_from_itemstack(item: &ItemStack, mt_server_state: &MTServerState) -> String {
+pub fn texture_from_itemstack(item: &ItemStack, media_state: &state::MediaState) -> String {
     match item {
         ItemStack::Empty => String::from("air.png"),
         ItemStack::Present(slot_data) => {
             let item_name = slot_data.kind.to_string();
             let inventory_image: String;
-            if mt_server_state.item_texture_map.contains_key(&item_name) {
-                inventory_image = mt_server_state
+            if media_state.item_texture_map.contains_key(&item_name) {
+                inventory_image = media_state
                     .item_texture_map
                     .get(&item_name)
                     .unwrap()
                     .clone()
                     .to_luanti_safe();
             } else {
-                inventory_image = mt_server_state
+                inventory_image = media_state
                     .block_texture_map
                     .get(&item_name)
                     .unwrap()
@@ -310,8 +310,8 @@ pub fn find_suffix_match(dir: &PathBuf, suffix: &str) -> Option<PathBuf> {
     None
 }
 
-pub fn get_entity_model(entity: &EntityKind) -> (&str, Vec<String>) {
-    match entity {
+pub fn get_entity_model(entity: EntityKind) -> (String, Vec<String>) {
+    let (model, texture) = match entity {
         // TODO for entitys without models choose the least stupid-looking fallback
         EntityKind::Axolotl => (
             "model-axolotl.b3d",
@@ -662,7 +662,8 @@ pub fn get_entity_model(entity: &EntityKind) -> (&str, Vec<String>) {
             vec![String::from("entity-player-wide-steve.png")],
         ),
         _ => ("model-pig.b3d", vec![String::from("entity-pig-pig.png")]),
-    }
+    };
+    return (String::from(model), texture);
 }
 
 pub fn sanitize_model_name(mut name: String) -> String {
