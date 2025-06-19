@@ -192,6 +192,15 @@ pub async fn mc_auto(
                     .await
             }
 
+            ClientboundGamePacket::SectionBlocksUpdate(sectionupdate_packet) => {
+                clientbound_translator::section_block_update(
+                    &sectionupdate_packet,
+                    mt_conn,
+                    mt_server_state,
+                    mc_client,
+                )
+                .await
+            }
             ClientboundGamePacket::Sound(sound_packet) => {
                 clientbound_translator::show_sound(&sound_packet, mt_conn, mt_server_state).await
             }

@@ -12,6 +12,7 @@ use crate::settings;
 use crate::utils;
 
 use azalea::BlockPos;
+use azalea::core::position::ChunkSectionBlockPos;
 use azalea::entity::{EntityDataItem, EntityDataValue};
 use azalea::registry::{Holder, MobEffect};
 use azalea::world::MinecraftEntityId;
@@ -52,7 +53,7 @@ use azalea::protocol::packets::game::{
     c_move_entity_rot::ClientboundMoveEntityRot, c_open_screen::ClientboundOpenScreen,
     c_player_position::ClientboundPlayerPosition, c_remove_entities::ClientboundRemoveEntities,
     c_remove_mob_effect::ClientboundRemoveMobEffect, c_respawn::ClientboundRespawn,
-    c_set_default_spawn_position::ClientboundSetDefaultSpawnPosition,
+    c_section_blocks_update::*, c_set_default_spawn_position::ClientboundSetDefaultSpawnPosition,
     c_set_entity_data::ClientboundSetEntityData, c_set_entity_motion::ClientboundSetEntityMotion,
     c_set_health::ClientboundSetHealth, c_set_time::ClientboundSetTime, c_sound::ClientboundSound,
     c_teleport_entity::ClientboundTeleportEntity, c_update_mob_effect::ClientboundUpdateMobEffect,
@@ -707,6 +708,54 @@ pub async fn send_level_chunk(
         .await;
         chunk_y_pos += 1;
     }
+}
+
+pub async fn section_block_update(
+    packet: &ClientboundSectionBlocksUpdate,
+    conn: &mut LuantiConnection,
+    mt_server_state: &MTServerState,
+    mc_client: &Client,
+) {
+    let ClientboundSectionBlocksUpdate {
+        section_pos,
+        states,
+    } = packet;
+    // the section we need to update is smaller than the entire array
+    let mut nodearr: [BlockState; 4096] = [BlockState { id: 125 }; 4096];
+    let world_lock = mc_client.world();
+    let world = world_lock.read();
+    for z in 0..16 {
+        for y in 0..16 {
+            for x in 0..16 {
+                let cs_pos = ChunkSectionBlockPos {
+                    x: x as u8,
+                    y: y as u8,
+                    z: z as u8,
+                };
+                let state;
+                if let Some(bstate) = states.into_iter().find(|i| i.pos == cs_pos) {
+                    state = bstate.state;
+                } else {
+                    let block_pos = BlockPos {
+                        x: (section_pos.x * 16) + x as i32,
+                        y: (section_pos.y * 16) + y as i32,
+                        z: (section_pos.z * 16) + z as i32,
+                    };
+                    state = world.get_block_state(&block_pos).unwrap();
+                }
+                nodearr[x + (y * 16) + (z * 256)] = state;
+            }
+        }
+    }
+    initialize_16node_chunk(
+        section_pos.x as i16,
+        section_pos.y as i16,
+        section_pos.z as i16,
+        conn,
+        nodearr,
+        mt_server_state.current_dimension == Dimensions::Nether,
+    )
+    .await;
 }
 
 // if no packet is passed, add the player using data from the server state

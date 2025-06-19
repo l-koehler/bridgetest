@@ -69,7 +69,7 @@ pub async fn server(
             let acceleration = azalea::Vec3 {
                 x: physics.x_acceleration.into(),
                 y: physics.y_acceleration.into(),
-                z: physics.z_acceleration.into()
+                z: physics.z_acceleration.into(),
             };
             aom_vector.push(ActiveObjectMessage {
                 id: *mt_server_state
