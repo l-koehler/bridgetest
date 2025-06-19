@@ -11,10 +11,10 @@ use crate::mt_definitions;
 use crate::settings;
 use crate::utils;
 
+use azalea::BlockPos;
 use azalea::entity::{EntityDataItem, EntityDataValue};
 use azalea::registry::{Holder, MobEffect};
 use azalea::world::MinecraftEntityId;
-use azalea::BlockPos;
 use core::slice::SlicePattern;
 use log::*;
 use luanti_protocol::peer::PeerError;
@@ -1191,6 +1191,16 @@ pub async fn remove_mob_effect(
 ) {
     let ClientboundRemoveMobEffect { entity_id, effect } = packet_data;
     if (*entity_id == mc_client.get_component::<MinecraftEntityId>().unwrap()) {
+        match effect {
+            MobEffect::Wither | MobEffect::Poison | MobEffect::Absorption => {
+                let health: u32 = mt_server_state.mt_last_known_health.into();
+                edit_healthbar(HeartDisplay::Normal, health, conn).await
+            }
+            MobEffect::Hunger => {
+                edit_foodbar(FoodDisplay::Normal, mc_client.hunger().food, conn).await
+            }
+            _ => (),
+        }
         // remove effect from state and update HUD
         mt_server_state.client_effects.retain(|i| i.0 != *effect);
         update_effects(conn, &mt_server_state.client_effects).await;

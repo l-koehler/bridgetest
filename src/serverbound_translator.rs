@@ -131,7 +131,7 @@ pub async fn playerpos(
         attack_crosshair(mc_client);
     }
 
-    // if we previously already let go of the button and didn't press it right now either, reset next_no_atk
+    // if we previously already let go of the button and didn't press it right now either, reset next_no_attack
     if !mt_server_state.previous_dig_held && !dig_pressed {
         mt_server_state.next_click_no_attack = false;
     }
