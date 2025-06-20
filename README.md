@@ -1,17 +1,18 @@
 # Brigetest
 
 This program is supposed to let a unmodified [Luanti (Minetest)](https://www.luanti.org/) client connect to  
-another (mostly) unmodified Minecraft (Java Edition) server.  
-The Java Server version needed is 1.21.5, use [ViaProxy](https://github.com/ViaVersion/ViaProxy) if you need another version.  
-Compile it using `cargo build`, the run `--help` for usage info.  
+a unmodified Minecraft (Java Edition) server.  
+The Minecraft server version needed is 1.21.5, use [ViaProxy](https://github.com/ViaVersion/ViaProxy) if you need another version.  
+Compile it using `cargo build --release`, then run `--help` for usage info.  
+Debug mode causes weird performance issues, don't use it.  
 
-You need nightly rust to build some dependencies (`rustup default nightly`).  
-You should follow the instructions below if you want to use it.  
+You need nightly Rust to build some dependencies (`rustup default nightly`).  
+You should follow the instructions below to use the proxy.  
 
 ## Installation Instructions
 
 This program needs the minecraft textures.  
-I won't just bundle these due to copyright reasons, but you can get them:  
+I won't bundle these due to copyright reasons, but you can get them:  
 
 * From the Minecraft client:  
   * Get a minecraft jar file (should be something like `minecraft-1.21.4-client.jar`)  
@@ -21,68 +22,85 @@ I won't just bundle these due to copyright reasons, but you can get them:
   * Go [here](https://mcasset.cloud/1.21.5/assets/minecraft/textures) (mcasset.cloud)  
   * Click "Download Folder"  
   * You'll need to unpack that zip file, it contains your textures.  
+* or from a unusually complete texture pack:  
+  You likely won't find a texture pack that has all the needed files,  
+  but if you do you could use that instead.  
+  You might need to change `texture_pack_res` in the config file if you do this.  
 
-Regardless of method, you now have a bunch of directories.  
-Checkpoint: These directories should contain a bunch of PNG files.  
-Now, move these so you'll have this folder structure:
+After unpacking, you should have several directories full of .png files.  
+Move them to create the following structure:  
 
 ```text
-<bridgetext-data-directory>
+bridgetext-data-directory
 └── textures
     ├── block
     ├── colormap
     └── ...
 ```
 
-The `bridgetest-data-directory` is `~/.local/share/bridgetest` on Linux.  
-On Windows, it *should* be `C:\Users\Alice\AppData\Roaming\bridgetest`.  
-It will be created on the first start, alternatively you can create it yourself.  
+The `bridgetest-data-directory` is:
 
-Some models are also needed and will be downloaded on the first start.  
+* `~/.local/share/bridgetest` on Linux  
+* `C:\Users\YourName\AppData\Roaming\bridgetest` on Windows  
 
-If you want to use a microsoft account, you'll need to add your e-mail address to  
-the config file. You will also need to visit `microsoft.com/link` and enter a code  
-provided by this program to authenticate your account on the first launch.  
+That folder is created automatically on first launch, but you can also create it manually.  
+
+The rest of the required files will be downloaded automatically  
+the first time you run the program.  
+
+If you want to use a microsoft account:
+
+* Enable online mode in the config file:
+  Set `online_mode = true` in `~/.config/bridgetest.toml` (Linux) or  
+  `C:\Users\YourName\AppData\Roaming\bridgetest.toml` (Windows).  
+* Either add your E-Mail address to the config file (`microsoft_email = your.email@example.com`)  
+  or set it on the command line with `--account your.email@example.com`.  
+* On the first start, you'll be asked to visit `https://microsoft.com/link` and enter a Code  
+  to allow "Minecraft for Nintendo Switch" (or similar) to authenticate using your account.  
+  You should only need to do this once per account.  
+
+The proxy will not be able to see your password or do anything more nefarious  
+than logging into Minecraft servers on your behalf.  
+
+If you don't use a microsoft account, the server you connect to has to be in offline mode.  
 
 ## Troubleshooting Steps
 
 * Ensure you are running the latest commit for bridgetest.  
 * Try using luanti compiled from somewhat recent source.  
-* Make a issue report, most likely any problems are caused by bridgetest.  
+* Open a issue here, most likely any problems are caused by bridgetest.  
 
 ## Things that are still missing from a usable version
 
-* Crafting (Containers work (mostly, the UI is broken))  
-* Rotated Blocks (ex. ladders that have a "side")  
+* Crafting (Containers work sometimes, the UI is broken)  
+* Rotated Blocks  
 * Swimming  
 
 ## Other, smaller, broken things
 
-* Climbable Blocks (ladders/vines)  
-* Particles (will suck to implement, delayed until i cant do other stuff instead)  
-* Imprecisions in the movement (the client speed/gravity etc is not exact, so  
-  server/client will drift out of sync for up to half a block, at which point the  
-  proxy re-positions the client)  
+* Climbable Blocks (ladders, vines etc) don't do anything  
+* Particles aren't implemented  
+* Jittery Movement: The client physics are slightly different, so  
+  server/client will drift out of sync for up to half a block,  
+  at which point the proxy teleports the client (as smooth as it sounds).  
+* Textures: The texture system is on its third rewrite and still doesn't do what  
+  it should half the time (the half you rarely see, luckily).  
 
 ## Even more limitations (ones that don't affect gameplay)
 
-* Any Anticheats are ~~likely~~ near-certain to ban you.  
-  (if they don't, you probably found a bug in the anticheat? the traffic sent  
-  by this proxy is looking basically the same as that from any bot.)  
-  That is a slight danger even with GeyserMC in proxy mode, a similar  
-  (but mature) program basically doing the same thing for Bedrock.  
+* Any Anticheats are near-certain to ban you.  
+  If they don't, you probably found a bug in the anticheat.  
+  The traffic sent by this proxy is looking basically the  
+  same as that from any (badly-made) bot.  
 
-* The program *might* work on Windows, but I am not testing this.  
-  If you find a windows bug, feel free to open a issue, but I will only work  
-  on that if it won't take too long. PRs fixing windows will be accepted.  
-  for now, i'd prefer getting this mess to work at all :3  
+* The program *might* work on Windows, but I am not testing this. I doubt it.  
 
-* The proxy can only handle one client at a time, but could probably be  
-  rewritten to handle more clients without changing that much.  
+* The proxy can only handle one client at a time, but could probably be rewritten to handle more clients.  
+  Just start several proxies with different listening ports (`--port`) for now.  
 
 ## Attributions
 
 This program automatically downloads entity models.  
 These were not made by me and are licensed under the [CC-BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/legalcode.en).  
 The Models are taken from [Mineclonia](https://content.minetest.net/packages/ryvnf/mineclonia/), a minetest mod.  
-This Mod is owned on ContentDB by [ryvnf](https://content.minetest.net/users/ryvnf/), a full list of contributors is [here](https://codeberg.org/mineclonia/mineclonia/src/branch/main/CREDITS.md).  
+Mineclonia is owned on ContentDB by [ryvnf](https://content.minetest.net/users/ryvnf/), a full list of contributors is [here](https://codeberg.org/mineclonia/mineclonia/src/branch/main/CREDITS.md).  
