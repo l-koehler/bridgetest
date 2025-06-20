@@ -41,10 +41,7 @@ pub async fn send_sys_message(conn: &mut LuantiConnection, message: &Clientbound
 }
 
 // can't figure out how to get "actual" subtitles, so these are just the audio keys mapped to subtitle keys
-pub fn show_sound(
-    packet_data: &ClientboundSound,
-    chat_state: &mut state::ChatState,
-) {
+pub fn show_sound(packet_data: &ClientboundSound, chat_state: &mut state::ChatState) {
     let ClientboundSound {
         sound,
         source: _,

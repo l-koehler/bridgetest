@@ -31,10 +31,11 @@ pub async fn client_handler(
      * The first few packets (handshake) are outside the main loop, because
      * at this point the minecraft client isn't initialized yet.
      */
-    let (mut mc_client, mut mc_conn, player_name) = handshake::handshake(&mut luanti_conn, &settings).await;
+    let (mut mc_client, mut mc_conn, player_name) =
+        handshake::handshake(&mut luanti_conn, &settings).await;
     debug!("Sending S2C ActiveObjectRemoveAdd (add LocalPlayer)");
     s2c::defs::register_media(&mut luanti_conn);
-    
+
     s2c::defs::register_items(&mut luanti_conn, &proxy_state.media).await;
     s2c::defs::register_nodes(&mut luanti_conn, &mut proxy_state.media, &settings).await;
     s2c::defs::register_rules(&mut luanti_conn);
@@ -52,16 +53,21 @@ pub async fn client_handler(
             ToServerCommand::ClientReady(_) => {
                 debug!("Got C2S ClientReady");
                 break;
-            },
+            }
             _ => warn!(
                 "Dropping unexpected C2S packet! Got serverbound \"{}\", expected \"ClientReady\"",
                 command.command_name()
             ),
         }
     }
-    
+
     s2c::defs::register_misc_late(&mut luanti_conn);
-    s2c::entities::add_entity(s2c::entities::EAddType::Player(player_name), &mut luanti_conn, &mut proxy_state.entities).await;
+    s2c::entities::add_entity(
+        s2c::entities::EAddType::Player(player_name),
+        &mut luanti_conn,
+        &mut proxy_state.entities,
+    )
+    .await;
     //std::thread::sleep(Duration::from_secs(u64::MAX));
     /*
      * Main Loop.

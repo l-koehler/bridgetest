@@ -5,15 +5,13 @@ use azalea_client::Client;
 use log::*;
 
 use luanti_protocol::LuantiConnection;
-use luanti_protocol::commands::client_to_server::{
-    InventoryActionSpec, PlayerItemSpec,
-};
-use luanti_protocol::types::{InventoryLocation, InventoryAction};
+use luanti_protocol::commands::client_to_server::{InventoryActionSpec, PlayerItemSpec};
+use luanti_protocol::types::{InventoryAction, InventoryLocation};
 
 use std::sync::{Arc, Mutex};
 
-use crate::state;
 use crate::s2c;
+use crate::state;
 
 pub fn set_mainhand(mc_client: &mut Client, specbox: Box<PlayerItemSpec>) {
     // hotbar_index: 0..8, first..last slot of hotbar

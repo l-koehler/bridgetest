@@ -26,8 +26,8 @@ pub struct PlayerState {
     // used to tolerate slight position differences, resulting in far smoother movement
     pub mt_clientside_pos: (f32, f32, f32),
     // TODO remove this trash, use ECS instead
-    pub players: Vec<String>,          // names of all players
-    pub client_rotation: (f32, f32),   // yaw/pitch
+    pub players: Vec<String>,        // names of all players
+    pub client_rotation: (f32, f32), // yaw/pitch
 }
 
 impl Default for PlayerState {

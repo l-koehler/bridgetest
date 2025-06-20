@@ -821,6 +821,22 @@ pub fn generate_contentfeature(
         _ => 0,
     };
 
+    let waving: u8 = ([
+        Block::OakLeaves,
+        Block::SpruceLeaves,
+        Block::BirchLeaves,
+        Block::JungleLeaves,
+        Block::AcaciaLeaves,
+        Block::CherryLeaves,
+        Block::DarkOakLeaves,
+        Block::PaleOakLeaves,
+        Block::MangroveLeaves,
+        Block::AzaleaLeaves,
+        Block::FloweringAzaleaLeaves,
+    ]
+    .contains(&block)
+        || texture.drawtype == DrawType::PlantLike) as u8 * 100;
+
     let simplesound_placeholder: SimpleSoundSpec = SimpleSoundSpec {
         name: String::from(""),
         gain: 1.0,
@@ -833,6 +849,7 @@ pub fn generate_contentfeature(
         texture.drawtype,
         DrawType::GlassLike | DrawType::NodeBox | DrawType::Normal
     );
+    let pointable = texture.drawtype != DrawType::AirLike && texture.drawtype != DrawType::Liquid;
     ContentFeatures {
         version: 13, // https://github.com/minetest/minetest/blob/master/src/nodedef.h#L313
         name: block.to_string(),
@@ -850,12 +867,12 @@ pub fn generate_contentfeature(
         tiledef_overlay: s2c::media::get_empty_tiledefs(),
         // unexplained in the minetest-protocol crate
         tiledef_special: s2c::media::get_empty_tiledefs().to_vec(),
-        alpha_for_legacy: 255,
+        alpha_for_legacy: 160, // only used for liquids
         red: 100,
         green: 70,
         blue: 85,
         palette_name: String::new(),
-        waving: 0,
+        waving,
         connect_sides: 0,
         connects_to_ids: Vec::new(),
         post_effect_color: SColor::new(100, 70, 85, 20),
@@ -865,12 +882,12 @@ pub fn generate_contentfeature(
         light_source, // TODO test the effect of this
         is_ground_content: false,
         walkable,
-        pointable: texture.drawtype != DrawType::AirLike,
+        pointable,
         diggable: block != Block::Bedrock
             && texture.drawtype != DrawType::Liquid
             && texture.drawtype != DrawType::AirLike,
         climbable: false,
-        buildable_to: !rightclickable, // TODO this is a oversimplification and likely needs its own match abomination
+        buildable_to: pointable && !rightclickable,
         rightclickable,
         damage_per_second: 0, // the 100 DPS dirt block
         liquid_type_bc: 0,
@@ -893,9 +910,10 @@ pub fn generate_contentfeature(
         leveled_max: 0,
         alpha: match texture.drawtype {
             DrawType::PlantLike | DrawType::PlantLikeRooted => types::AlphaMode::Blend,
+            DrawType::Liquid | DrawType::FlowingLiquid => types::AlphaMode::LegacyCompat,
             _ => types::AlphaMode::Opaque,
         },
         move_resistance: 0,
-        liquid_move_physics: false,
+        liquid_move_physics: texture.drawtype == DrawType::Liquid,
     }
 }
