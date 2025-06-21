@@ -58,9 +58,6 @@ pub async fn process(
             }
 
             ClientboundGamePacket::KeepAlive(_) => trace!("Got S2C KeepAlive packet, ignoring it."),
-            ClientboundGamePacket::ContainerSetContent(_) => {
-                trace!("Got S2C ContainerSetContent packet, syncing next tick.")
-            }
             ClientboundGamePacket::AddEntity(addentity_packet) => {
                 s2c::entities::add_entity(
                     s2c::entities::EAddType::Entity(addentity_packet),
@@ -159,6 +156,11 @@ pub async fn process(
                 )
                 .await
             }
+            // use on-tick and azalea abstractions for containers
+            ClientboundGamePacket::ContainerSetSlot(_) => (),
+            ClientboundGamePacket::ContainerSetData(_) => (),
+            ClientboundGamePacket::ContainerSetContent(_) => (),
+            ClientboundGamePacket::ContainerClose(_) => (),
             _ => warn!(
                 "Got unimplemented S2C ClientboundGamePacket, dropping {}",
                 command_name

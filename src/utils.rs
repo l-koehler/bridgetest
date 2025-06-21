@@ -17,7 +17,6 @@ use azalea_client::Event;
 use log::*;
 use luanti_core::ContentId;
 use luanti_core::MapNode;
-use luanti_protocol::CommandRef;
 use minecraft_data_rs::models::version::Version;
 use minecraft_data_rs::{Api, api};
 use rand::Rng;
@@ -213,14 +212,6 @@ pub fn vec3_to_v3f(input_vector: &Vec3, scale: i32) -> v3f {
         y: (*yf64 * scale as f64) as f32,
         z: (*zf64 * scale as f64) as f32,
     }
-}
-
-pub fn show_mt_command(command: &dyn CommandRef) {
-    trace!("Got C2S command: {}", command.command_name());
-}
-
-pub fn show_mc_command(command: &Event) {
-    trace!("Got S2C packet: {}", mc_packet_name(command));
 }
 
 pub fn get_colormap(texture: &LuantiTexture) -> Option<(u8, u8, u8)> {

@@ -6,6 +6,7 @@ use azalea::ecs::prelude::With;
 use azalea::entity::{LookDirection, Physics, Position, metadata::AbstractEntity};
 use azalea::world::MinecraftEntityId;
 use glam::Vec3 as v3f;
+use log::*;
 use luanti_protocol::LuantiConnection;
 use luanti_protocol::commands::server_to_client::{self, ActiveObjectMessage, ToClientCommand};
 use luanti_protocol::types;
@@ -21,9 +22,9 @@ pub async fn tick(
         proxy_state.player.has_moved_since_sync = false;
     }
     // update the MT clients inventory if it changed
-    // for stupid reasons, we don't use packets for this, instead on every tick
+    // for stupid reasons, we don't use packets for this, instead run this on every tick
     // and whenever the player crafted something
-    s2c::inventory::refresh_inv(mc_client, luanti_conn, &mut proxy_state.inventory).await;
+    s2c::inventory::refresh_inv(mc_client, luanti_conn, &mut proxy_state.inventory, false).await;
     // update subtitles, removing any older than 1.5 seconds
     let cutoff = Instant::now() - Duration::from_millis(1500);
     proxy_state.chat.subtitles.retain(|x| x.1 > cutoff);
@@ -51,31 +52,23 @@ pub async fn tick(
         .query_filtered::<(&MinecraftEntityId, &Position, &LookDirection, &Physics), With<AbstractEntity>>();
     // check each entity in the ECS
     for (&entity_id, position, look_direction, physics) in query.iter(&ecs) {
-        // this lets me remove() after checking if entity_id is present without iterating again
-        if proxy_state.entities.entities_update_scheduled.is_empty() {
-            break;
-        }
-        let index_in_sched = proxy_state
+        if proxy_state
             .entities
             .entities_update_scheduled
-            .iter()
-            .position(|n| *n == entity_id);
-        if index_in_sched.is_some() {
-            proxy_state
-                .entities
-                .entities_update_scheduled
-                .remove(index_in_sched.unwrap());
+            .contains(&entity_id)
+        {
             let acceleration = azalea::Vec3 {
                 x: physics.x_acceleration.into(),
                 y: physics.y_acceleration.into(),
                 z: physics.z_acceleration.into(),
             };
+            let Some(clientside_id) = proxy_state.entities.entity_id_map.get_by_left(&entity_id)
+            else {
+                warn!("Tried to update entity without clientside ID!");
+                continue;
+            };
             aom_vector.push(ActiveObjectMessage {
-                id: *proxy_state
-                    .entities
-                    .entity_id_map
-                    .get_by_left(&entity_id)
-                    .unwrap(),
+                id: *clientside_id,
                 data: types::ActiveObjectCommand::UpdatePosition(types::AOCUpdatePosition {
                     position: utils::vec3_to_v3f(position, 10),
                     velocity: utils::vec3_to_v3f(&physics.velocity, 400),
@@ -112,6 +105,7 @@ pub async fn tick(
         ));
         luanti_conn.send(clientbound_moveentity).unwrap();
     }
+    proxy_state.entities.entities_update_scheduled.clear();
 
     // sync air supply to client
     let air_supply: azalea::entity::metadata::AirSupply = mc_client.component();

@@ -118,28 +118,30 @@ pub async fn add_entity(
                         hp_max: 100,
                         physical: true,
                         _unused: 0,
+                        // player hitbox
+                        // entity hits are calculated by the proxy anyways
                         collision_box: aabb3f {
                             min_edge: v3f {
-                                x: -0.5,
-                                y: -0.5,
-                                z: -0.5,
+                                x: -0.3,
+                                y: 0.0,
+                                z: -0.3,
                             },
                             max_edge: v3f {
-                                x: 0.5,
-                                y: 0.5,
-                                z: 0.5,
+                                x: 0.3,
+                                y: 1.8,
+                                z: 0.3,
                             },
                         },
                         selection_box: aabb3f {
                             min_edge: v3f {
-                                x: -0.5,
-                                y: -0.5,
-                                z: -0.5,
+                                x: -0.3,
+                                y: 0.0,
+                                z: -0.3,
                             },
                             max_edge: v3f {
-                                x: 0.5,
-                                y: 0.5,
-                                z: 0.5,
+                                x: 0.3,
+                                y: 1.8,
+                                z: 0.3,
                             },
                         },
                         pointable: false,
@@ -169,7 +171,7 @@ pub async fn add_entity(
                         wield_item: String::from(""),
                         glow: 0,
                         breath_max: 0,
-                        eye_height: 1.125,
+                        eye_height: 1.625,
                         zoom_fov: 0.0,
                         use_texture_alpha: false,
                         damage_texture_modifier: Some(String::from("^[brighten")),

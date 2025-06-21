@@ -1,5 +1,6 @@
-use azalea::container::{ContainerClientExt, ContainerHandle, ContainerHandleRef};
+use azalea::container::ContainerClientExt;
 use azalea::inventory::operations::{ClickOperation, PickupClick, ThrowClick};
+use azalea::inventory::{ContainerClickEvent, Inventory};
 use azalea::protocol::packets::game::ServerboundSetCarriedItem;
 use azalea_client::Client;
 use log::*;
@@ -42,16 +43,20 @@ pub async fn inventory_action(
             to_inv: _,
             to_list,
             to_i,
-        } => move_item(
-            count,
-            from_list,
-            from_i,
-            to_list,
-            to_i,
-            mc_client,
-            inventory_state,
-        ),
-        //TODO support workbenches etc
+        } => {
+            move_item(
+                count,
+                from_list,
+                from_i,
+                to_list,
+                to_i,
+                mc_client,
+                inventory_state,
+                luanti_conn,
+            )
+            .await
+        }
+        // crafting tables are implemented as regular containers
         InventoryAction::Craft { count, craft_inv } => {
             craft_item(mc_client, luanti_conn, inventory_state, count, craft_inv).await
         }
@@ -59,19 +64,18 @@ pub async fn inventory_action(
 }
 
 // see https://wiki.vg/File:Inventory-slots.png for full indexing of the player inv
-fn get_adjusted_index(mt_index: u16, mt_list: &str) -> u16 {
+fn to_inv_index(mt_index: u16, mt_list: &str) -> u16 {
     match mt_list {
         "armor" => mt_index + 5,
         "craft" => mt_index + 1,
         "craftpreview" => 0,
         "offhand" => 45,
         "main" => match mt_index {
-            0..=8 => (mt_index % 36) + 36,
-            9..=17 => ((mt_index - 9) % 36) + 9,
-            18..=26 => mt_index % 36,
-            27.. => mt_index,
+            0..=8 => mt_index + 36,
+            9..=35 => mt_index,
+            _ => unreachable!(),
         },
-        _ => panic!("Unknown Inventory List: {}", mt_list), // unreachable unless the mt client sends bad data
+        _ => unreachable!(),
     }
 }
 
@@ -111,7 +115,7 @@ pub fn drop_item(count: u16, from_list: String, from_i: i16, mc_client: &mut Cli
                 return;
             }
             let handle = maybe_handle.unwrap();
-            let slot_index = get_adjusted_index(from_i as u16, from_list.as_str());
+            let slot_index = to_inv_index(from_i as u16, from_list.as_str());
             if handle.contents().unwrap()[slot_index as usize].count() <= count.into() {
                 handle.click(ClickOperation::Throw(ThrowClick::All { slot: slot_index }))
             } else {
@@ -126,32 +130,7 @@ pub fn drop_item(count: u16, from_list: String, from_i: i16, mc_client: &mut Cli
     }
 }
 
-fn pickupclick_c(handle: &ContainerHandleRef, index: i16, count: u16) {
-    let is_full_stack = (count == handle.contents().unwrap()[index as usize].count() as u16);
-    if is_full_stack {
-        handle.click(ClickOperation::Pickup(PickupClick::Left {
-            slot: Some(index as u16),
-        }));
-    } else {
-        handle.click(ClickOperation::Pickup(PickupClick::Right {
-            slot: Some(index as u16),
-        }));
-    }
-}
-fn pickupclick_i(handle: &ContainerHandle, index: u16, count: u16) {
-    let is_full_stack = (count == handle.contents().unwrap()[index as usize].count() as u16);
-    if is_full_stack {
-        handle.click(ClickOperation::Pickup(PickupClick::Left {
-            slot: Some(index),
-        }));
-    } else {
-        handle.click(ClickOperation::Pickup(PickupClick::Right {
-            slot: Some(index),
-        }));
-    }
-}
-
-pub fn move_item(
+pub async fn move_item(
     count: u16,
     from_list: String,
     from_i: i16,
@@ -159,90 +138,82 @@ pub fn move_item(
     to_i: Option<i16>,
     mc_client: &mut Client,
     inventory_state: &mut state::InventoryState,
+    luanti_conn: &mut LuantiConnection,
 ) {
-    match from_list.as_str() {
-        "container" => {
-            let maybe_handle = mc_client.get_open_container();
-            if maybe_handle.is_none() {
-                info!(
-                    "Client attempted to take items from a container while no container was opened"
-                );
-                return;
-            }
-            let handle = maybe_handle.unwrap();
-            if handle.contents().is_none() {
-                info!("Client attempted to take items from a container without contents");
-                return;
-            }
-            pickupclick_c(&handle, from_i, count);
-        }
-        _ => {
-            let index_from = get_adjusted_index(from_i as u16, from_list.as_str());
-            match &inventory_state.inventory_handle {
-                Some(arc_mtx_cht) => {
-                    let guard = arc_mtx_cht.lock();
-                    let handle = guard.unwrap();
-                    pickupclick_i(&handle, index_from, count);
-                }
-                None => {
-                    let maybe_handle = mc_client.open_inventory();
-                    if maybe_handle.is_none() {
-                        info!("Client attempted something silly");
-                        return;
-                    }
-                    let handle = maybe_handle.unwrap();
-                    pickupclick_i(&handle, index_from, count);
-                }
+    info!(
+        "Moving {} item(s) from {}@{} to {}@{}",
+        count,
+        from_i,
+        from_list,
+        to_i.unwrap(),
+        to_list
+    );
+    // pick up item
+    let index_from: u16;
+    if from_list == "container" {
+        // implicitly correct by formspecs
+        index_from = from_i as u16;
+        // drop the handle, if we are dealing with containers we cannot use the 2x2 at the same time
+        inventory_state.inventory_handle = None;
+    } else {
+        let offset = mc_client.menu().player_slots_range().min().unwrap();
+        // -9 to shift to main-only (to_inv_index includes armor, offhand and 2x2)
+        index_from = (to_inv_index(from_i as u16, &from_list) - 9) + offset as u16;
+        // hold handle in case we need the 2x2 grid
+        // don't do that if a container is open
+        if inventory_state.inventory_handle.is_none() {
+            if let Some(handle) = mc_client.open_inventory() {
+                inventory_state.inventory_handle = Some(Arc::new(Mutex::new(handle)))
             }
         }
     }
-    match to_list.as_str() {
-        "container" => {
-            let maybe_handle = mc_client.get_open_container();
-            if maybe_handle.is_none() {
-                info!(
-                    "Client attempted to take items from a container while no container was opened"
-                );
-                return;
-            }
-            let handle = maybe_handle.unwrap();
-            if handle.contents().is_none() {
-                info!("Client attempted to take items from a container without contents");
-                return;
-            }
-            handle.click(ClickOperation::Pickup(PickupClick::Left {
-                slot: Some(to_i.unwrap() as u16),
-            }));
-        }
-        _ => {
-            let index_to = get_adjusted_index(to_i.unwrap() as u16, to_list.as_str());
-            match &inventory_state.inventory_handle {
-                Some(arc_mtx_cht) => {
-                    let guard = arc_mtx_cht.lock();
-                    let handle = guard.unwrap();
-                    handle.click(ClickOperation::Pickup(PickupClick::Left {
-                        slot: Some(index_to),
-                    }));
-                }
-                None => {
-                    let maybe_handle = mc_client.open_inventory();
-                    if maybe_handle.is_none() {
-                        info!("Client attempted something silly");
-                        return;
-                    }
-                    let handle = maybe_handle.unwrap();
-                    handle.click(ClickOperation::Pickup(PickupClick::Left {
-                        slot: Some(index_to),
-                    }));
-                    // we moved a item into the crafting slots, keep the handle around so the inventory won't close
-                    // the handle will get dropped on movement as the MT client doesn't notify us of closing the inventory
-                    if (1..=5).contains(&index_to) {
-                        inventory_state.inventory_handle = Some(Arc::new(Mutex::new(handle)));
-                    }
-                }
-            }
-        }
+    debug!("Picking item from index {}", index_from);
+    let id = mc_client
+        .get_entity_component::<Inventory>(mc_client.entity)
+        .unwrap()
+        .id;
+    let click;
+    let menu = mc_client.menu();
+    if menu.slot(index_from as usize).is_none() {
+        // client tried to pick up empty slot
+        return;
     }
+    // if we didn't pick up all items, right-click
+    if menu.slot(index_from as usize).unwrap().count() as u16 != count {
+        click = PickupClick::Right {
+            slot: Some(index_from),
+        }
+    } else {
+        click = PickupClick::Left {
+            slot: Some(index_from),
+        };
+    }
+    mc_client.ecs.lock().send_event(ContainerClickEvent {
+        entity: mc_client.entity,
+        window_id: id,
+        operation: ClickOperation::Pickup(click),
+    });
+    // deposit item somewhere else
+    let index_to: u16;
+    if to_list == "container" {
+        index_to = to_i.unwrap() as u16;
+        inventory_state.inventory_handle = None;
+    } else {
+        let offset = mc_client.menu().player_slots_range().min().unwrap();
+        index_to = (to_inv_index(to_i.unwrap() as u16, &to_list) - 9) + offset as u16;
+    }
+    debug!("Depositing item at index {}", index_to);
+    mc_client.ecs.lock().send_event(ContainerClickEvent {
+        entity: mc_client.entity,
+        window_id: id,
+        operation: ClickOperation::Pickup(PickupClick::Left {
+            // shift to container indexing
+            slot: Some(index_to),
+        }),
+    });
+    // unknown state, but not what it was before
+    inventory_state.clientside_fields = Vec::new();
+    s2c::inventory::refresh_inv(mc_client, luanti_conn, inventory_state, true).await;
 }
 
 pub async fn craft_item(
@@ -265,5 +236,5 @@ pub async fn craft_item(
             info!("Client attempted to craft without a present inventory handle!");
         }
     }
-    s2c::inventory::refresh_inv(mc_client, luanti_conn, inventory_state).await;
+    s2c::inventory::refresh_inv(mc_client, luanti_conn, inventory_state, true).await;
 }

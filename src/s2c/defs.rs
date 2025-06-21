@@ -835,7 +835,8 @@ pub fn generate_contentfeature(
         Block::FloweringAzaleaLeaves,
     ]
     .contains(&block)
-        || texture.drawtype == DrawType::PlantLike) as u8 * 100;
+        || texture.drawtype == DrawType::PlantLike) as u8
+        * 100;
 
     let simplesound_placeholder: SimpleSoundSpec = SimpleSoundSpec {
         name: String::from(""),

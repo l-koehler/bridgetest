@@ -39,7 +39,7 @@ texture_pack_res = 16
 // max "disagreement" between server and client about position
 // y distance is only weighted half:
 // sqrt(sqrt(delta_x^2 + delta_y^2) + (delta_y/2)^2)
-pub const POS_DIFF_TOLERANCE: f32 = 0.5;
+pub const POS_DIFF_TOLERANCE: f32 = 0.75;
 
 // names to use for random name generation
 // these get three random digits appended

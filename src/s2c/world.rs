@@ -101,7 +101,6 @@ pub async fn chunkbatch(
                 match t {
                     Some(_) => {
                         let mc_command = t.expect("[Minecraft] Failed to unwrap non-empty packet from Server!");
-                        utils::show_mc_command(&mc_command);
                         if let Event::Packet(packet_value) = mc_command {
                             match Arc::unwrap_or_clone(packet_value) {
                                 ClientboundGamePacket::LevelChunkWithLight(packet_data) => {

@@ -81,7 +81,7 @@ If you don't use a microsoft account, the server you connect to has to be in off
 * Climbable Blocks (ladders, vines etc) don't do anything  
 * Particles aren't implemented  
 * Jittery Movement: The client physics are slightly different, so  
-  server/client will drift out of sync for up to half a block,  
+  server/client will drift out of sync for up to 0.75 blocks,  
   at which point the proxy teleports the client (as smooth as it sounds).  
 * Textures: The texture system is on its third rewrite and still doesn't do what  
   it should half the time (the half you rarely see, luckily).  

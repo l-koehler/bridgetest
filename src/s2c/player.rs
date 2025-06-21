@@ -353,10 +353,12 @@ pub async fn sync_client_pos(
     player_state: &mut state::PlayerState,
 ) {
     let vec_serverpos = mc_client.position();
+    // some collision box weirdness on block edges
+    // -0.5 fixes it, don't touch
     let serverpos = (
-        vec_serverpos.x as f32,
+        vec_serverpos.x as f32 - 0.5,
         vec_serverpos.y as f32,
-        vec_serverpos.z as f32,
+        vec_serverpos.z as f32 - 0.5,
     );
     let clientpos = player_state.mt_clientside_pos;
     // we count height as half, otherwise jumping is noticeably broken
@@ -368,7 +370,7 @@ pub async fn sync_client_pos(
         { (x_y_euclid_diff.powi(2) + ((serverpos.1 - clientpos.1).abs() / 2.0).powi(2)).sqrt() };
 
     if distance > settings::POS_DIFF_TOLERANCE {
-        info!("Re-Syncing Player Position: {} difference", distance);
+        trace!("Re-Syncing Player Position: {} difference", distance);
         let setpos_packet =
             ToClientCommand::MovePlayer(Box::new(server_to_client::MovePlayerSpec {
                 pos: v3f {

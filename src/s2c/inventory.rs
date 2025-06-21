@@ -16,7 +16,7 @@ use azalea::protocol::packets::game::c_open_screen::ClientboundOpenScreen;
 pub fn get_container_formspec(container: &MenuKind, title: &str) -> String {
     // TODO: Sanitize the title, currently someone could name a chest "hi]list[...]" to break a lot of stuff.
     match container {
-        MenuKind::Generic9x3 => format!(
+        MenuKind::Generic9x3 | MenuKind::ShulkerBox => format!(
             "formspec_version[7]\
 size[11.5,11]\
 background[0,0;17.5,17.5;gui-container-shulker_box.png]\
@@ -29,45 +29,14 @@ label[0.55,0.5;{}]\
 ",
             title
         ),
-        MenuKind::Generic9x6 => format!(
-            "size[9,6]\
-label[0,0;{}]\
-list[current_player;main;0,0;9,6;]",
-            title
-        ),
-        MenuKind::Generic3x3 => format!(
-            "size[3,3]\
-label[0,0;{}]\
-list[current_player;main;0,0;3,3;]",
-            title
-        ),
-        MenuKind::Crafter3x3 => format!(
-            "size[4.5,3]\
-label[0,0;{}]\
-list[current_player;main;0,0;3,3;]\
-list[current_player;main;3.5,1;1,1;]",
-            title
-        ),
-        MenuKind::BlastFurnace => format!(
-            "size[3,2]label[0,0;{}]list[current_player;main;0,0;1,2;]list[current_player;main;2,0.5;1,1;]",
-            title
-        ),
-        MenuKind::Furnace => format!(
-            "size[3,2]label[0,0;{}]list[current_player;main;0,0;1,2;]list[current_player;main;2,0.5;1,1;]",
-            title
-        ),
-        MenuKind::Smoker => format!(
-            "size[3,2]label[0,0;{}]list[current_player;main;0,0;1,2;]list[current_player;main;2,0.5;1,1;]",
-            title
-        ),
         MenuKind::Crafting => format!(
             "formspec_version[7]\
 size[11.5,11]\
 background[0,0;17.5,17.5;gui-container-crafting_table.png]\
 style_type[list;spacing=0.135,0.135;size=1.09,1.09;border=false]\
 listcolors[#0000;#0002]\
-list[current_player;container;2.05,1.17;3,3]\
-list[current_player;container;8.45,2.4;1,1;9]\
+list[current_player;container;8.45,2.4;1,1]\
+list[current_player;container;2.05,1.17;3,3;1]\
 list[current_player;main;0.55,9.7;9,1]\
 list[current_player;main;0.55,5.75;9,3;9]\
 label[0.55,0.5;{}]\
@@ -83,12 +52,12 @@ label[0.55,0.5;{}]\
 
 pub async fn update_inventory(
     conn: &mut LuantiConnection,
-    to_change: Vec<(&str, Vec<inventory::ItemStack>)>,
+    to_change: Vec<(String, Vec<inventory::ItemStack>)>,
 ) {
     let mut entries: Vec<InventoryEntry> = vec![];
-    let mut changed_fields: Vec<&str> = vec![];
+    let mut changed_fields: Vec<String> = vec![];
     for field in to_change {
-        changed_fields.push(field.0);
+        changed_fields.push(field.0.clone());
         let mut field_items: Vec<ItemStackUpdate> = vec![];
         for item in field.1 {
             match item {
@@ -116,7 +85,7 @@ pub async fn update_inventory(
     // send keep to unchanged fields (not doing that deletes the associated UI element)
     let unchanged_fields: Vec<&str> = s2c::defs::ALL_INV_FIELDS
         .into_iter()
-        .filter(|item| !changed_fields.contains(item))
+        .filter(|item| !changed_fields.contains(&item.to_string()))
         .collect();
     for field in unchanged_fields {
         entries.push(InventoryEntry::KeepList(String::from(field)))
@@ -149,80 +118,63 @@ pub async fn open_screen(
     conn.send(formspec_command).unwrap();
 }
 
+// see https://minecraft.wiki/w/Java_Edition_protocol/Inventory#Crafting
 pub async fn refresh_inv(
     mc_client: &Client,
     luanti_conn: &mut LuantiConnection,
     inventory_state: &mut state::InventoryState,
+    force_full: bool,
 ) {
-    let mut to_update: Vec<(&str, Vec<inventory::ItemStack>)> = vec![];
+    let mut to_update: Vec<(String, Vec<inventory::ItemStack>)> = vec![];
     match mc_client.menu() {
         inventory::Menu::Player(serverside_inventory) => {
             // fields of the inventory needing a update
-            if serverside_inventory.craft_result
-                != inventory_state.mt_clientside_player_inv.craft_result
-            {
-                to_update.push((
-                    "craftpreview",
-                    vec![serverside_inventory.craft_result.clone()],
-                ));
-            }
-            if serverside_inventory.craft.as_slice()
-                != inventory_state.mt_clientside_player_inv.craft.as_slice()
-            {
-                to_update.push(("craft", serverside_inventory.craft.to_vec()))
-            }
-            if serverside_inventory.armor.as_slice()
-                != inventory_state.mt_clientside_player_inv.armor.as_slice()
-            {
-                to_update.push(("armor", serverside_inventory.armor.to_vec()))
-            }
-            if serverside_inventory.inventory.as_slice()
-                != inventory_state
-                    .mt_clientside_player_inv
-                    .inventory
-                    .as_slice()
-            {
-                to_update.push(("main", serverside_inventory.inventory.to_vec()));
-            }
-            if serverside_inventory.offhand != inventory_state.mt_clientside_player_inv.offhand {
-                to_update.push(("offhand", vec![serverside_inventory.offhand.clone()]))
-            }
-            inventory_state.mt_clientside_player_inv = serverside_inventory;
+            to_update.push((
+                "craftpreview".to_string(),
+                vec![serverside_inventory.craft_result.clone()],
+            ));
+            to_update.push(("craft".to_string(), serverside_inventory.craft.to_vec()));
+            to_update.push(("armor".to_string(), serverside_inventory.armor.to_vec()));
+            to_update.push(("main".to_string(), serverside_inventory.inventory.to_vec()));
+            to_update.push((
+                "offhand".to_string(),
+                vec![serverside_inventory.offhand.clone()],
+            ));
         }
         // contents: SlotList<n>
-        // different n per menu type, so incompatible types
-        // my apologies to anyone having to read this
+        // different n per menu type, incompatible types
+        // always updates all here
         inventory::Menu::Generic9x1 { contents, player } => {
-            to_update.push(("container", contents.to_vec()));
-            to_update.push(("main", player.to_vec()))
+            to_update.push(("container".to_string(), contents.to_vec()));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
         inventory::Menu::Generic9x2 { contents, player } => {
-            to_update.push(("container", contents.to_vec()));
-            to_update.push(("main", player.to_vec()))
+            to_update.push(("container".to_string(), contents.to_vec()));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
         inventory::Menu::Generic9x3 { contents, player } => {
-            to_update.push(("container", contents.to_vec()));
-            to_update.push(("main", player.to_vec()))
+            to_update.push(("container".to_string(), contents.to_vec()));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
         inventory::Menu::Generic9x4 { contents, player } => {
-            to_update.push(("container", contents.to_vec()));
-            to_update.push(("main", player.to_vec()))
+            to_update.push(("container".to_string(), contents.to_vec()));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
         inventory::Menu::Generic9x5 { contents, player } => {
-            to_update.push(("container", contents.to_vec()));
-            to_update.push(("main", player.to_vec()))
+            to_update.push(("container".to_string(), contents.to_vec()));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
         inventory::Menu::Generic9x6 { contents, player } => {
-            to_update.push(("container", contents.to_vec()));
-            to_update.push(("main", player.to_vec()))
+            to_update.push(("container".to_string(), contents.to_vec()));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
         inventory::Menu::Generic3x3 { contents, player } => {
-            to_update.push(("container", contents.to_vec()));
-            to_update.push(("main", player.to_vec()))
+            to_update.push(("container".to_string(), contents.to_vec()));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
         inventory::Menu::Crafter3x3 { contents, player } => {
-            to_update.push(("container", contents.to_vec()));
-            to_update.push(("main", player.to_vec()))
+            to_update.push(("container".to_string(), contents.to_vec()));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
         inventory::Menu::Anvil {
             first,
@@ -230,12 +182,12 @@ pub async fn refresh_inv(
             result,
             player,
         } => {
-            to_update.push(("container", vec![first, second, result]));
-            to_update.push(("main", player.to_vec()))
+            to_update.push(("container".to_string(), vec![first, second, result]));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
         inventory::Menu::Beacon { payment, player } => {
-            to_update.push(("container", vec![payment]));
-            to_update.push(("main", player.to_vec()))
+            to_update.push(("container".to_string(), vec![payment]));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
         inventory::Menu::BlastFurnace {
             ingredient,
@@ -243,8 +195,8 @@ pub async fn refresh_inv(
             result,
             player,
         } => {
-            to_update.push(("container", vec![ingredient, fuel, result]));
-            to_update.push(("main", player.to_vec()))
+            to_update.push(("container".to_string(), vec![ingredient, fuel, result]));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
         inventory::Menu::BrewingStand {
             bottles,
@@ -253,25 +205,25 @@ pub async fn refresh_inv(
             player,
         } => {
             let item_vec = [bottles.to_vec(), vec![ingredient, fuel]].concat();
-            to_update.push(("container", item_vec));
-            to_update.push(("main", player.to_vec()))
+            to_update.push(("container".to_string(), item_vec));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
         inventory::Menu::Crafting {
             result,
             grid,
             player,
         } => {
-            let item_vec = [grid.to_vec(), vec![result]].concat();
-            to_update.push(("container", item_vec));
-            to_update.push(("main", player.to_vec()))
+            let item_vec = [vec![result], grid.to_vec()].concat();
+            to_update.push(("container".to_string(), item_vec));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
         inventory::Menu::Enchantment {
             item,
             lapis,
             player,
         } => {
-            to_update.push(("container", vec![item, lapis]));
-            to_update.push(("main", player.to_vec()))
+            to_update.push(("container".to_string(), vec![item, lapis]));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
         inventory::Menu::Grindstone {
             input,
@@ -279,16 +231,16 @@ pub async fn refresh_inv(
             result,
             player,
         } => {
-            to_update.push(("container", vec![input, additional, result]));
-            to_update.push(("main", player.to_vec()))
+            to_update.push(("container".to_string(), vec![input, additional, result]));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
         inventory::Menu::Hopper { contents, player } => {
-            to_update.push(("container", contents.to_vec()));
-            to_update.push(("main", player.to_vec()))
+            to_update.push(("container".to_string(), contents.to_vec()));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
         inventory::Menu::Lectern { book, player } => {
-            to_update.push(("container", vec![book]));
-            to_update.push(("main", player.to_vec()))
+            to_update.push(("container".to_string(), vec![book]));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
         inventory::Menu::Loom {
             banner,
@@ -297,8 +249,8 @@ pub async fn refresh_inv(
             result,
             player,
         } => {
-            to_update.push(("container", vec![banner, dye, pattern, result]));
-            to_update.push(("main", player.to_vec()))
+            to_update.push(("container".to_string(), vec![banner, dye, pattern, result]));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
         inventory::Menu::Merchant {
             payments,
@@ -306,12 +258,12 @@ pub async fn refresh_inv(
             player,
         } => {
             let item_vec = [payments.to_vec(), vec![result]].concat();
-            to_update.push(("container", item_vec));
-            to_update.push(("main", player.to_vec()))
+            to_update.push(("container".to_string(), item_vec));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
         inventory::Menu::ShulkerBox { contents, player } => {
-            to_update.push(("container", contents.to_vec()));
-            to_update.push(("main", player.to_vec()))
+            to_update.push(("container".to_string(), contents.to_vec()));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
         inventory::Menu::Smithing {
             template,
@@ -320,8 +272,11 @@ pub async fn refresh_inv(
             result,
             player,
         } => {
-            to_update.push(("container", vec![template, base, additional, result]));
-            to_update.push(("main", player.to_vec()))
+            to_update.push((
+                "container".to_string(),
+                vec![template, base, additional, result],
+            ));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
         inventory::Menu::Smoker {
             ingredient,
@@ -329,8 +284,8 @@ pub async fn refresh_inv(
             result,
             player,
         } => {
-            to_update.push(("container", vec![ingredient, fuel, result]));
-            to_update.push(("main", player.to_vec()))
+            to_update.push(("container".to_string(), vec![ingredient, fuel, result]));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
         inventory::Menu::CartographyTable {
             map,
@@ -338,16 +293,16 @@ pub async fn refresh_inv(
             result,
             player,
         } => {
-            to_update.push(("container", vec![map, additional, result]));
-            to_update.push(("main", player.to_vec()))
+            to_update.push(("container".to_string(), vec![map, additional, result]));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
         inventory::Menu::Stonecutter {
             input,
             result,
             player,
         } => {
-            to_update.push(("container", vec![input, result]));
-            to_update.push(("main", player.to_vec()))
+            to_update.push(("container".to_string(), vec![input, result]));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
         inventory::Menu::Furnace {
             ingredient,
@@ -355,20 +310,21 @@ pub async fn refresh_inv(
             result,
             player,
         } => {
-            to_update.push(("container", vec![ingredient, fuel, result]));
-            to_update.push(("main", player.to_vec()))
+            to_update.push(("container".to_string(), vec![ingredient, fuel, result]));
+            to_update.push(("main".to_string(), player.to_vec()))
         }
     }
-    if !to_update.is_empty() {
-        // we need to shift the inventory that is sent to the client
-        // because the hotbar for some reason isnt the first (or even last!) row in the sent data
-        // if we ever use indexes on "main" that were sent by the minetest client,
-        // we first need to fix these: serverside = (clientside - 9) % 36
-        for list in to_update.iter_mut() {
-            if list.0 == "main" {
-                list.1.rotate_right(9);
-            }
+    // we need to shift the inventory that is sent to the client
+    // because the hotbar for some reason isnt the first (or even last!) row in the sent data
+    // if we ever use indexes on "main" that were sent by the minetest client,
+    // we first need to fix these: serverside = (clientside - 9) % 36
+    for list in to_update.iter_mut() {
+        if list.0 == "main" {
+            list.1.rotate_right(9);
         }
-        update_inventory(luanti_conn, to_update).await;
+    }
+    if force_full || inventory_state.clientside_fields != to_update {
+        update_inventory(luanti_conn, to_update.clone()).await;
+        inventory_state.clientside_fields = to_update;
     }
 }
