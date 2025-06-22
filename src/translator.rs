@@ -2,6 +2,7 @@ use crate::c2s;
 use crate::handshake;
 use crate::s2c;
 use crate::state;
+use crate::state::world::Dimensions;
 
 use luanti_protocol::LuantiConnection;
 use luanti_protocol::LuantiServer;
@@ -14,6 +15,8 @@ use log::*;
 use std::time::Duration;
 use tokio_stream::StreamExt;
 use tokio_stream::wrappers::IntervalStream;
+
+use azalea::world::InstanceName;
 
 pub async fn client_handler(
     _mt_server: LuantiServer,
@@ -68,7 +71,17 @@ pub async fn client_handler(
         &mut proxy_state.entities,
     )
     .await;
-    //std::thread::sleep(Duration::from_secs(u64::MAX));
+    // set dimension before parsing chunks
+    let dimension = mc_client.query::<&InstanceName>(&mut mc_client.ecs.lock()).path.clone();
+    proxy_state.player.current_dimension = match dimension.as_str() {
+        "the_end" => Dimensions::End,
+        "overworld" => Dimensions::Overworld,
+        "nether" => Dimensions::Nether,
+        _ => {
+            warn!("Got unknown dimension: {:?}", dimension);
+            Dimensions::Custom
+        }
+    };
     /*
      * Main Loop.
      * At this point, both the luanti client and the minecraft server
