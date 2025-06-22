@@ -250,21 +250,23 @@ pub async fn set_time(source_packet: &ClientboundSetTime, conn: &LuantiConnectio
     let ClientboundSetTime {
         game_time: _,
         day_time,
-        tick_day_time: _,
-    } = source_packet; // likely wrong to ignore tick_day_time FIXME
-    // day_time seems to be the world age in ticks, so mod 24000 is the age of the day
-    // age of the day is 0..23999
-    // where 0 is 06:00, 6000 is 12:00, 12000 is 18:00, 18000 is 24:00 and 23999 is 05:59
-    // minecraft uses morning as 0, minetest uses midnight. accounted by -6000
-
-    let mt_time: u16 = (*day_time - 6000 % 24000) as u16;
+        tick_day_time,
+    } = source_packet;
+    let time_speed = if *tick_day_time {
+        Some(1.0)
+    } else {
+        None
+    };
+    // minecraft uses morning as 0, minetest uses midnight
+    // both games use "millihours" here
+    let mt_time: u16 = ((*day_time + 6000 )% 24000) as u16;
     trace!(
         "Sending S2C TimeOfDay: {} (server time was {})",
         mt_time, day_time
     );
     let settime_packet = ToClientCommand::TimeOfDay(Box::new(server_to_client::TimeOfDaySpec {
         time_of_day: mt_time,
-        time_speed: Some(1.0), // time does pass, but we move it forward manually by resending this packet
+        time_speed,
     }));
     conn.send(settime_packet).unwrap();
 }
