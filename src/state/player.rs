@@ -1,5 +1,5 @@
 use super::world::Dimensions;
-use azalea::registry::MobEffect;
+use azalea::{entity::{MobEffectData, PlayerAbilities}, registry::MobEffect};
 use std::time::Instant;
 
 #[derive(Clone)]
@@ -10,7 +10,7 @@ pub struct PlayerState {
     pub previous_dig_held: bool,
     // (potion_effect, ends_at, flags) on the client
     // used to update the formspec each tick
-    pub client_effects: Vec<(MobEffect, Instant, u8)>,
+    pub client_effects: Vec<(MobEffect, Instant, MobEffectData)>,
     // used to determine if a HP change should trigger a damage effect flash
     pub mt_last_known_health: u16,
     // used to determine if the air supply bar should change
@@ -25,6 +25,7 @@ pub struct PlayerState {
     pub keys_pressed: u32,
     // used to tolerate slight position differences, resulting in far smoother movement
     pub mt_clientside_pos: (f32, f32, f32),
+    pub abilities: PlayerAbilities,
     // TODO remove this trash, use ECS instead
     pub players: Vec<String>,        // names of all players
     pub client_rotation: (f32, f32), // yaw/pitch
@@ -45,6 +46,14 @@ impl Default for PlayerState {
             has_moved_since_sync: true,
             keys_pressed: 0,
             mt_clientside_pos: (0.0, 0.0, 0.0),
+            abilities: PlayerAbilities {
+                invulnerable: false,
+                flying: false,
+                can_fly: false,
+                instant_break: false,
+                flying_speed: 0.0,
+                walking_speed: 0.0
+            },
             //TODO remove these, use ECS
             players: Vec::new(),
             client_rotation: (0.0, 0.0),

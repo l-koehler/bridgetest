@@ -109,6 +109,17 @@
     },
     "drawtype": "flower"
   },
+  "minecraft:acacia_shelf": {
+    "textures": {
+      "up": "./block/stripped_acacia_log.png",
+      "down": "./block/stripped_acacia_log.png",
+      "north": "./block/stripped_acacia_log.png",
+      "south": "./block/stripped_acacia_log.png",
+      "east": "./block/stripped_acacia_log.png",
+      "west": "./block/stripped_acacia_log.png"
+    },
+    "drawtype": "NB_a138ee1b"
+  },
   "minecraft:acacia_sign": {
     "textures": {
       "up": "./block/acacia_planks.png",
@@ -505,6 +516,17 @@
     },
     "drawtype": "flower"
   },
+  "minecraft:bamboo_shelf": {
+    "textures": {
+      "up": "./block/stripped_bamboo_block.png",
+      "down": "./block/stripped_bamboo_block.png",
+      "north": "./block/stripped_bamboo_block.png",
+      "south": "./block/stripped_bamboo_block.png",
+      "east": "./block/stripped_bamboo_block.png",
+      "west": "./block/stripped_bamboo_block.png"
+    },
+    "drawtype": "NB_a138ee1b"
+  },
   "minecraft:bamboo_sign": {
     "textures": {
       "up": "./block/bamboo_planks.png",
@@ -801,6 +823,17 @@
       "west": "./block/birch_sapling.png"
     },
     "drawtype": "flower"
+  },
+  "minecraft:birch_shelf": {
+    "textures": {
+      "up": "./block/stripped_birch_log.png",
+      "down": "./block/stripped_birch_log.png",
+      "north": "./block/stripped_birch_log.png",
+      "south": "./block/stripped_birch_log.png",
+      "east": "./block/stripped_birch_log.png",
+      "west": "./block/stripped_birch_log.png"
+    },
+    "drawtype": "NB_a138ee1b"
   },
   "minecraft:birch_sign": {
     "textures": {
@@ -1803,17 +1836,6 @@
     },
     "drawtype": "flower"
   },
-  "minecraft:chain": {
-    "textures": {
-      "up": "block/chain.png",
-      "down": "block/chain.png",
-      "north": "block/chain.png",
-      "south": "block/chain.png",
-      "east": "block/chain.png",
-      "west": "block/chain.png"
-    },
-    "drawtype": "flower"
-  },
   "minecraft:chain_command_block": {
     "textures": {
       "up": "./block/chain_command_block_side.png",
@@ -1934,6 +1956,17 @@
       "west": "./block/cherry_sapling.png"
     },
     "drawtype": "flower"
+  },
+  "minecraft:cherry_shelf": {
+    "textures": {
+      "up": "./block/stripped_cherry_log.png",
+      "down": "./block/stripped_cherry_log.png",
+      "north": "./block/stripped_cherry_log.png",
+      "south": "./block/stripped_cherry_log.png",
+      "east": "./block/stripped_cherry_log.png",
+      "west": "./block/stripped_cherry_log.png"
+    },
+    "drawtype": "NB_a138ee1b"
   },
   "minecraft:cherry_sign": {
     "textures": {
@@ -2397,6 +2430,17 @@
     },
     "drawtype": "full"
   },
+  "minecraft:copper_bars": {
+    "textures": {
+      "up": "./block/copper_bars.png",
+      "down": "./block/copper_bars.png",
+      "north": "./block/copper_bars.png",
+      "south": "./block/copper_bars.png",
+      "east": "./block/copper_bars.png",
+      "west": "./block/copper_bars.png"
+    },
+    "drawtype": "NB_8e93170a"
+  },
   "minecraft:copper_block": {
     "textures": {
       "up": "./block/copper_block.png",
@@ -2419,6 +2463,28 @@
     },
     "drawtype": "full"
   },
+  "minecraft:copper_chain": {
+    "textures": {
+      "up": "./block/copper_chain.png",
+      "down": "./block/copper_chain.png",
+      "north": "./block/copper_chain.png",
+      "south": "./block/copper_chain.png",
+      "east": "./block/copper_chain.png",
+      "west": "./block/copper_chain.png"
+    },
+    "drawtype": "flower"
+  },
+  "minecraft:copper_chest": {
+    "textures": {
+      "up": "./block/copper_block.png",
+      "down": "./block/copper_block.png",
+      "north": "./block/copper_block.png",
+      "south": "./block/copper_block.png",
+      "east": "./block/copper_block.png",
+      "west": "./block/copper_block.png"
+    },
+    "drawtype": "full"
+  },
   "minecraft:copper_door": {
     "textures": {
       "up": "./block/copper_door_top.png",
@@ -2429,6 +2495,17 @@
       "west": "./block/copper_door_bottom.png"
     },
     "drawtype": "NB_4453a82e"
+  },
+  "minecraft:copper_golem_statue": {
+    "textures": {
+      "up": "./block/copper_block.png",
+      "down": "./block/copper_block.png",
+      "north": "./block/copper_block.png",
+      "south": "./block/copper_block.png",
+      "east": "./block/copper_block.png",
+      "west": "./block/copper_block.png"
+    },
+    "drawtype": "full"
   },
   "minecraft:copper_grate": {
     "textures": {
@@ -2441,6 +2518,17 @@
     },
     "drawtype": "full"
   },
+  "minecraft:copper_lantern": {
+    "textures": {
+      "up": "./block/copper_lantern.png",
+      "down": "./block/copper_lantern.png",
+      "north": "./block/copper_lantern.png",
+      "south": "./block/copper_lantern.png",
+      "east": "./block/copper_lantern.png",
+      "west": "./block/copper_lantern.png"
+    },
+    "drawtype": "NB_87c0c179"
+  },
   "minecraft:copper_ore": {
     "textures": {
       "up": "./block/copper_ore.png",
@@ -2452,6 +2540,17 @@
     },
     "drawtype": "full"
   },
+  "minecraft:copper_torch": {
+    "textures": {
+      "up": "./block/copper_torch.png",
+      "down": "./block/copper_torch.png",
+      "north": "./block/copper_torch.png",
+      "south": "./block/copper_torch.png",
+      "east": "./block/copper_torch.png",
+      "west": "./block/copper_torch.png"
+    },
+    "drawtype": "NB_5e42cdde"
+  },
   "minecraft:copper_trapdoor": {
     "textures": {
       "up": "./block/copper_trapdoor.png",
@@ -2462,6 +2561,17 @@
       "west": "./block/copper_trapdoor.png"
     },
     "drawtype": "NB_7f0e619e"
+  },
+  "minecraft:copper_wall_torch": {
+    "textures": {
+      "up": "./block/copper_torch.png",
+      "down": "./block/copper_torch.png",
+      "north": "./block/copper_torch.png",
+      "south": "./block/copper_torch.png",
+      "east": "./block/copper_torch.png",
+      "west": "./block/copper_torch.png"
+    },
+    "drawtype": "NB_7f770fcd"
   },
   "minecraft:cornflower": {
     "textures": {
@@ -2704,6 +2814,17 @@
       "west": "./block/crimson_roots.png"
     },
     "drawtype": "flower"
+  },
+  "minecraft:crimson_shelf": {
+    "textures": {
+      "up": "./block/stripped_crimson_stem.png",
+      "down": "./block/stripped_crimson_stem.png",
+      "north": "./block/stripped_crimson_stem.png",
+      "south": "./block/stripped_crimson_stem.png",
+      "east": "./block/stripped_crimson_stem.png",
+      "west": "./block/stripped_crimson_stem.png"
+    },
+    "drawtype": "NB_a138ee1b"
   },
   "minecraft:crimson_sign": {
     "textures": {
@@ -3155,6 +3276,17 @@
       "west": "./block/dark_oak_sapling.png"
     },
     "drawtype": "flower"
+  },
+  "minecraft:dark_oak_shelf": {
+    "textures": {
+      "up": "./block/stripped_dark_oak_log.png",
+      "down": "./block/stripped_dark_oak_log.png",
+      "north": "./block/stripped_dark_oak_log.png",
+      "south": "./block/stripped_dark_oak_log.png",
+      "east": "./block/stripped_dark_oak_log.png",
+      "west": "./block/stripped_dark_oak_log.png"
+    },
+    "drawtype": "NB_a138ee1b"
   },
   "minecraft:dark_oak_sign": {
     "textures": {
@@ -3849,6 +3981,17 @@
     },
     "drawtype": "full"
   },
+  "minecraft:dried_ghast": {
+    "textures": {
+      "up": "./block/dried_ghast_hydration_0_top.png",
+      "down": "./block/dried_ghast_hydration_0_bottom.png",
+      "north": "./block/dried_ghast_hydration_0_north.png",
+      "south": "./block/dried_ghast_hydration_0_south.png",
+      "east": "./block/dried_ghast_hydration_0_east.png",
+      "west": "./block/dried_ghast_hydration_0_west.png"
+    },
+    "drawtype": "NB_d30b526b"
+  },
   "minecraft:dried_kelp_block": {
     "textures": {
       "up": "block/dried_kelp_top.png",
@@ -4047,6 +4190,17 @@
     },
     "drawtype": "full"
   },
+  "minecraft:exposed_copper_bars": {
+    "textures": {
+      "up": "./block/exposed_copper_bars.png",
+      "down": "./block/exposed_copper_bars.png",
+      "north": "./block/exposed_copper_bars.png",
+      "south": "./block/exposed_copper_bars.png",
+      "east": "./block/exposed_copper_bars.png",
+      "west": "./block/exposed_copper_bars.png"
+    },
+    "drawtype": "NB_8e93170a"
+  },
   "minecraft:exposed_copper_bulb": {
     "textures": {
       "up": "./block/exposed_copper_bulb.png",
@@ -4055,6 +4209,28 @@
       "south": "./block/exposed_copper_bulb.png",
       "east": "./block/exposed_copper_bulb.png",
       "west": "./block/exposed_copper_bulb.png"
+    },
+    "drawtype": "full"
+  },
+  "minecraft:exposed_copper_chain": {
+    "textures": {
+      "up": "./block/exposed_copper_chain.png",
+      "down": "./block/exposed_copper_chain.png",
+      "north": "./block/exposed_copper_chain.png",
+      "south": "./block/exposed_copper_chain.png",
+      "east": "./block/exposed_copper_chain.png",
+      "west": "./block/exposed_copper_chain.png"
+    },
+    "drawtype": "flower"
+  },
+  "minecraft:exposed_copper_chest": {
+    "textures": {
+      "up": "./block/exposed_copper.png",
+      "down": "./block/exposed_copper.png",
+      "north": "./block/exposed_copper.png",
+      "south": "./block/exposed_copper.png",
+      "east": "./block/exposed_copper.png",
+      "west": "./block/exposed_copper.png"
     },
     "drawtype": "full"
   },
@@ -4069,6 +4245,17 @@
     },
     "drawtype": "NB_4453a82e"
   },
+  "minecraft:exposed_copper_golem_statue": {
+    "textures": {
+      "up": "./block/exposed_copper.png",
+      "down": "./block/exposed_copper.png",
+      "north": "./block/exposed_copper.png",
+      "south": "./block/exposed_copper.png",
+      "east": "./block/exposed_copper.png",
+      "west": "./block/exposed_copper.png"
+    },
+    "drawtype": "full"
+  },
   "minecraft:exposed_copper_grate": {
     "textures": {
       "up": "./block/exposed_copper_grate.png",
@@ -4079,6 +4266,17 @@
       "west": "./block/exposed_copper_grate.png"
     },
     "drawtype": "full"
+  },
+  "minecraft:exposed_copper_lantern": {
+    "textures": {
+      "up": "./block/exposed_copper_lantern.png",
+      "down": "./block/exposed_copper_lantern.png",
+      "north": "./block/exposed_copper_lantern.png",
+      "south": "./block/exposed_copper_lantern.png",
+      "east": "./block/exposed_copper_lantern.png",
+      "west": "./block/exposed_copper_lantern.png"
+    },
+    "drawtype": "NB_87c0c179"
   },
   "minecraft:exposed_copper_trapdoor": {
     "textures": {
@@ -4123,6 +4321,17 @@
       "west": "./block/exposed_cut_copper.png"
     },
     "drawtype": "NB_2a103b85"
+  },
+  "minecraft:exposed_lightning_rod": {
+    "textures": {
+      "up": "./block/exposed_lightning_rod.png",
+      "down": "./block/exposed_lightning_rod.png",
+      "north": "./block/exposed_lightning_rod.png",
+      "south": "./block/exposed_lightning_rod.png",
+      "east": "./block/exposed_lightning_rod.png",
+      "west": "./block/exposed_lightning_rod.png"
+    },
+    "drawtype": "NB_22da1bca"
   },
   "minecraft:farmland": {
     "textures": {
@@ -4973,12 +5182,12 @@
   },
   "minecraft:iron_bars": {
     "textures": {
-      "up": "block/iron_bars.png",
-      "down": "block/iron_bars.png",
-      "north": "block/iron_bars.png",
-      "south": "block/iron_bars.png",
-      "east": "block/iron_bars.png",
-      "west": "block/iron_bars.png"
+      "up": "./block/iron_bars.png",
+      "down": "./block/iron_bars.png",
+      "north": "./block/iron_bars.png",
+      "south": "./block/iron_bars.png",
+      "east": "./block/iron_bars.png",
+      "west": "./block/iron_bars.png"
     },
     "drawtype": "NB_8e93170a"
   },
@@ -4992,6 +5201,17 @@
       "west": "./block/iron_block.png"
     },
     "drawtype": "full"
+  },
+  "minecraft:iron_chain": {
+    "textures": {
+      "up": "./block/iron_chain.png",
+      "down": "./block/iron_chain.png",
+      "north": "./block/iron_chain.png",
+      "south": "./block/iron_chain.png",
+      "east": "./block/iron_chain.png",
+      "west": "./block/iron_chain.png"
+    },
+    "drawtype": "flower"
   },
   "minecraft:iron_door": {
     "textures": {
@@ -5179,6 +5399,17 @@
       "west": "./block/jungle_sapling.png"
     },
     "drawtype": "flower"
+  },
+  "minecraft:jungle_shelf": {
+    "textures": {
+      "up": "./block/stripped_jungle_log.png",
+      "down": "./block/stripped_jungle_log.png",
+      "north": "./block/stripped_jungle_log.png",
+      "south": "./block/stripped_jungle_log.png",
+      "east": "./block/stripped_jungle_log.png",
+      "west": "./block/stripped_jungle_log.png"
+    },
+    "drawtype": "NB_a138ee1b"
   },
   "minecraft:jungle_sign": {
     "textures": {
@@ -5732,12 +5963,12 @@
   },
   "minecraft:lightning_rod": {
     "textures": {
-      "up": "block/lightning_rod.png",
-      "down": "block/lightning_rod.png",
-      "north": "block/lightning_rod.png",
-      "south": "block/lightning_rod.png",
-      "east": "block/lightning_rod.png",
-      "west": "block/lightning_rod.png"
+      "up": "./block/lightning_rod.png",
+      "down": "./block/lightning_rod.png",
+      "north": "./block/lightning_rod.png",
+      "south": "./block/lightning_rod.png",
+      "east": "./block/lightning_rod.png",
+      "west": "./block/lightning_rod.png"
     },
     "drawtype": "NB_22da1bca"
   },
@@ -6235,6 +6466,17 @@
       "west": "block/mangrove_roots_side.png"
     },
     "drawtype": "NB_098bdfa6"
+  },
+  "minecraft:mangrove_shelf": {
+    "textures": {
+      "up": "./block/stripped_mangrove_log.png",
+      "down": "./block/stripped_mangrove_log.png",
+      "north": "./block/stripped_mangrove_log.png",
+      "south": "./block/stripped_mangrove_log.png",
+      "east": "./block/stripped_mangrove_log.png",
+      "west": "./block/stripped_mangrove_log.png"
+    },
+    "drawtype": "NB_a138ee1b"
   },
   "minecraft:mangrove_sign": {
     "textures": {
@@ -6819,6 +7061,17 @@
     },
     "drawtype": "flower"
   },
+  "minecraft:oak_shelf": {
+    "textures": {
+      "up": "./block/stripped_oak_log.png",
+      "down": "./block/stripped_oak_log.png",
+      "north": "./block/stripped_oak_log.png",
+      "south": "./block/stripped_oak_log.png",
+      "east": "./block/stripped_oak_log.png",
+      "west": "./block/stripped_oak_log.png"
+    },
+    "drawtype": "NB_a138ee1b"
+  },
   "minecraft:oak_sign": {
     "textures": {
       "up": "./block/oak_planks.png",
@@ -7138,6 +7391,17 @@
     },
     "drawtype": "full"
   },
+  "minecraft:oxidized_copper_bars": {
+    "textures": {
+      "up": "./block/oxidized_copper_bars.png",
+      "down": "./block/oxidized_copper_bars.png",
+      "north": "./block/oxidized_copper_bars.png",
+      "south": "./block/oxidized_copper_bars.png",
+      "east": "./block/oxidized_copper_bars.png",
+      "west": "./block/oxidized_copper_bars.png"
+    },
+    "drawtype": "NB_8e93170a"
+  },
   "minecraft:oxidized_copper_bulb": {
     "textures": {
       "up": "./block/oxidized_copper_bulb.png",
@@ -7146,6 +7410,28 @@
       "south": "./block/oxidized_copper_bulb.png",
       "east": "./block/oxidized_copper_bulb.png",
       "west": "./block/oxidized_copper_bulb.png"
+    },
+    "drawtype": "full"
+  },
+  "minecraft:oxidized_copper_chain": {
+    "textures": {
+      "up": "./block/oxidized_copper_chain.png",
+      "down": "./block/oxidized_copper_chain.png",
+      "north": "./block/oxidized_copper_chain.png",
+      "south": "./block/oxidized_copper_chain.png",
+      "east": "./block/oxidized_copper_chain.png",
+      "west": "./block/oxidized_copper_chain.png"
+    },
+    "drawtype": "flower"
+  },
+  "minecraft:oxidized_copper_chest": {
+    "textures": {
+      "up": "./block/oxidized_copper.png",
+      "down": "./block/oxidized_copper.png",
+      "north": "./block/oxidized_copper.png",
+      "south": "./block/oxidized_copper.png",
+      "east": "./block/oxidized_copper.png",
+      "west": "./block/oxidized_copper.png"
     },
     "drawtype": "full"
   },
@@ -7160,6 +7446,17 @@
     },
     "drawtype": "NB_4453a82e"
   },
+  "minecraft:oxidized_copper_golem_statue": {
+    "textures": {
+      "up": "./block/oxidized_copper.png",
+      "down": "./block/oxidized_copper.png",
+      "north": "./block/oxidized_copper.png",
+      "south": "./block/oxidized_copper.png",
+      "east": "./block/oxidized_copper.png",
+      "west": "./block/oxidized_copper.png"
+    },
+    "drawtype": "full"
+  },
   "minecraft:oxidized_copper_grate": {
     "textures": {
       "up": "./block/oxidized_copper_grate.png",
@@ -7170,6 +7467,17 @@
       "west": "./block/oxidized_copper_grate.png"
     },
     "drawtype": "full"
+  },
+  "minecraft:oxidized_copper_lantern": {
+    "textures": {
+      "up": "./block/oxidized_copper_lantern.png",
+      "down": "./block/oxidized_copper_lantern.png",
+      "north": "./block/oxidized_copper_lantern.png",
+      "south": "./block/oxidized_copper_lantern.png",
+      "east": "./block/oxidized_copper_lantern.png",
+      "west": "./block/oxidized_copper_lantern.png"
+    },
+    "drawtype": "NB_87c0c179"
   },
   "minecraft:oxidized_copper_trapdoor": {
     "textures": {
@@ -7214,6 +7522,17 @@
       "west": "./block/oxidized_cut_copper.png"
     },
     "drawtype": "NB_2a103b85"
+  },
+  "minecraft:oxidized_lightning_rod": {
+    "textures": {
+      "up": "./block/oxidized_lightning_rod.png",
+      "down": "./block/oxidized_lightning_rod.png",
+      "north": "./block/oxidized_lightning_rod.png",
+      "south": "./block/oxidized_lightning_rod.png",
+      "east": "./block/oxidized_lightning_rod.png",
+      "west": "./block/oxidized_lightning_rod.png"
+    },
+    "drawtype": "NB_22da1bca"
   },
   "minecraft:packed_ice": {
     "textures": {
@@ -7379,6 +7698,17 @@
       "west": "./block/pale_oak_sapling.png"
     },
     "drawtype": "flower"
+  },
+  "minecraft:pale_oak_shelf": {
+    "textures": {
+      "up": "./block/stripped_pale_oak_log.png",
+      "down": "./block/stripped_pale_oak_log.png",
+      "north": "./block/stripped_pale_oak_log.png",
+      "south": "./block/stripped_pale_oak_log.png",
+      "east": "./block/stripped_pale_oak_log.png",
+      "west": "./block/stripped_pale_oak_log.png"
+    },
+    "drawtype": "NB_a138ee1b"
   },
   "minecraft:pale_oak_sign": {
     "textures": {
@@ -10086,6 +10416,17 @@
     },
     "drawtype": "flower"
   },
+  "minecraft:spruce_shelf": {
+    "textures": {
+      "up": "./block/stripped_spruce_log.png",
+      "down": "./block/stripped_spruce_log.png",
+      "north": "./block/stripped_spruce_log.png",
+      "south": "./block/stripped_spruce_log.png",
+      "east": "./block/stripped_spruce_log.png",
+      "west": "./block/stripped_spruce_log.png"
+    },
+    "drawtype": "NB_a138ee1b"
+  },
   "minecraft:spruce_sign": {
     "textures": {
       "up": "./block/spruce_planks.png",
@@ -11131,6 +11472,17 @@
     },
     "drawtype": "flower"
   },
+  "minecraft:warped_shelf": {
+    "textures": {
+      "up": "./block/stripped_warped_stem.png",
+      "down": "./block/stripped_warped_stem.png",
+      "north": "./block/stripped_warped_stem.png",
+      "south": "./block/stripped_warped_stem.png",
+      "east": "./block/stripped_warped_stem.png",
+      "west": "./block/stripped_warped_stem.png"
+    },
+    "drawtype": "NB_a138ee1b"
+  },
   "minecraft:warped_sign": {
     "textures": {
       "up": "./block/warped_planks.png",
@@ -11252,6 +11604,17 @@
     },
     "drawtype": "full"
   },
+  "minecraft:waxed_copper_bars": {
+    "textures": {
+      "up": "./block/copper_bars.png",
+      "down": "./block/copper_bars.png",
+      "north": "./block/copper_bars.png",
+      "south": "./block/copper_bars.png",
+      "east": "./block/copper_bars.png",
+      "west": "./block/copper_bars.png"
+    },
+    "drawtype": "NB_8e93170a"
+  },
   "minecraft:waxed_copper_block": {
     "textures": {
       "up": "./block/copper_block.png",
@@ -11274,6 +11637,28 @@
     },
     "drawtype": "full"
   },
+  "minecraft:waxed_copper_chain": {
+    "textures": {
+      "up": "./block/copper_chain.png",
+      "down": "./block/copper_chain.png",
+      "north": "./block/copper_chain.png",
+      "south": "./block/copper_chain.png",
+      "east": "./block/copper_chain.png",
+      "west": "./block/copper_chain.png"
+    },
+    "drawtype": "flower"
+  },
+  "minecraft:waxed_copper_chest": {
+    "textures": {
+      "up": "./block/copper_block.png",
+      "down": "./block/copper_block.png",
+      "north": "./block/copper_block.png",
+      "south": "./block/copper_block.png",
+      "east": "./block/copper_block.png",
+      "west": "./block/copper_block.png"
+    },
+    "drawtype": "full"
+  },
   "minecraft:waxed_copper_door": {
     "textures": {
       "up": "./block/copper_door_top.png",
@@ -11285,6 +11670,17 @@
     },
     "drawtype": "NB_4453a82e"
   },
+  "minecraft:waxed_copper_golem_statue": {
+    "textures": {
+      "up": "./block/copper_block.png",
+      "down": "./block/copper_block.png",
+      "north": "./block/copper_block.png",
+      "south": "./block/copper_block.png",
+      "east": "./block/copper_block.png",
+      "west": "./block/copper_block.png"
+    },
+    "drawtype": "full"
+  },
   "minecraft:waxed_copper_grate": {
     "textures": {
       "up": "./block/copper_grate.png",
@@ -11295,6 +11691,17 @@
       "west": "./block/copper_grate.png"
     },
     "drawtype": "full"
+  },
+  "minecraft:waxed_copper_lantern": {
+    "textures": {
+      "up": "./block/copper_lantern.png",
+      "down": "./block/copper_lantern.png",
+      "north": "./block/copper_lantern.png",
+      "south": "./block/copper_lantern.png",
+      "east": "./block/copper_lantern.png",
+      "west": "./block/copper_lantern.png"
+    },
+    "drawtype": "NB_87c0c179"
   },
   "minecraft:waxed_copper_trapdoor": {
     "textures": {
@@ -11362,6 +11769,17 @@
     },
     "drawtype": "full"
   },
+  "minecraft:waxed_exposed_copper_bars": {
+    "textures": {
+      "up": "./block/exposed_copper_bars.png",
+      "down": "./block/exposed_copper_bars.png",
+      "north": "./block/exposed_copper_bars.png",
+      "south": "./block/exposed_copper_bars.png",
+      "east": "./block/exposed_copper_bars.png",
+      "west": "./block/exposed_copper_bars.png"
+    },
+    "drawtype": "NB_8e93170a"
+  },
   "minecraft:waxed_exposed_copper_bulb": {
     "textures": {
       "up": "./block/exposed_copper_bulb.png",
@@ -11370,6 +11788,28 @@
       "south": "./block/exposed_copper_bulb.png",
       "east": "./block/exposed_copper_bulb.png",
       "west": "./block/exposed_copper_bulb.png"
+    },
+    "drawtype": "full"
+  },
+  "minecraft:waxed_exposed_copper_chain": {
+    "textures": {
+      "up": "./block/exposed_copper_chain.png",
+      "down": "./block/exposed_copper_chain.png",
+      "north": "./block/exposed_copper_chain.png",
+      "south": "./block/exposed_copper_chain.png",
+      "east": "./block/exposed_copper_chain.png",
+      "west": "./block/exposed_copper_chain.png"
+    },
+    "drawtype": "flower"
+  },
+  "minecraft:waxed_exposed_copper_chest": {
+    "textures": {
+      "up": "./block/exposed_copper.png",
+      "down": "./block/exposed_copper.png",
+      "north": "./block/exposed_copper.png",
+      "south": "./block/exposed_copper.png",
+      "east": "./block/exposed_copper.png",
+      "west": "./block/exposed_copper.png"
     },
     "drawtype": "full"
   },
@@ -11384,6 +11824,17 @@
     },
     "drawtype": "NB_4453a82e"
   },
+  "minecraft:waxed_exposed_copper_golem_statue": {
+    "textures": {
+      "up": "./block/exposed_copper.png",
+      "down": "./block/exposed_copper.png",
+      "north": "./block/exposed_copper.png",
+      "south": "./block/exposed_copper.png",
+      "east": "./block/exposed_copper.png",
+      "west": "./block/exposed_copper.png"
+    },
+    "drawtype": "full"
+  },
   "minecraft:waxed_exposed_copper_grate": {
     "textures": {
       "up": "./block/exposed_copper_grate.png",
@@ -11394,6 +11845,17 @@
       "west": "./block/exposed_copper_grate.png"
     },
     "drawtype": "full"
+  },
+  "minecraft:waxed_exposed_copper_lantern": {
+    "textures": {
+      "up": "./block/exposed_copper_lantern.png",
+      "down": "./block/exposed_copper_lantern.png",
+      "north": "./block/exposed_copper_lantern.png",
+      "south": "./block/exposed_copper_lantern.png",
+      "east": "./block/exposed_copper_lantern.png",
+      "west": "./block/exposed_copper_lantern.png"
+    },
+    "drawtype": "NB_87c0c179"
   },
   "minecraft:waxed_exposed_copper_trapdoor": {
     "textures": {
@@ -11439,6 +11901,28 @@
     },
     "drawtype": "NB_2a103b85"
   },
+  "minecraft:waxed_exposed_lightning_rod": {
+    "textures": {
+      "up": "./block/exposed_lightning_rod.png",
+      "down": "./block/exposed_lightning_rod.png",
+      "north": "./block/exposed_lightning_rod.png",
+      "south": "./block/exposed_lightning_rod.png",
+      "east": "./block/exposed_lightning_rod.png",
+      "west": "./block/exposed_lightning_rod.png"
+    },
+    "drawtype": "NB_22da1bca"
+  },
+  "minecraft:waxed_lightning_rod": {
+    "textures": {
+      "up": "./block/lightning_rod.png",
+      "down": "./block/lightning_rod.png",
+      "north": "./block/lightning_rod.png",
+      "south": "./block/lightning_rod.png",
+      "east": "./block/lightning_rod.png",
+      "west": "./block/lightning_rod.png"
+    },
+    "drawtype": "NB_22da1bca"
+  },
   "minecraft:waxed_oxidized_chiseled_copper": {
     "textures": {
       "up": "./block/oxidized_chiseled_copper.png",
@@ -11461,6 +11945,17 @@
     },
     "drawtype": "full"
   },
+  "minecraft:waxed_oxidized_copper_bars": {
+    "textures": {
+      "up": "./block/oxidized_copper_bars.png",
+      "down": "./block/oxidized_copper_bars.png",
+      "north": "./block/oxidized_copper_bars.png",
+      "south": "./block/oxidized_copper_bars.png",
+      "east": "./block/oxidized_copper_bars.png",
+      "west": "./block/oxidized_copper_bars.png"
+    },
+    "drawtype": "NB_8e93170a"
+  },
   "minecraft:waxed_oxidized_copper_bulb": {
     "textures": {
       "up": "./block/oxidized_copper_bulb.png",
@@ -11469,6 +11964,28 @@
       "south": "./block/oxidized_copper_bulb.png",
       "east": "./block/oxidized_copper_bulb.png",
       "west": "./block/oxidized_copper_bulb.png"
+    },
+    "drawtype": "full"
+  },
+  "minecraft:waxed_oxidized_copper_chain": {
+    "textures": {
+      "up": "./block/oxidized_copper_chain.png",
+      "down": "./block/oxidized_copper_chain.png",
+      "north": "./block/oxidized_copper_chain.png",
+      "south": "./block/oxidized_copper_chain.png",
+      "east": "./block/oxidized_copper_chain.png",
+      "west": "./block/oxidized_copper_chain.png"
+    },
+    "drawtype": "flower"
+  },
+  "minecraft:waxed_oxidized_copper_chest": {
+    "textures": {
+      "up": "./block/oxidized_copper.png",
+      "down": "./block/oxidized_copper.png",
+      "north": "./block/oxidized_copper.png",
+      "south": "./block/oxidized_copper.png",
+      "east": "./block/oxidized_copper.png",
+      "west": "./block/oxidized_copper.png"
     },
     "drawtype": "full"
   },
@@ -11483,6 +12000,17 @@
     },
     "drawtype": "NB_4453a82e"
   },
+  "minecraft:waxed_oxidized_copper_golem_statue": {
+    "textures": {
+      "up": "./block/oxidized_copper.png",
+      "down": "./block/oxidized_copper.png",
+      "north": "./block/oxidized_copper.png",
+      "south": "./block/oxidized_copper.png",
+      "east": "./block/oxidized_copper.png",
+      "west": "./block/oxidized_copper.png"
+    },
+    "drawtype": "full"
+  },
   "minecraft:waxed_oxidized_copper_grate": {
     "textures": {
       "up": "./block/oxidized_copper_grate.png",
@@ -11493,6 +12021,17 @@
       "west": "./block/oxidized_copper_grate.png"
     },
     "drawtype": "full"
+  },
+  "minecraft:waxed_oxidized_copper_lantern": {
+    "textures": {
+      "up": "./block/oxidized_copper_lantern.png",
+      "down": "./block/oxidized_copper_lantern.png",
+      "north": "./block/oxidized_copper_lantern.png",
+      "south": "./block/oxidized_copper_lantern.png",
+      "east": "./block/oxidized_copper_lantern.png",
+      "west": "./block/oxidized_copper_lantern.png"
+    },
+    "drawtype": "NB_87c0c179"
   },
   "minecraft:waxed_oxidized_copper_trapdoor": {
     "textures": {
@@ -11538,6 +12077,17 @@
     },
     "drawtype": "NB_2a103b85"
   },
+  "minecraft:waxed_oxidized_lightning_rod": {
+    "textures": {
+      "up": "./block/oxidized_lightning_rod.png",
+      "down": "./block/oxidized_lightning_rod.png",
+      "north": "./block/oxidized_lightning_rod.png",
+      "south": "./block/oxidized_lightning_rod.png",
+      "east": "./block/oxidized_lightning_rod.png",
+      "west": "./block/oxidized_lightning_rod.png"
+    },
+    "drawtype": "NB_22da1bca"
+  },
   "minecraft:waxed_weathered_chiseled_copper": {
     "textures": {
       "up": "./block/weathered_chiseled_copper.png",
@@ -11560,6 +12110,17 @@
     },
     "drawtype": "full"
   },
+  "minecraft:waxed_weathered_copper_bars": {
+    "textures": {
+      "up": "./block/weathered_copper_bars.png",
+      "down": "./block/weathered_copper_bars.png",
+      "north": "./block/weathered_copper_bars.png",
+      "south": "./block/weathered_copper_bars.png",
+      "east": "./block/weathered_copper_bars.png",
+      "west": "./block/weathered_copper_bars.png"
+    },
+    "drawtype": "NB_8e93170a"
+  },
   "minecraft:waxed_weathered_copper_bulb": {
     "textures": {
       "up": "./block/weathered_copper_bulb.png",
@@ -11568,6 +12129,28 @@
       "south": "./block/weathered_copper_bulb.png",
       "east": "./block/weathered_copper_bulb.png",
       "west": "./block/weathered_copper_bulb.png"
+    },
+    "drawtype": "full"
+  },
+  "minecraft:waxed_weathered_copper_chain": {
+    "textures": {
+      "up": "./block/weathered_copper_chain.png",
+      "down": "./block/weathered_copper_chain.png",
+      "north": "./block/weathered_copper_chain.png",
+      "south": "./block/weathered_copper_chain.png",
+      "east": "./block/weathered_copper_chain.png",
+      "west": "./block/weathered_copper_chain.png"
+    },
+    "drawtype": "flower"
+  },
+  "minecraft:waxed_weathered_copper_chest": {
+    "textures": {
+      "up": "./block/weathered_copper.png",
+      "down": "./block/weathered_copper.png",
+      "north": "./block/weathered_copper.png",
+      "south": "./block/weathered_copper.png",
+      "east": "./block/weathered_copper.png",
+      "west": "./block/weathered_copper.png"
     },
     "drawtype": "full"
   },
@@ -11582,6 +12165,17 @@
     },
     "drawtype": "NB_4453a82e"
   },
+  "minecraft:waxed_weathered_copper_golem_statue": {
+    "textures": {
+      "up": "./block/weathered_copper.png",
+      "down": "./block/weathered_copper.png",
+      "north": "./block/weathered_copper.png",
+      "south": "./block/weathered_copper.png",
+      "east": "./block/weathered_copper.png",
+      "west": "./block/weathered_copper.png"
+    },
+    "drawtype": "full"
+  },
   "minecraft:waxed_weathered_copper_grate": {
     "textures": {
       "up": "./block/weathered_copper_grate.png",
@@ -11592,6 +12186,17 @@
       "west": "./block/weathered_copper_grate.png"
     },
     "drawtype": "full"
+  },
+  "minecraft:waxed_weathered_copper_lantern": {
+    "textures": {
+      "up": "./block/weathered_copper_lantern.png",
+      "down": "./block/weathered_copper_lantern.png",
+      "north": "./block/weathered_copper_lantern.png",
+      "south": "./block/weathered_copper_lantern.png",
+      "east": "./block/weathered_copper_lantern.png",
+      "west": "./block/weathered_copper_lantern.png"
+    },
+    "drawtype": "NB_87c0c179"
   },
   "minecraft:waxed_weathered_copper_trapdoor": {
     "textures": {
@@ -11637,6 +12242,17 @@
     },
     "drawtype": "NB_2a103b85"
   },
+  "minecraft:waxed_weathered_lightning_rod": {
+    "textures": {
+      "up": "./block/weathered_lightning_rod.png",
+      "down": "./block/weathered_lightning_rod.png",
+      "north": "./block/weathered_lightning_rod.png",
+      "south": "./block/weathered_lightning_rod.png",
+      "east": "./block/weathered_lightning_rod.png",
+      "west": "./block/weathered_lightning_rod.png"
+    },
+    "drawtype": "NB_22da1bca"
+  },
   "minecraft:weathered_chiseled_copper": {
     "textures": {
       "up": "./block/weathered_chiseled_copper.png",
@@ -11659,6 +12275,17 @@
     },
     "drawtype": "full"
   },
+  "minecraft:weathered_copper_bars": {
+    "textures": {
+      "up": "./block/weathered_copper_bars.png",
+      "down": "./block/weathered_copper_bars.png",
+      "north": "./block/weathered_copper_bars.png",
+      "south": "./block/weathered_copper_bars.png",
+      "east": "./block/weathered_copper_bars.png",
+      "west": "./block/weathered_copper_bars.png"
+    },
+    "drawtype": "NB_8e93170a"
+  },
   "minecraft:weathered_copper_bulb": {
     "textures": {
       "up": "./block/weathered_copper_bulb.png",
@@ -11667,6 +12294,28 @@
       "south": "./block/weathered_copper_bulb.png",
       "east": "./block/weathered_copper_bulb.png",
       "west": "./block/weathered_copper_bulb.png"
+    },
+    "drawtype": "full"
+  },
+  "minecraft:weathered_copper_chain": {
+    "textures": {
+      "up": "./block/weathered_copper_chain.png",
+      "down": "./block/weathered_copper_chain.png",
+      "north": "./block/weathered_copper_chain.png",
+      "south": "./block/weathered_copper_chain.png",
+      "east": "./block/weathered_copper_chain.png",
+      "west": "./block/weathered_copper_chain.png"
+    },
+    "drawtype": "flower"
+  },
+  "minecraft:weathered_copper_chest": {
+    "textures": {
+      "up": "./block/weathered_copper.png",
+      "down": "./block/weathered_copper.png",
+      "north": "./block/weathered_copper.png",
+      "south": "./block/weathered_copper.png",
+      "east": "./block/weathered_copper.png",
+      "west": "./block/weathered_copper.png"
     },
     "drawtype": "full"
   },
@@ -11681,6 +12330,17 @@
     },
     "drawtype": "NB_4453a82e"
   },
+  "minecraft:weathered_copper_golem_statue": {
+    "textures": {
+      "up": "./block/weathered_copper.png",
+      "down": "./block/weathered_copper.png",
+      "north": "./block/weathered_copper.png",
+      "south": "./block/weathered_copper.png",
+      "east": "./block/weathered_copper.png",
+      "west": "./block/weathered_copper.png"
+    },
+    "drawtype": "full"
+  },
   "minecraft:weathered_copper_grate": {
     "textures": {
       "up": "./block/weathered_copper_grate.png",
@@ -11691,6 +12351,17 @@
       "west": "./block/weathered_copper_grate.png"
     },
     "drawtype": "full"
+  },
+  "minecraft:weathered_copper_lantern": {
+    "textures": {
+      "up": "./block/weathered_copper_lantern.png",
+      "down": "./block/weathered_copper_lantern.png",
+      "north": "./block/weathered_copper_lantern.png",
+      "south": "./block/weathered_copper_lantern.png",
+      "east": "./block/weathered_copper_lantern.png",
+      "west": "./block/weathered_copper_lantern.png"
+    },
+    "drawtype": "NB_87c0c179"
   },
   "minecraft:weathered_copper_trapdoor": {
     "textures": {
@@ -11735,6 +12406,17 @@
       "west": "./block/weathered_cut_copper.png"
     },
     "drawtype": "NB_2a103b85"
+  },
+  "minecraft:weathered_lightning_rod": {
+    "textures": {
+      "up": "./block/weathered_lightning_rod.png",
+      "down": "./block/weathered_lightning_rod.png",
+      "north": "./block/weathered_lightning_rod.png",
+      "south": "./block/weathered_lightning_rod.png",
+      "east": "./block/weathered_lightning_rod.png",
+      "west": "./block/weathered_lightning_rod.png"
+    },
+    "drawtype": "NB_22da1bca"
   },
   "minecraft:weeping_vines": {
     "textures": {
@@ -12164,5 +12846,16 @@
       "west": "./block/soul_sand.png"
     },
     "drawtype": "full"
+  },
+  "minecraft:chain": {
+    "textures": {
+      "up": "./block/iron_chain.png",
+      "down": "./block/iron_chain.png",
+      "north": "./block/iron_chain.png",
+      "south": "./block/iron_chain.png",
+      "east": "./block/iron_chain.png",
+      "west": "./block/iron_chain.png"
+    },
+    "drawtype": "flower"
   }
 }

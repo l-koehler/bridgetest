@@ -112,7 +112,7 @@ pub async fn handshake(
         false => Account::offline(player_name.as_str()),
     };
 
-    let (client, mut mc_conn) = Client::join(&mc_account, mc_server_addr)
+    let (client, mut mc_conn) = Client::join(mc_account, mc_server_addr)
         .await
         .expect("Failed to log in!");
 

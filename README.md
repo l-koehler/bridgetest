@@ -1,13 +1,16 @@
 # Brigetest
 
+**This program is unstable and a mess. Please read this section before using it.**  
 This program is supposed to let a unmodified [Luanti (Minetest)](https://www.luanti.org/) client connect to  
 a unmodified Minecraft (Java Edition) server.  
-The Minecraft server version needed is 1.21.5, use [ViaProxy](https://github.com/ViaVersion/ViaProxy) if you need another version.  
+The Minecraft server version needed is 1.21.10, use [ViaProxy](https://github.com/ViaVersion/ViaProxy) if you need another version.  
 Compile it using `cargo build --release`, then run `--help` for usage info.  
+Due to [luanti-rs](https://github.com/kawogi/luanti-rs), the supported/required Luanti version is 5.11.0.  
+Other versions should work if the protocol didn't change, try it if you need these.  
 Debug mode causes weird performance issues, don't use it.  
 
-You need nightly Rust to build some dependencies (`rustup default nightly`).  
-You should follow the instructions below to use the proxy.  
+You need nightly Rust to build this and some dependencies (`rustup default nightly`).  
+You should follow the instructions below to install and configure the proxy.  
 
 ## Installation Instructions
 
@@ -15,11 +18,11 @@ This program needs the minecraft textures.
 I won't bundle these due to copyright reasons, but you can get them:  
 
 * From the Minecraft client:  
-  * Get a minecraft jar file (should be something like `minecraft-1.21.4-client.jar`)  
+  * Get a minecraft jar file (should be something like `minecraft-1.21.10-client.jar`)  
   * Unpack it (jar files are glorified zip archives)  
   * Grab the folders in `assets/minecraft/textures/`  
 * or from the internet:  
-  * Go [here](https://mcasset.cloud/1.21.5/assets/minecraft/textures) (mcasset.cloud)  
+  * Visit mcasset.cloud [(you will need these files)](https://mcasset.cloud/1.21.10/assets/minecraft/textures)  
   * Click "Download Folder"  
   * You'll need to unpack that zip file, it contains your textures.  
 * or from a unusually complete texture pack:  
@@ -103,4 +106,4 @@ If you don't use a microsoft account, the server you connect to has to be in off
 This program automatically downloads entity models.  
 These were not made by me and are licensed under the [CC-BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/legalcode.en).  
 The Models are taken from [Mineclonia](https://content.minetest.net/packages/ryvnf/mineclonia/), a minetest mod.  
-Mineclonia is owned on ContentDB by [ryvnf](https://content.minetest.net/users/ryvnf/), a full list of contributors is [here](https://codeberg.org/mineclonia/mineclonia/src/branch/main/CREDITS.md).  
+Mineclonia is owned on ContentDB by [ryvnf](https://content.minetest.net/users/ryvnf/), a full list of contributors is [in their repository](https://codeberg.org/mineclonia/mineclonia/src/branch/main/CREDITS.md).  

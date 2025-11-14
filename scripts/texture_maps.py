@@ -9,7 +9,7 @@ parser = argparse.ArgumentParser(
     description="Generate bridgetest texture mappings",
     epilog="Do not move this program from its place in the repository!"
 )
-parser.add_argument('asset_root', help="Path to a unpacked Minecraft 1.21.5 client jar")
+parser.add_argument('asset_root', help="Path to a unpacked Minecraft 1.21.10 client jar")
 args = parser.parse_args()
 
 asset_root = Path(args.asset_root)
@@ -211,6 +211,8 @@ for model_file in sorted(item_dir.glob("*.json")):
 item_map["minecraft:compass"] = item_map["minecraft:compass_00"]
 item_map["minecraft:clock"] = item_map["minecraft:clock_00"]
 item_map["minecraft:recovery_compass"] = item_map["minecraft:recovery_compass_00"]
+# technically this really shouldn't be here but i'm about to do stupid things if i cant get this to work
+block_map["minecraft:chain"] = block_map["minecraft:iron_chain"]
 
 # save data
 texture_file = bridgetest/"extra_data/block_texture_map.json"

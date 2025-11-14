@@ -46,6 +46,7 @@ pub async fn process(
                 luanti_conn,
                 specbox,
                 &mut proxy_state.inventory,
+                &proxy_state.player
             )
             .await
         }

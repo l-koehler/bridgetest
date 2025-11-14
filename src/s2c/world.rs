@@ -144,7 +144,7 @@ pub async fn send_level_chunk(
 
     //let chunk_location: ChunkPos = ChunkPos { x: *chunk_x_pos, z: *chunk_z_pos }; // unused
     // send chunk to the MT client
-    let mut nodearr: [BlockState; 4096] = [BlockState { id: 125 }; 4096];
+    let mut nodearr: [BlockState; 4096] = [BlockState::AIR; 4096];
     // for each y level (mc chunks go from top to bottom, while mt chunks are 16 nodes high)
     let mut chunk_data_cursor = Cursor::new(chunk_data.as_slice());
     let dimension_height: u16 = i16::abs_diff(y_bounds.0, y_bounds.1);
@@ -175,7 +175,7 @@ pub async fn send_level_chunk(
         for z in 0..16 {
             for y in 0..16 {
                 for x in 0..16 {
-                    current_state = section.get(azalea::core::position::ChunkSectionBlockPos {
+                    current_state = section.states.get(azalea::core::position::ChunkSectionBlockPos {
                         x: x as u8,
                         y: y as u8,
                         z: z as u8,
@@ -209,7 +209,7 @@ pub async fn section_block_update(
         states,
     } = packet;
     // the section we need to update is smaller than the entire array
-    let mut nodearr: [BlockState; 4096] = [BlockState { id: 125 }; 4096];
+    let mut nodearr: [BlockState; 4096] = [BlockState::AIR; 4096];
     let world_lock = mc_client.world();
     let world = world_lock.read();
     for z in 0..16 {
@@ -229,7 +229,7 @@ pub async fn section_block_update(
                         y: (section_pos.y * 16) + y as i32,
                         z: (section_pos.z * 16) + z as i32,
                     };
-                    state = world.get_block_state(&block_pos).unwrap();
+                    state = world.get_block_state(block_pos).unwrap();
                 }
                 nodearr[x + (y * 16) + (z * 256)] = state;
             }

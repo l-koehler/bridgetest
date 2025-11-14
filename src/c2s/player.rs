@@ -1,8 +1,7 @@
 use azalea::Vec3;
-use azalea::ecs::prelude::{With, Without};
-use azalea::entity::{Dead, LocalEntity, Physics, Position, metadata::AbstractEntity};
-use azalea::inventory::CloseContainerEvent;
-use azalea::world::{InstanceName, MinecraftEntityId};
+use azalea::ecs::prelude::Without;
+use azalea::entity::{Dead, LocalEntity, Physics, Position};
+use azalea::protocol::packets::game::ServerboundContainerClose;
 use azalea_client::Client;
 use log::*;
 
@@ -23,11 +22,13 @@ pub async fn playerpos(
     // the player moved, if a handle to the inventory is kept we may now drop it.
     // this is needed as (unlike the minecraft client) the minetest client does not seem to send packets on container close
     inventory_state.inventory_handle = None;
+
     // for the same reason, close containers
     if let Some(container_id) = inventory_state.container_id {
-        mc_client.ecs.lock().send_event(CloseContainerEvent {
-            entity: mc_client.entity,
-            id: container_id,
+        // CloseContainerEvent would be the proper way to do this, but idk what's wrong with the ecs fuck this
+        // probably needs to implement Message or i tried using the wrong type entirely.
+        mc_client.write_packet(ServerboundContainerClose {
+            container_id,
         });
         inventory_state.container_id = None;
     };
@@ -122,52 +123,48 @@ pub async fn playerpos(
     player_state.previous_dig_held = dig_pressed
 }
 
+const ATTACK_MAX_DIST: f32 = 10.0;
+
+fn entity_in_crosshair(candidate: (&Position, &Physics), line: (Vec3, Vec3)) -> bool {
+    let (position, physics) = candidate;
+    // fail early instead of failing with the slower liang–barsky algorithm later
+    if (line.0.distance_to(**position) > ATTACK_MAX_DIST.into())
+    {
+        return false;
+    }
+    // check if the bounding box is on the line-of-sight
+    let bounding_box = physics.bounding_box;
+    if utils::liang_barsky_3d(bounding_box, line.0, line.1) {
+        return true
+    };
+    return false;
+}
+
 pub fn attack_crosshair(mc_client: &mut Client) {
     let line_origin = mc_client.eye_position();
-    let client_instance_name = mc_client.component::<InstanceName>();
-    // convert to radians
+
+    // convert view direction to radians
     let (mut yaw, mut pitch) = mc_client.direction();
     yaw = utils::normalize_angle(yaw) * (PI / 180.0);
     pitch = utils::normalize_angle(pitch) * (PI / 180.0);
-    const MAX_DIST: f32 = 10.0;
-    let dx = MAX_DIST * pitch.cos() * -yaw.sin();
-    let dy = MAX_DIST * pitch.sin();
-    let dz = MAX_DIST * pitch.cos() * yaw.cos();
+    
     // Calculate the end point of the line
+    let dx = ATTACK_MAX_DIST * pitch.cos() * -yaw.sin();
+    let dy = ATTACK_MAX_DIST * pitch.sin();
+    let dz = ATTACK_MAX_DIST * pitch.cos() * yaw.cos();
+
     let line_end = Vec3 {
         x: line_origin.x + dx as f64,
         y: line_origin.y + dy as f64,
         z: line_origin.z + dz as f64,
     };
-    // we now have a line-of-sight from line_origin (player head) to line_end
-    // collect all entities in range
-    let mut ecs = mc_client.ecs.lock();
-    // MinecraftEntityId, distance_from_player
-    let mut possible_entities: Vec<(MinecraftEntityId, f64)> = Vec::new();
-    let mut query = ecs
-        .query_filtered::<(&MinecraftEntityId, &Position, &InstanceName, &Physics), (
-            With<AbstractEntity>,
-            Without<LocalEntity>, // idk what this does but the "official" killaura example has this
-            Without<Dead>,
-        )>();
-    for (&entity_id, position, instance_name, physics) in query.iter(&ecs) {
-        if (*instance_name != client_instance_name)
-            || (line_origin.distance_to(&position) > MAX_DIST.into())
-        {
-            // fail early instead of failing with the slower liang–barsky algorithm later
-            continue;
-        }
-        // check if the bounding box is on the line-of-sight
-        let bounding_box = physics.bounding_box;
-        if utils::liang_barsky_3d(bounding_box, line_origin, line_end) {
-            possible_entities.push((entity_id, line_origin.distance_to(&position)))
-        }
-    }
-    drop(ecs);
-    // either none or Some((minecraftentityid, distance_to_player))
-    let closest_entity = possible_entities.iter().min_by(|x, y| x.1.total_cmp(&y.1));
-    if let Some(closest_entity) = closest_entity {
-        mc_client.attack(closest_entity.0)
+
+    // Get closest entity that matches entity_in_crosshair and isn't dead or local
+    let entity = mc_client.nearest_entity_by::<
+        (&Position, &Physics), (Without<LocalEntity>, Without<Dead>)>
+        (|e: (&Position, &Physics)| entity_in_crosshair(e.clone(), (line_origin, line_end)));
+    if let Some(entity) = entity {
+        mc_client.attack(entity)
     }
 }
 

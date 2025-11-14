@@ -1,6 +1,6 @@
 use azalea::container::ContainerClientExt;
 use azalea::inventory::operations::{ClickOperation, PickupClick, ThrowClick};
-use azalea::inventory::{ContainerClickEvent, Inventory};
+use azalea::inventory::Inventory;
 use azalea::protocol::packets::game::ServerboundSetCarriedItem;
 use azalea_client::Client;
 use log::*;
@@ -26,6 +26,7 @@ pub async fn inventory_action(
     luanti_conn: &mut LuantiConnection,
     specbox: Box<InventoryActionSpec>,
     inventory_state: &mut state::InventoryState,
+    player_state: &state::PlayerState
 ) {
     let InventoryActionSpec { action } = *specbox;
     match action {
@@ -52,6 +53,7 @@ pub async fn inventory_action(
                 to_i,
                 mc_client,
                 inventory_state,
+                player_state,
                 luanti_conn,
             )
             .await
@@ -82,14 +84,13 @@ fn to_inv_index(mt_index: u16, mt_list: &str) -> u16 {
 pub fn drop_item(count: u16, from_list: String, from_i: i16, mc_client: &mut Client) {
     match from_list.as_str() {
         "container" => {
-            let maybe_handle = mc_client.get_open_container();
-            if maybe_handle.is_none() {
+            let handle = mc_client.get_inventory();
+            if handle.id() == 0 {
                 info!(
                     "[Minetest] Client attempted to drop items from a container while no container was opened"
                 );
                 return;
             }
-            let handle = maybe_handle.unwrap();
             if handle.contents().is_none() {
                 info!("Client attempted to drop items from a container without contents");
                 return;
@@ -138,6 +139,7 @@ pub async fn move_item(
     to_i: Option<i16>,
     mc_client: &mut Client,
     inventory_state: &mut state::InventoryState,
+    player_state: &state::PlayerState,
     luanti_conn: &mut LuantiConnection,
 ) {
     info!(
@@ -168,10 +170,10 @@ pub async fn move_item(
         }
     }
     debug!("Picking item from index {}", index_from);
-    let id = mc_client
+    let mut inventory = mc_client
         .get_entity_component::<Inventory>(mc_client.entity)
-        .unwrap()
-        .id;
+        .unwrap();
+
     let click;
     let menu = mc_client.menu();
     if menu.slot(index_from as usize).is_none() {
@@ -188,11 +190,9 @@ pub async fn move_item(
             slot: Some(index_from),
         };
     }
-    mc_client.ecs.lock().send_event(ContainerClickEvent {
-        entity: mc_client.entity,
-        window_id: id,
-        operation: ClickOperation::Pickup(click),
-    });
+
+    inventory.simulate_click(&ClickOperation::Pickup(click),  &player_state.abilities);
+
     // deposit item somewhere else
     let index_to: u16;
     if to_list == "container" {
@@ -203,14 +203,13 @@ pub async fn move_item(
         index_to = (to_inv_index(to_i.unwrap() as u16, &to_list) - 9) + offset as u16;
     }
     debug!("Depositing item at index {}", index_to);
-    mc_client.ecs.lock().send_event(ContainerClickEvent {
-        entity: mc_client.entity,
-        window_id: id,
-        operation: ClickOperation::Pickup(PickupClick::Left {
-            // shift to container indexing
-            slot: Some(index_to),
-        }),
+    let operation = ClickOperation::Pickup(PickupClick::Left {
+        // shift to container indexing
+        slot: Some(index_to),
     });
+    inventory.simulate_click(&operation,  &player_state.abilities);
+    
+
     // unknown state, but not what it was before
     inventory_state.clientside_fields = Vec::new();
     s2c::inventory::refresh_inv(mc_client, luanti_conn, inventory_state, true).await;

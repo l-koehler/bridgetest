@@ -8,7 +8,7 @@ use crate::state;
 
 use azalea::BlockPos;
 use azalea::Client;
-use azalea::core::{aabb::AABB, position::Vec3};
+use azalea::core::{aabb::Aabb, position::Vec3};
 use azalea::inventory::ItemStack;
 use azalea::registry::Block;
 use azalea::registry::{EntityKind, Registry};
@@ -28,7 +28,7 @@ use glam::Vec3 as v3f;
 // modified version of the liang-barsky line clipping algo
 // adapted to work in 3d and also to return a simple boolean indicating if the line clips at all.
 // also makes the bounding box a little higher to account for some weird graphics
-pub fn liang_barsky_3d(mut bb: AABB, line_a: Vec3, line_b: Vec3) -> bool {
+pub fn liang_barsky_3d(mut bb: Aabb, line_a: Vec3, line_b: Vec3) -> bool {
     let mut t0 = 0.0;
     let mut t1 = 1.0;
 
@@ -273,7 +273,7 @@ pub fn get_colormap(texture: &LuantiTexture) -> Option<(u8, u8, u8)> {
 pub fn get_block_at(mc_client: &mut Client, pos: &BlockPos) -> Option<Block> {
     let world_lock = mc_client.world();
     let world = world_lock.read();
-    let state = world.get_block_state(pos);
+    let state = world.get_block_state(*pos);
     if let Some(state_u) = state {
         return Some(Block::from(state_u));
     } else {

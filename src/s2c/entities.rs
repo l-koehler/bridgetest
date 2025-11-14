@@ -60,11 +60,7 @@ pub async fn add_entity(
                 uuid,
                 entity_type, // TODO: textures and models depend on this thing
                 position: vec_pos,
-                x_rot: _,
-                y_rot: _,
-                y_head_rot: _,
-                data: _,
-                velocity: _,
+                .. 
             } = packet_data;
             is_player = false;
             name = format!("UUID-{}", uuid);
@@ -269,9 +265,7 @@ pub async fn entity_teleport(
 ) {
     let ClientboundTeleportEntity {
         id,
-        change: _,
-        relatives: _,
-        on_ground: _,
+        ..
     } = packet_data;
     entity_state.entities_update_scheduled.push(*id);
 }
@@ -282,10 +276,7 @@ pub async fn entity_setposrot(
 ) {
     let ClientboundMoveEntityPosRot {
         entity_id,
-        delta: _,
-        y_rot: _,
-        x_rot: _,
-        on_ground: _,
+        ..
     } = packet_data;
     entity_state.entities_update_scheduled.push(*entity_id);
 }
@@ -337,7 +328,7 @@ pub async fn entity_event(
         return;
     };
     let entity_kind = mc_client
-        .get_entity_component::<azalea::entity::EntityKind>(entity)
+        .get_entity_component::<azalea::entity::EntityKindComponent>(entity)
         .unwrap()
         .0;
 
@@ -426,7 +417,7 @@ pub async fn set_entity_data(
         return;
     };
     let entity_kind = mc_client
-        .get_entity_component::<azalea::entity::EntityKind>(entity)
+        .get_entity_component::<azalea::entity::EntityKindComponent>(entity)
         .unwrap()
         .0;
 
@@ -486,9 +477,7 @@ pub async fn update_mob_effect(
     let ClientboundUpdateMobEffect {
         entity_id,
         mob_effect,
-        effect_amplifier: _,
-        effect_duration_ticks,
-        flags,
+        data
     } = packet_data;
     // if player is affected, we may need to update the formspecs
     if (*entity_id == mc_client.get_component::<MinecraftEntityId>().unwrap()) {
@@ -513,11 +502,11 @@ pub async fn update_mob_effect(
             }
             _ => (),
         }
-        let duration_ms = Duration::from_millis((effect_duration_ticks * 50).into());
+        let duration_ms = Duration::from_millis((data.duration_ticks * 50).into());
         let expires_at = Instant::now().checked_add(duration_ms).unwrap();
         player_state
             .client_effects
-            .push((*mob_effect, expires_at, *flags));
+            .push((*mob_effect, expires_at, data.clone()));
         // update effects immediately, don't wait up to a second for the tick
         s2c::player::update_effects(conn, &player_state.client_effects).await;
     }

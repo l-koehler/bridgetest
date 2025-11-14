@@ -74,8 +74,8 @@ pub async fn tick(
                     velocity: utils::vec3_to_v3f(&physics.velocity, 400),
                     acceleration: utils::vec3_to_v3f(&acceleration, 10),
                     rotation: v3f {
-                        x: look_direction.x_rot,
-                        y: look_direction.y_rot,
+                        x: look_direction.x_rot(),
+                        y: look_direction.y_rot(),
                         z: 0.0,
                     },
                     // these values *might* be wrong in case of teleport packets

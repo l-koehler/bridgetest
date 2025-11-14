@@ -522,10 +522,11 @@ pub async fn get_item_def_command(media_state: &MediaState) -> ToClientCommand {
                 .clone()
                 .to_luanti_safe();
         } else {
+            error!("{}", mc_name);
             inventory_image = media_state
                 .block_texture_map
                 .get(&mc_name)
-                .unwrap()
+                .expect("block_texture_map invalid, mapping messed up!")
                 .clone()
                 .to_safe_cube();
         }

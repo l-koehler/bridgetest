@@ -7,6 +7,7 @@ extern crate alloc;
 
 use crate::settings;
 use crate::state;
+use azalea::entity::MobEffectData;
 use state::world::Dimensions;
 
 use azalea::BlockPos;
@@ -18,7 +19,7 @@ use luanti_protocol::LuantiConnection;
 use luanti_protocol::commands::server_to_client;
 use luanti_protocol::commands::server_to_client::ToClientCommand;
 
-use azalea_client::{Client, PlayerInfo};
+use azalea_client::{Client, player::PlayerInfo};
 
 use azalea::protocol::packets::game::{
     c_player_position::ClientboundPlayerPosition, c_respawn::ClientboundRespawn,
@@ -26,7 +27,7 @@ use azalea::protocol::packets::game::{
     c_set_health::ClientboundSetHealth,
 };
 
-use azalea::core::resource_location::ResourceLocation;
+use azalea::Identifier;
 use azalea::protocol::packets::common::CommonPlayerSpawnInfo;
 use std::time::Instant;
 
@@ -53,7 +54,7 @@ pub async fn update_dimension(
         last_death_location: _,
         portal_cooldown: _,
     } = player_spawn_info;
-    let ResourceLocation { namespace, path } = dimension;
+    let Identifier { namespace, path } = dimension;
     if namespace != "minecraft" {
         player_state.current_dimension = Dimensions::Custom;
     } else {
@@ -71,11 +72,11 @@ pub async fn set_spawn(
     source_packet: &ClientboundSetDefaultSpawnPosition,
     player_state: &mut state::PlayerState,
 ) {
-    let ClientboundSetDefaultSpawnPosition { pos, angle: _ } = source_packet;
-    let BlockPos { x, y, z } = pos;
-    let dest_x = *x as f32;
-    let dest_y = *y as f32;
-    let dest_z = *z as f32;
+    let ClientboundSetDefaultSpawnPosition { global_pos, .. } = source_packet;
+    let BlockPos { x, y, z } = global_pos.pos;
+    let dest_x = x as f32;
+    let dest_y = y as f32;
+    let dest_z = z as f32;
     player_state.respawn_pos = (dest_x, dest_y, dest_z);
 }
 
@@ -113,7 +114,7 @@ pub async fn death(
     mc_client
         .ecs
         .lock()
-        .send_event(azalea::respawn::PerformRespawnEvent {
+        .write_message(azalea::respawn::PerformRespawnEvent {
             entity: mc_client.entity,
         });
     let setpos_packet = ToClientCommand::MovePlayer(Box::new(server_to_client::MovePlayerSpec {
@@ -229,7 +230,7 @@ pub async fn edit_airbar(num: u32, conn: &LuantiConnection, prev_num: u32) {
 
 pub async fn update_effects(
     luanti_conn: &mut LuantiConnection,
-    effects: &Vec<(MobEffect, Instant, u8)>,
+    effects: &Vec<(MobEffect, Instant, MobEffectData)>,
 ) {
     let mut y_offset = 0;
     let mut combined_texture = format!("[combine:24x{}", effects.len() * 30);
@@ -241,7 +242,8 @@ pub async fn update_effects(
     // vanilla servers won't do that, but i can't prove it won't happen
     let mut prevent_dup: Vec<MobEffect> = Vec::new();
     for effect_t in effects {
-        let (effect, _, flags) = effect_t;
+        let (effect, _, data) = effect_t;
+        let flags = &data.flags;
         if prevent_dup.contains(effect) {
             warn!("Found duplicate effects in player_state.client_effects!");
             continue;
@@ -252,12 +254,10 @@ pub async fn update_effects(
         // 0x02: show particles
         // 0x04: show icon
         // 0x08: some darkness-specific thing
-        let use_ambient_frame = (flags & 0x01) != 0;
-        let show_icon = (flags & 0x04) != 0;
-        if !show_icon {
+        if !flags.show_icon {
             continue;
         };
-        let frame_icon = match use_ambient_frame {
+        let frame_icon = match flags.ambient {
             false => "gui-sprites-hud-effect_background.png",
             true => "gui-sprites-hud-effect_background_ambient.png",
         };
@@ -339,12 +339,12 @@ pub async fn set_player_pos(
             y: dest_y,
             z: dest_z,
         },
-        pitch: change.look_direction.x_rot,
-        yaw: change.look_direction.y_rot,
+        pitch: change.look_direction.x_rot(),
+        yaw: change.look_direction.y_rot(),
     }));
     conn.send(setpos_packet).unwrap();
     player_state.mt_clientside_pos = (dest_x, dest_y, dest_z);
-    player_state.client_rotation = (change.look_direction.y_rot, change.look_direction.x_rot);
+    player_state.client_rotation = (change.look_direction.y_rot(), change.look_direction.x_rot());
 }
 
 pub async fn sync_client_pos(
