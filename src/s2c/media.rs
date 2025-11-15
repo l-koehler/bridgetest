@@ -13,6 +13,7 @@ use luanti_protocol::types::{
 };
 use serde::Deserialize;
 use sha1::{Digest, Sha1};
+use zip::read::root_dir_common_filter;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
@@ -390,9 +391,13 @@ pub async fn fetch_models(settings: &Config) {
         );
         std::process::exit(1)
     });
-    let texture_pack_data = resp.bytes().await.unwrap();
+    let texture_pack_data = Cursor::new(resp.bytes().await.unwrap());
     debug!("Extracting downloaded zip file...");
-    zip_extract::extract(Cursor::new(texture_pack_data), &models_folder, true).unwrap();
+    let archive = zip::ZipArchive::new(texture_pack_data);
+    archive
+        .expect("Could not decompress models, file not a valid zip archive?")
+        .extract_unwrapped_root_dir(models_folder, root_dir_common_filter)
+        .expect("Could not decompress models!");
     debug!("Creating url.txt file");
     fs::write(url_file, model_url).unwrap();
     info!("Models downloaded!");
