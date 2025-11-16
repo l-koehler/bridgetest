@@ -229,7 +229,7 @@ pub async fn section_block_update(
                         y: (section_pos.y * 16) + y as i32,
                         z: (section_pos.z * 16) + z as i32,
                     };
-                    state = world.get_block_state(block_pos).unwrap();
+                    state = world.get_block_state(block_pos).unwrap_or_default();
                 }
                 nodearr[x + (y * 16) + (z * 256)] = state;
             }

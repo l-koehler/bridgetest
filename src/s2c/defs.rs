@@ -401,11 +401,11 @@ pub fn get_movementspec(speed: f32) -> ToClientCommand {
         acceleration_default: 2.9,
         acceleration_air: 1.2,
         acceleration_fast: 10.0,
-        speed_walk: speed, //4.317,
+        speed_walk: speed, //4.317, variable for sprinting (speed_fast only works if i could get the client to use it :3)
         speed_crouch: 1.295,
         speed_fast: 5.612,
         speed_climb: 2.35,
-        speed_jump: 6.6,
+        speed_jump: 7.494, // 1.249 (height gain) * 0.6 (jump duration), *10 because it works that way idk
         liquid_fluidity: 1.13,
         liquid_fluidity_smooth: 0.5,
         liquid_sink: 23.0,
@@ -522,7 +522,6 @@ pub async fn get_item_def_command(media_state: &MediaState) -> ToClientCommand {
                 .clone()
                 .to_luanti_safe();
         } else {
-            error!("{}", mc_name);
             inventory_image = media_state
                 .block_texture_map
                 .get(&mc_name)
