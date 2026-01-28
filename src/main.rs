@@ -58,7 +58,15 @@ async fn start_client_handler(settings: Config) {
     tokio::select! {
         conn = mt_server.accept() => {
             println!("Client connected ({})", conn.remote_addr());
-            translator::client_handler(mt_server, conn, settings).await;
+            // prevent tokio::spawn_local panicking by using a local set
+            // first panic is in handshake, but just wrap the entire azalea-using part to be safe
+            let local = tokio::task::LocalSet::new();
+            local
+                .run_until(async {
+                    translator::client_handler(mt_server, conn, settings).await;
+                })
+                .await;
+
             // The infinite loop of the client handler has returned, presumably due to a disconnect.
             // exit after this.
             debug!("Client Handler returned, exiting.");
