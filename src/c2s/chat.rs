@@ -1,4 +1,4 @@
-use azalea_client::Client;
+use azalea::Client;
 use log::*;
 use luanti_protocol::commands::client_to_server::TSChatMessageSpec;
 

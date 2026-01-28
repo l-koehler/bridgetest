@@ -1,6 +1,7 @@
 use crate::utils;
-use azalea_client::Event;
-use azalea_client::{Account, Client};
+use azalea::Client;
+use azalea::account::Account;
+use azalea::events::Event;
 use config::Config;
 use glam::Vec3 as v3f;
 use log::*;
@@ -112,7 +113,8 @@ pub async fn handshake(
         false => Account::offline(player_name.as_str()),
     };
 
-    let (client, mut mc_conn) = Client::join(mc_account, mc_server_addr)
+    // to_string needed, someohe had the bright idea a minecraft library should implement its own Address type
+    let (client, mut mc_conn) = Client::join(mc_account, mc_server_addr.to_string())
         .await
         .expect("Failed to log in!");
 

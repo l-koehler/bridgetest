@@ -8,12 +8,12 @@ use crate::state;
 
 use azalea::BlockPos;
 use azalea::Client;
+use azalea::block::BlockState;
 use azalea::core::{aabb::Aabb, position::Vec3};
+use azalea::events::Event;
 use azalea::inventory::ItemStack;
-use azalea::registry::Block;
-use azalea::registry::{EntityKind, Registry};
-use azalea_block::BlockState;
-use azalea_client::Event;
+use azalea::registry::Registry;
+use azalea::registry::builtin::{BlockKind, EntityKind};
 use log::*;
 use luanti_core::ContentId;
 use luanti_core::MapNode;
@@ -177,16 +177,13 @@ pub fn state_to_node(state: BlockState, cave_air_glow: bool) -> MapNode {
     let mut param0: u16;
     let param1: u8;
     let param2: u8 = 0;
-    param0 = azalea::registry::Block::try_from(state).unwrap().to_u32() as u16 + 128;
+    param0 = BlockKind::try_from(state).unwrap().to_u32() as u16 + 128;
 
     // param1: transparency i think
     if state.is_air() {
         param0 = 126;
         param1 = 0xEE;
-    } else if (azalea::registry::Block::try_from(state).unwrap()
-        == azalea::registry::Block::CaveAir)
-        && cave_air_glow
-    {
+    } else if (BlockKind::try_from(state).unwrap() == BlockKind::CaveAir) && cave_air_glow {
         param0 = 120; // custom node: glowing_air, used in nether
         param1 = 0xEE;
     } else {
@@ -270,12 +267,12 @@ pub fn get_colormap(texture: &LuantiTexture) -> Option<(u8, u8, u8)> {
     None
 }
 
-pub fn get_block_at(mc_client: &mut Client, pos: &BlockPos) -> Option<Block> {
+pub fn get_block_at(mc_client: &mut Client, pos: &BlockPos) -> Option<BlockKind> {
     let world_lock = mc_client.world();
     let world = world_lock.read();
     let state = world.get_block_state(*pos);
     if let Some(state_u) = state {
-        return Some(Block::from(state_u));
+        return Some(BlockKind::from(state_u));
     } else {
         return None;
     }

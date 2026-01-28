@@ -8,8 +8,9 @@ use luanti_protocol::commands::server_to_client::ToClientCommand;
 use luanti_protocol::types::ItemStackMetadata;
 use luanti_protocol::types::{InventoryEntry, InventoryList, ItemStack, ItemStackUpdate};
 
-use azalea::registry::MenuKind;
-use azalea_client::{Client, inventory};
+use azalea::Client;
+use azalea::inventory;
+use azalea::registry::builtin::MenuKind;
 
 use azalea::protocol::packets::game::c_open_screen::ClientboundOpenScreen;
 

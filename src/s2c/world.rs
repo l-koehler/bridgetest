@@ -15,19 +15,19 @@ use luanti_protocol::commands::server_to_client;
 use luanti_protocol::commands::server_to_client::ToClientCommand;
 use luanti_protocol::types::{MapNodesBulk, NodeMetadataList, TransferrableMapBlock};
 
-use azalea_client::Client;
+use azalea::Client;
 
+use azalea::events::Event;
 use azalea::protocol::packets::game::{ClientboundGamePacket, c_section_blocks_update::*};
-use azalea_client::Event;
 use tokio::sync::mpsc::UnboundedReceiver;
 
+use azalea::block::BlockState;
 use azalea::protocol::packets::game::{
     c_block_update::ClientboundBlockUpdate,
     c_level_chunk_with_light::{ClientboundLevelChunkPacketData, ClientboundLevelChunkWithLight},
     c_set_time::ClientboundSetTime,
 };
 use azalea::world::chunk_storage;
-use azalea_block::BlockState;
 use std::io::Cursor;
 use std::sync::Arc;
 
@@ -175,11 +175,14 @@ pub async fn send_level_chunk(
         for z in 0..16 {
             for y in 0..16 {
                 for x in 0..16 {
-                    current_state = section.states.get(azalea::core::position::ChunkSectionBlockPos {
-                        x: x as u8,
-                        y: y as u8,
-                        z: z as u8,
-                    });
+                    current_state =
+                        section
+                            .states
+                            .get(azalea::core::position::ChunkSectionBlockPos {
+                                x: x as u8,
+                                y: y as u8,
+                                z: z as u8,
+                            });
                     // index ranges from 0 (0/0/0) to 4095 (15/15/15), as described in initialize_16node_chunk()
                     nodearr[x + (y * 16) + (z * 256)] = current_state;
                 }
@@ -252,14 +255,10 @@ pub async fn set_time(source_packet: &ClientboundSetTime, conn: &LuantiConnectio
         day_time,
         tick_day_time,
     } = source_packet;
-    let time_speed = if *tick_day_time {
-        Some(1.0)
-    } else {
-        None
-    };
+    let time_speed = if *tick_day_time { Some(1.0) } else { None };
     // minecraft uses morning as 0, minetest uses midnight
     // both games use "millihours" here
-    let mt_time: u16 = ((*day_time + 6000 )% 24000) as u16;
+    let mt_time: u16 = ((*day_time + 6000) % 24000) as u16;
     trace!(
         "Sending S2C TimeOfDay: {} (server time was {})",
         mt_time, day_time

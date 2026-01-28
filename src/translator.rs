@@ -4,6 +4,7 @@ use crate::s2c;
 use crate::state;
 use crate::state::world::Dimensions;
 
+use azalea::world::WorldName;
 use luanti_protocol::LuantiConnection;
 use luanti_protocol::LuantiServer;
 use luanti_protocol::commands::CommandProperties;
@@ -15,8 +16,6 @@ use log::*;
 use std::time::Duration;
 use tokio_stream::StreamExt;
 use tokio_stream::wrappers::IntervalStream;
-
-use azalea::world::InstanceName;
 
 pub async fn client_handler(
     _mt_server: LuantiServer,
@@ -72,13 +71,13 @@ pub async fn client_handler(
     )
     .await;
     // set dimension before parsing chunks
-    let dimension = &mc_client.query_self::<&InstanceName, _>(|ins| ins.path.clone());
-    proxy_state.player.current_dimension = match dimension.as_str() {
+    let worldname = mc_client.query_self::<&WorldName, _>(|r| r.0.clone());
+    proxy_state.player.current_dimension = match worldname.path() {
         "the_end" => Dimensions::End,
         "overworld" => Dimensions::Overworld,
         "nether" => Dimensions::Nether,
         _ => {
-            warn!("Got unknown dimension: {:?}", dimension);
+            warn!("Got unknown dimension: {:?}", worldname.path());
             Dimensions::Custom
         }
     };

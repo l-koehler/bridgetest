@@ -1,6 +1,5 @@
+use azalea::core::entity_id::MinecraftEntityId;
 use azalea::entity::{EntityDataItem, EntityDataValue};
-use azalea::registry::MobEffect;
-use azalea::world::MinecraftEntityId;
 use log::*;
 use luanti_protocol::types::ObjectProperties;
 use std::time::Duration;
@@ -9,13 +8,13 @@ use glam::I16Vec2 as v2i16;
 use glam::Vec2 as v2f;
 use glam::Vec3 as v3f;
 
-use azalea::registry::EntityKind;
+use azalea::registry::builtin::{EntityKind, MobEffect};
 use luanti_protocol::LuantiConnection;
 use luanti_protocol::commands::server_to_client;
 use luanti_protocol::commands::server_to_client::ToClientCommand;
 use luanti_protocol::types::{ActiveObjectCommand, AddedObject, GenericInitData, SColor, aabb3f};
 
-use azalea_client::Client;
+use azalea::Client;
 
 use azalea::protocol::packets::game::{
     c_add_entity::ClientboundAddEntity, c_entity_event::ClientboundEntityEvent,
@@ -60,7 +59,7 @@ pub async fn add_entity(
                 uuid,
                 entity_type, // TODO: textures and models depend on this thing
                 position: vec_pos,
-                .. 
+                ..
             } = packet_data;
             is_player = false;
             name = format!("UUID-{}", uuid);
@@ -263,10 +262,7 @@ pub async fn entity_teleport(
     packet_data: &ClientboundTeleportEntity,
     entity_state: &mut state::EntityState,
 ) {
-    let ClientboundTeleportEntity {
-        id,
-        ..
-    } = packet_data;
+    let ClientboundTeleportEntity { id, .. } = packet_data;
     entity_state.entities_update_scheduled.push(*id);
 }
 
@@ -274,10 +270,7 @@ pub async fn entity_setposrot(
     packet_data: &ClientboundMoveEntityPosRot,
     entity_state: &mut state::EntityState,
 ) {
-    let ClientboundMoveEntityPosRot {
-        entity_id,
-        ..
-    } = packet_data;
+    let ClientboundMoveEntityPosRot { entity_id, .. } = packet_data;
     entity_state.entities_update_scheduled.push(*entity_id);
 }
 
@@ -323,12 +316,12 @@ pub async fn entity_event(
         entity_id,
         event_id,
     } = packet_data;
-    let Some(entity) = mc_client.ecs_entity_by_minecraft_entity(*entity_id) else {
+    let Some(entity) = mc_client.entity_by_minecraft_id(*entity_id) else {
         warn!("Got S2C EntityEvent for unknown ID, skipping!");
         return;
     };
     let entity_kind = mc_client
-        .get_entity_component::<azalea::entity::EntityKindComponent>(entity)
+        .get_entity_component::<azalea::entity::EntityKindComponent>(entity.id())
         .unwrap()
         .0;
 
@@ -412,12 +405,12 @@ pub async fn set_entity_data(
         return;
     };
 
-    let Some(entity) = mc_client.ecs_entity_by_minecraft_entity(*id) else {
+    let Some(entity) = mc_client.entity_by_minecraft_id(*id) else {
         warn!("Got S2C SetEntityData for unknown ID, skipping!");
         return;
     };
     let entity_kind = mc_client
-        .get_entity_component::<azalea::entity::EntityKindComponent>(entity)
+        .get_entity_component::<azalea::entity::EntityKindComponent>(entity.id())
         .unwrap()
         .0;
 
@@ -477,10 +470,10 @@ pub async fn update_mob_effect(
     let ClientboundUpdateMobEffect {
         entity_id,
         mob_effect,
-        data
+        data,
     } = packet_data;
     // if player is affected, we may need to update the formspecs
-    if (*entity_id == mc_client.get_component::<MinecraftEntityId>().unwrap()) {
+    if (*entity_id == *mc_client.get_component::<MinecraftEntityId>().unwrap()) {
         let health: u32 = player_state.mt_last_known_health.into();
         match mob_effect {
             MobEffect::Wither => {
@@ -522,7 +515,7 @@ pub async fn remove_mob_effect(
     mc_client: &Client,
 ) {
     let ClientboundRemoveMobEffect { entity_id, effect } = packet_data;
-    if (*entity_id == mc_client.get_component::<MinecraftEntityId>().unwrap()) {
+    if (*entity_id == *mc_client.get_component::<MinecraftEntityId>().unwrap()) {
         match effect {
             MobEffect::Wither | MobEffect::Poison | MobEffect::Absorption => {
                 let health: u32 = player_state.mt_last_known_health.into();

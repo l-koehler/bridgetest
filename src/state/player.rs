@@ -1,5 +1,8 @@
 use super::world::Dimensions;
-use azalea::{entity::{MobEffectData, PlayerAbilities}, registry::MobEffect};
+use azalea::{
+    entity::{MobEffectData, PlayerAbilities},
+    registry::builtin::MobEffect,
+};
 use std::time::Instant;
 
 #[derive(Clone)]
@@ -52,7 +55,7 @@ impl Default for PlayerState {
                 can_fly: false,
                 instant_break: false,
                 flying_speed: 0.0,
-                walking_speed: 0.0
+                walking_speed: 0.0,
             },
             //TODO remove these, use ECS
             players: Vec::new(),

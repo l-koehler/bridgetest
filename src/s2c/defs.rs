@@ -1,7 +1,7 @@
 use super::super::state::MediaState;
 use crate::s2c;
 use crate::utils;
-use azalea::registry::Block;
+use azalea::registry::builtin::BlockKind;
 use config::Config;
 use log::*;
 use luanti_protocol::LuantiConnection;
@@ -427,60 +427,60 @@ pub fn get_csmrestrictions() -> ToClientCommand {
 }
 
 // constants
-pub const INTERACTIVE_BLOCKS: [Block; 50] = [
+pub const INTERACTIVE_BLOCKS: [BlockKind; 50] = [
     // opens inventory
-    Block::Chest,
-    Block::EnderChest,
-    Block::EnchantingTable,
-    Block::Anvil,
-    Block::Grindstone,
-    Block::CraftingTable,
+    BlockKind::Chest,
+    BlockKind::EnderChest,
+    BlockKind::EnchantingTable,
+    BlockKind::Anvil,
+    BlockKind::Grindstone,
+    BlockKind::CraftingTable,
     // changes own state
-    Block::Lever,
-    Block::Comparator,
-    Block::Repeater,
-    Block::RedstoneOre,
-    Block::RedstoneWire,
-    Block::OakButton,
-    Block::SpruceButton,
-    Block::BirchButton,
-    Block::JungleButton,
-    Block::AcaciaButton,
-    Block::DarkOakButton,
-    Block::MangroveButton,
-    Block::CherryButton,
-    Block::BambooButton,
-    Block::CrimsonButton,
-    Block::WarpedButton,
+    BlockKind::Lever,
+    BlockKind::Comparator,
+    BlockKind::Repeater,
+    BlockKind::RedstoneOre,
+    BlockKind::RedstoneWire,
+    BlockKind::OakButton,
+    BlockKind::SpruceButton,
+    BlockKind::BirchButton,
+    BlockKind::JungleButton,
+    BlockKind::AcaciaButton,
+    BlockKind::DarkOakButton,
+    BlockKind::MangroveButton,
+    BlockKind::CherryButton,
+    BlockKind::BambooButton,
+    BlockKind::CrimsonButton,
+    BlockKind::WarpedButton,
     // other stuff
-    Block::WhiteBed,
-    Block::LightGrayBed,
-    Block::GrayBed,
-    Block::BlackBed,
-    Block::BrownBed,
-    Block::RedBed,
-    Block::OrangeBed,
-    Block::YellowBed,
-    Block::LimeBed,
-    Block::CyanBed,
-    Block::LightBlueBed,
-    Block::BlueBed,
-    Block::PurpleBed,
-    Block::MagentaBed,
-    Block::PinkBed,
-    Block::Campfire,
-    Block::SoulCampfire,
-    Block::Cauldron,
-    Block::Cake,
-    Block::CandleCake,
-    Block::RedCandleCake,
-    Block::BlueCandleCake,
-    Block::CyanCandleCake,
-    Block::GrayCandleCake,
-    Block::LimeCandleCake,
-    Block::PinkCandleCake,
-    Block::BlackCandleCake,
-    Block::BrownCandleCake,
+    BlockKind::WhiteBed,
+    BlockKind::LightGrayBed,
+    BlockKind::GrayBed,
+    BlockKind::BlackBed,
+    BlockKind::BrownBed,
+    BlockKind::RedBed,
+    BlockKind::OrangeBed,
+    BlockKind::YellowBed,
+    BlockKind::LimeBed,
+    BlockKind::CyanBed,
+    BlockKind::LightBlueBed,
+    BlockKind::BlueBed,
+    BlockKind::PurpleBed,
+    BlockKind::MagentaBed,
+    BlockKind::PinkBed,
+    BlockKind::Campfire,
+    BlockKind::SoulCampfire,
+    BlockKind::Cauldron,
+    BlockKind::Cake,
+    BlockKind::CandleCake,
+    BlockKind::RedCandleCake,
+    BlockKind::BlueCandleCake,
+    BlockKind::CyanCandleCake,
+    BlockKind::GrayCandleCake,
+    BlockKind::LimeCandleCake,
+    BlockKind::PinkCandleCake,
+    BlockKind::BlackCandleCake,
+    BlockKind::BrownCandleCake,
 ];
 
 // item def stuff
@@ -621,13 +621,13 @@ pub async fn get_node_def_command(settings: &Config, media_state: &MediaState) -
     let texture_pack_res: u16 = settings.get_int("media.texture_pack_res").unwrap() as u16;
 
     // Azalea provides no nicer way to iterate over blocks, as far as I know.
-    for mc_id in 0..std::mem::variant_count::<azalea::registry::Block>() {
-        if !azalea::registry::Block::is_valid_id(mc_id as u32) {
+    for mc_id in 0..std::mem::variant_count::<BlockKind>() {
+        if !BlockKind::is_valid_id(mc_id as u32) {
             unreachable!();
         }
         // SAFETY: We checked that with is_valid_id above
         // As we are essentially indexing the enum here, `variant_count::<Block>()-1` should be valid.
-        let block = unsafe { azalea::registry::Block::from_u32_unchecked(mc_id as u32) };
+        let block = unsafe { BlockKind::from_u32_unchecked(mc_id as u32) };
         let mt_id = mc_id as u16 + 128;
         content_feature = generate_contentfeature(block, texture_pack_res, media_state);
         content_features.push((mt_id, content_feature));
@@ -725,7 +725,7 @@ pub async fn get_node_def_command(settings: &Config, media_state: &MediaState) -
 }
 
 pub fn generate_contentfeature(
-    block: azalea::registry::Block,
+    block: BlockKind,
     texture_pack_res: u16,
     media_state: &MediaState,
 ) -> ContentFeatures {
@@ -740,24 +740,24 @@ pub fn generate_contentfeature(
     let mut animation = TileAnimationParams::None;
 
     // liquid stuff
-    if block == Block::Water {
+    if block == BlockKind::Water {
         liquid_renewable = true;
         liquid_viscosity = 0; // determines how much the liquid slows the player down
         liquid_range = 7;
-    } else if block == Block::Lava {
+    } else if block == BlockKind::Lava {
         liquid_renewable = false;
         liquid_viscosity = 1;
         liquid_range = 4;
     }
     // animated textures
     if [
-        Block::Water,
-        Block::Lava,
-        Block::Seagrass,
-        Block::TallSeagrass,
-        Block::NetherPortal,
-        Block::EndPortal,
-        Block::MagmaBlock,
+        BlockKind::Water,
+        BlockKind::Lava,
+        BlockKind::Seagrass,
+        BlockKind::TallSeagrass,
+        BlockKind::NetherPortal,
+        BlockKind::EndPortal,
+        BlockKind::MagmaBlock,
     ]
     .contains(&block)
     {
@@ -771,40 +771,40 @@ pub fn generate_contentfeature(
     let rightclickable = INTERACTIVE_BLOCKS.contains(&block);
 
     let light_source = match block {
-        Block::Beacon
-        | Block::Conduit
-        | Block::EndGateway
-        | Block::EndPortal
-        | Block::Fire
-        | Block::SeaPickle
-        | Block::OchreFroglight
-        | Block::VerdantFroglight
-        | Block::PearlescentFroglight
-        | Block::Glowstone
-        | Block::JackOLantern
-        | Block::Lantern
-        | Block::Lava
-        | Block::LavaCauldron
-        | Block::Campfire
-        | Block::RedstoneLamp
-        | Block::RespawnAnchor
-        | Block::SeaLantern
-        | Block::Shroomlight => 15,
-        Block::EndRod | Block::Torch => 14,
-        Block::BlastFurnace | Block::Furnace | Block::Smoker => 13,
-        Block::Candle => 12,
-        Block::NetherPortal => 11,
-        Block::CryingObsidian
-        | Block::SoulCampfire
-        | Block::SoulFire
-        | Block::SoulLantern
-        | Block::SoulTorch => 10,
-        Block::EnchantingTable | Block::EnderChest | Block::GlowLichen => 7,
-        Block::SculkCatalyst => 6,
-        Block::AmethystCluster => 5,
-        Block::LargeAmethystBud => 4,
-        Block::MagmaBlock => 3,
-        Block::MediumAmethystBud => 2,
+        BlockKind::Beacon
+        | BlockKind::Conduit
+        | BlockKind::EndGateway
+        | BlockKind::EndPortal
+        | BlockKind::Fire
+        | BlockKind::SeaPickle
+        | BlockKind::OchreFroglight
+        | BlockKind::VerdantFroglight
+        | BlockKind::PearlescentFroglight
+        | BlockKind::Glowstone
+        | BlockKind::JackOLantern
+        | BlockKind::Lantern
+        | BlockKind::Lava
+        | BlockKind::LavaCauldron
+        | BlockKind::Campfire
+        | BlockKind::RedstoneLamp
+        | BlockKind::RespawnAnchor
+        | BlockKind::SeaLantern
+        | BlockKind::Shroomlight => 15,
+        BlockKind::EndRod | BlockKind::Torch => 14,
+        BlockKind::BlastFurnace | BlockKind::Furnace | BlockKind::Smoker => 13,
+        BlockKind::Candle => 12,
+        BlockKind::NetherPortal => 11,
+        BlockKind::CryingObsidian
+        | BlockKind::SoulCampfire
+        | BlockKind::SoulFire
+        | BlockKind::SoulLantern
+        | BlockKind::SoulTorch => 10,
+        BlockKind::EnchantingTable | BlockKind::EnderChest | BlockKind::GlowLichen => 7,
+        BlockKind::SculkCatalyst => 6,
+        BlockKind::AmethystCluster => 5,
+        BlockKind::LargeAmethystBud => 4,
+        BlockKind::MagmaBlock => 3,
+        BlockKind::MediumAmethystBud => 2,
         // TODO level 1 skipped, boring :(
         _ => 0,
     };
@@ -822,17 +822,17 @@ pub fn generate_contentfeature(
     };
 
     let waving: u8 = ([
-        Block::OakLeaves,
-        Block::SpruceLeaves,
-        Block::BirchLeaves,
-        Block::JungleLeaves,
-        Block::AcaciaLeaves,
-        Block::CherryLeaves,
-        Block::DarkOakLeaves,
-        Block::PaleOakLeaves,
-        Block::MangroveLeaves,
-        Block::AzaleaLeaves,
-        Block::FloweringAzaleaLeaves,
+        BlockKind::OakLeaves,
+        BlockKind::SpruceLeaves,
+        BlockKind::BirchLeaves,
+        BlockKind::JungleLeaves,
+        BlockKind::AcaciaLeaves,
+        BlockKind::CherryLeaves,
+        BlockKind::DarkOakLeaves,
+        BlockKind::PaleOakLeaves,
+        BlockKind::MangroveLeaves,
+        BlockKind::AzaleaLeaves,
+        BlockKind::FloweringAzaleaLeaves,
     ]
     .contains(&block)
         || texture.drawtype == DrawType::PlantLike) as u8
@@ -884,7 +884,7 @@ pub fn generate_contentfeature(
         is_ground_content: false,
         walkable,
         pointable,
-        diggable: block != Block::Bedrock
+        diggable: block != BlockKind::Bedrock
             && texture.drawtype != DrawType::Liquid
             && texture.drawtype != DrawType::AirLike,
         climbable: false,

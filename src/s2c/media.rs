@@ -13,12 +13,12 @@ use luanti_protocol::types::{
 };
 use serde::Deserialize;
 use sha1::{Digest, Sha1};
-use zip::read::root_dir_common_filter;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
 use std::io::{Cursor, Read};
 use std::path::PathBuf;
+use zip::read::root_dir_common_filter;
 
 // resolves ambiguity in mapping minecraft:thing to textures
 // important! only stores paths relative to the texture pack root.

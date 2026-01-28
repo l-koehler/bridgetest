@@ -1,4 +1,4 @@
-use azalea::world::MinecraftEntityId;
+use azalea::core::entity_id::MinecraftEntityId;
 use bimap::BiMap;
 
 #[derive(Clone)]

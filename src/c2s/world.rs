@@ -1,4 +1,4 @@
-use azalea_client::Client;
+use azalea::Client;
 use log::*;
 
 use crate::s2c;

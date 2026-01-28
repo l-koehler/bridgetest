@@ -4,7 +4,7 @@ use luanti_protocol::LuantiConnection;
 use luanti_protocol::commands::server_to_client;
 use luanti_protocol::commands::server_to_client::ToClientCommand;
 
-use azalea_client::chat::ChatPacket;
+use azalea::chat::ChatPacket;
 use azalea_language;
 
 use azalea::protocol::packets::game::c_sound::ClientboundSound;

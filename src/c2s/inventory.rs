@@ -1,8 +1,7 @@
-use azalea::container::ContainerClientExt;
+use azalea::Client;
+use azalea::entity::inventory::Inventory;
 use azalea::inventory::operations::{ClickOperation, PickupClick, ThrowClick};
-use azalea::inventory::Inventory;
 use azalea::protocol::packets::game::ServerboundSetCarriedItem;
-use azalea_client::Client;
 use log::*;
 
 use luanti_protocol::LuantiConnection;
@@ -26,7 +25,7 @@ pub async fn inventory_action(
     luanti_conn: &mut LuantiConnection,
     specbox: Box<InventoryActionSpec>,
     inventory_state: &mut state::InventoryState,
-    player_state: &state::PlayerState
+    player_state: &state::PlayerState,
 ) {
     let InventoryActionSpec { action } = *specbox;
     match action {
@@ -170,10 +169,11 @@ pub async fn move_item(
         }
     }
     debug!("Picking item from index {}", index_from);
-    let mut inventory = mc_client
-        .get_entity_component::<Inventory>(mc_client.entity)
-        .unwrap();
-
+    let mut ecs = mc_client.ecs.write();
+    let Some(mut inventory) = ecs.get_mut::<Inventory>(mc_client.entity) else {
+        error!("Client does not have an inventory component!");
+        return;
+    };
     let click;
     let menu = mc_client.menu();
     if menu.slot(index_from as usize).is_none() {
@@ -191,7 +191,7 @@ pub async fn move_item(
         };
     }
 
-    inventory.simulate_click(&ClickOperation::Pickup(click),  &player_state.abilities);
+    inventory.simulate_click(&ClickOperation::Pickup(click), &player_state.abilities);
 
     // deposit item somewhere else
     let index_to: u16;
@@ -207,8 +207,8 @@ pub async fn move_item(
         // shift to container indexing
         slot: Some(index_to),
     });
-    inventory.simulate_click(&operation,  &player_state.abilities);
-    
+    inventory.simulate_click(&operation, &player_state.abilities);
+    drop(ecs);
 
     // unknown state, but not what it was before
     inventory_state.clientside_fields = Vec::new();

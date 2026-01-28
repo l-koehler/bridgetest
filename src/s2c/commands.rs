@@ -6,12 +6,12 @@ use luanti_protocol::LuantiConnection;
 
 use log::*;
 
+use azalea::events::Event;
 use azalea::protocol::packets::game::ClientboundGamePacket;
-use azalea_client::Event;
 use tokio::sync::mpsc::UnboundedReceiver;
 
 pub async fn process(
-    command: azalea_client::Event,
+    command: Event,
     luanti_conn: &mut LuantiConnection,
     mc_client: &mut azalea::Client,
     proxy_state: &mut state::ProxyState,

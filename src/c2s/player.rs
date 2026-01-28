@@ -1,8 +1,8 @@
+use azalea::Client;
 use azalea::Vec3;
 use azalea::ecs::prelude::Without;
 use azalea::entity::{Dead, LocalEntity, Physics, Position};
 use azalea::protocol::packets::game::ServerboundContainerClose;
-use azalea_client::Client;
 use log::*;
 
 use crate::c2s;
@@ -27,9 +27,7 @@ pub async fn playerpos(
     if let Some(container_id) = inventory_state.container_id {
         // CloseContainerEvent would be the proper way to do this, but idk what's wrong with the ecs fuck this
         // probably needs to implement Message or i tried using the wrong type entirely.
-        mc_client.write_packet(ServerboundContainerClose {
-            container_id,
-        });
+        mc_client.write_packet(ServerboundContainerClose { container_id });
         inventory_state.container_id = None;
     };
 
@@ -128,14 +126,13 @@ const ATTACK_MAX_DIST: f32 = 10.0;
 fn entity_in_crosshair(candidate: (&Position, &Physics), line: (Vec3, Vec3)) -> bool {
     let (position, physics) = candidate;
     // fail early instead of failing with the slower liang–barsky algorithm later
-    if (line.0.distance_to(**position) > ATTACK_MAX_DIST.into())
-    {
+    if (line.0.distance_to(**position) > ATTACK_MAX_DIST.into()) {
         return false;
     }
     // check if the bounding box is on the line-of-sight
     let bounding_box = physics.bounding_box;
     if utils::liang_barsky_3d(bounding_box, line.0, line.1) {
-        return true
+        return true;
     };
     return false;
 }
@@ -144,10 +141,10 @@ pub fn attack_crosshair(mc_client: &mut Client) {
     let line_origin = mc_client.eye_position();
 
     // convert view direction to radians
-    let (mut yaw, mut pitch) = mc_client.direction();
-    yaw = utils::normalize_angle(yaw) * (PI / 180.0);
-    pitch = utils::normalize_angle(pitch) * (PI / 180.0);
-    
+    let look_direction = mc_client.direction();
+    let yaw = utils::normalize_angle(look_direction.y_rot()) * (PI / 180.0);
+    let pitch = utils::normalize_angle(look_direction.x_rot()) * (PI / 180.0);
+
     // Calculate the end point of the line
     let dx = ATTACK_MAX_DIST * pitch.cos() * -yaw.sin();
     let dy = ATTACK_MAX_DIST * pitch.sin();
@@ -160,11 +157,12 @@ pub fn attack_crosshair(mc_client: &mut Client) {
     };
 
     // Get closest entity that matches entity_in_crosshair and isn't dead or local
-    let entity = mc_client.nearest_entity_by::<
-        (&Position, &Physics), (Without<LocalEntity>, Without<Dead>)>
-        (|e: (&Position, &Physics)| entity_in_crosshair(e.clone(), (line_origin, line_end)));
+    let entity = mc_client
+        .nearest_entity_by::<(&Position, &Physics), (Without<LocalEntity>, Without<Dead>)>(
+            |e: (&Position, &Physics)| entity_in_crosshair(e.clone(), (line_origin, line_end)),
+        );
     if let Some(entity) = entity {
-        mc_client.attack(entity)
+        mc_client.attack(entity.id())
     }
 }
 

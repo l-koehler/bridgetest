@@ -11,7 +11,7 @@ use azalea::entity::MobEffectData;
 use state::world::Dimensions;
 
 use azalea::BlockPos;
-use azalea::registry::MobEffect;
+use azalea::registry::builtin::MobEffect;
 use glam::Vec3 as v3f;
 use log::*;
 
@@ -19,7 +19,8 @@ use luanti_protocol::LuantiConnection;
 use luanti_protocol::commands::server_to_client;
 use luanti_protocol::commands::server_to_client::ToClientCommand;
 
-use azalea_client::{Client, player::PlayerInfo};
+use azalea::Client;
+use azalea::player::PlayerInfo;
 
 use azalea::protocol::packets::game::{
     c_player_position::ClientboundPlayerPosition, c_respawn::ClientboundRespawn,
@@ -27,7 +28,6 @@ use azalea::protocol::packets::game::{
     c_set_health::ClientboundSetHealth,
 };
 
-use azalea::Identifier;
 use azalea::protocol::packets::common::CommonPlayerSpawnInfo;
 use std::time::Instant;
 
@@ -54,18 +54,21 @@ pub async fn update_dimension(
         last_death_location: _,
         portal_cooldown: _,
     } = player_spawn_info;
-    let Identifier { namespace, path } = dimension;
-    if namespace != "minecraft" {
+    if dimension.namespace() != "minecraft" {
         player_state.current_dimension = Dimensions::Custom;
     } else {
-        player_state.current_dimension = match path.as_str() {
+        player_state.current_dimension = match dimension.path() {
             "overworld" => Dimensions::Overworld,
             "the_nether" => Dimensions::Nether,
             "the_end" => Dimensions::End,
             _ => Dimensions::Custom,
         };
     }
-    info!("Client changed dimension: {}:{}", namespace, path)
+    info!(
+        "Client changed dimension: {}:{}",
+        dimension.namespace(),
+        dimension.path()
+    )
 }
 
 pub async fn set_spawn(
@@ -113,7 +116,7 @@ pub async fn death(
     // needed to update position
     mc_client
         .ecs
-        .lock()
+        .write()
         .write_message(azalea::respawn::PerformRespawnEvent {
             entity: mc_client.entity,
         });

@@ -2,9 +2,9 @@ use crate::s2c;
 use crate::state;
 use crate::utils;
 use azalea::Client;
+use azalea::core::entity_id::MinecraftEntityId;
 use azalea::ecs::prelude::With;
-use azalea::entity::{LookDirection, Physics, Position, metadata::AbstractEntity};
-use azalea::world::MinecraftEntityId;
+use azalea::entity::{LookDirection, Physics, Position, metadata};
 use glam::Vec3 as v3f;
 use log::*;
 use luanti_protocol::LuantiConnection;
@@ -47,9 +47,8 @@ pub async fn tick(
     proxy_state.entities.entities_update_scheduled.dedup();
     let mut chunks: Vec<Vec<ActiveObjectMessage>> = Vec::new();
     let mut aom_vector: Vec<ActiveObjectMessage> = Vec::new();
-    let mut ecs = mc_client.ecs.lock();
-    let mut query = ecs
-        .query_filtered::<(&MinecraftEntityId, &Position, &LookDirection, &Physics), With<AbstractEntity>>();
+    let mut ecs = (*mc_client.ecs).write();
+    let mut query = ecs.query_filtered::<(&MinecraftEntityId, &Position, &LookDirection, &Physics), With<metadata::AbstractEntity>>();
     // check each entity in the ECS
     for (&entity_id, position, look_direction, physics) in query.iter(&ecs) {
         if proxy_state
@@ -108,7 +107,7 @@ pub async fn tick(
     proxy_state.entities.entities_update_scheduled.clear();
 
     // sync air supply to client
-    let air_supply: azalea::entity::metadata::AirSupply = mc_client.component();
+    let air_supply = mc_client.component::<metadata::AirSupply>().clone();
     // format of air_supply: 0 - 299
     // 0 -> 0 bubbles displayed
     // 299 -> 20 bubbles
@@ -124,7 +123,7 @@ pub async fn tick(
     };
 
     // check for sprinting/sneaking, change client movement speed if needed
-    let sprinting: azalea::entity::metadata::Sprinting = mc_client.component();
+    let sprinting = *mc_client.component::<metadata::Sprinting>();
     if sprinting.0 && proxy_state.player.is_sneaking {
         proxy_state.player.is_sneaking = false
     }

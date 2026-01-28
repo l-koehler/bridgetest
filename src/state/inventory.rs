@@ -1,5 +1,5 @@
 use azalea::container::ContainerHandle;
-use azalea_client::inventory::ItemStack;
+use azalea::inventory::ItemStack;
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
