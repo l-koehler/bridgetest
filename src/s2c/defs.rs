@@ -13,7 +13,7 @@ use luanti_protocol::commands::server_to_client::ItemdefList;
 use luanti_protocol::commands::server_to_client::ToClientCommand;
 use luanti_protocol::types::{
     self, AlignStyle, ContentFeatures, DrawType, Inventory, InventoryEntry, InventoryList,
-    ItemStackUpdate, SColor, SimpleSoundSpec, TileAnimationParams, TileDef,
+    ItemStackUpdate, SColor, SoundSpec, TileAnimationParams, TileDef, PointabilityType, ParamType, ParamType2, LiquidType,
 };
 use minecraft_data_rs::{Api, models};
 
@@ -576,7 +576,7 @@ pub fn generate_itemdef(
         groups.push((String::from("building_block"), 1))
     }
 
-    let simplesound_placeholder: SimpleSoundSpec = SimpleSoundSpec {
+    let sound_placeholder: SoundSpec = SoundSpec {
         name: String::from(""),
         gain: 1.0,
         pitch: 1.0,
@@ -600,8 +600,8 @@ pub fn generate_itemdef(
         tool_capabilities: types::Option16::None,
         groups,
         node_placement_prediction: String::from(""),
-        sound_place: simplesound_placeholder.clone(),
-        sound_place_failed: simplesound_placeholder,
+        sound_place: sound_placeholder.clone(),
+        sound_place_failed: sound_placeholder,
         range: 5.0,
         palette_image: String::from(""),
         color: SColor::new(255, 255, 255, 255),
@@ -645,7 +645,7 @@ pub async fn get_node_def_command(settings: &Config, media_state: &MediaState) -
         scale: 0,
         align_style: AlignStyle::Node,
     };
-    let simplesound_placeholder: SimpleSoundSpec = SimpleSoundSpec {
+    let sound_placeholder: SoundSpec = SoundSpec {
         name: String::from(""),
         gain: 1.0,
         pitch: 1.0,
@@ -665,8 +665,8 @@ pub async fn get_node_def_command(settings: &Config, media_state: &MediaState) -
             version: 13,
             name: String::from("bridgetest:glowing_air"),
             groups: vec![(String::from(""), 1)],
-            param_type: 0,
-            param_type_2: 0,
+            param_type: ParamType::Light,
+            param_type_2: ParamType2::None,
             drawtype: DrawType::AirLike,
             mesh: String::from(""),
             visual_scale: 1.0,
@@ -684,18 +684,18 @@ pub async fn get_node_def_command(settings: &Config, media_state: &MediaState) -
             connects_to_ids: Vec::new(),
             post_effect_color: SColor::new(100, 70, 85, 20),
             leveled: 0,
-            light_propagates: 15,
-            sunlight_propagates: 15,
+            light_propagates: true,
+            sunlight_propagates: true,
             light_source: 15,
             is_ground_content: false,
             walkable: false,
-            pointable: false,
+            pointable: PointabilityType::PointableNot,
             diggable: false,
             climbable: false,
             buildable_to: false,
             rightclickable: false,
             damage_per_second: 0,
-            liquid_type_bc: 0,
+            liquid_type: LiquidType::None,
             liquid_alternative_flowing: String::from(""),
             liquid_alternative_source: String::from(""),
             liquid_viscosity: 0,
@@ -706,9 +706,9 @@ pub async fn get_node_def_command(settings: &Config, media_state: &MediaState) -
             node_box: types::NodeBox::Regular,
             selection_box: types::NodeBox::Regular,
             collision_box: types::NodeBox::Regular,
-            sound_footstep: simplesound_placeholder.clone(),
-            sound_dig: simplesound_placeholder.clone(),
-            sound_dug: simplesound_placeholder.clone(),
+            sound_footstep: sound_placeholder.clone(),
+            sound_dig: sound_placeholder.clone(),
+            sound_dug: sound_placeholder.clone(),
             legacy_facedir_simple: false,
             legacy_wallmounted: false,
             node_dig_prediction: String::new(),
@@ -814,11 +814,11 @@ pub fn generate_contentfeature(
     };
 
     let sunlight_propagates = match texture.drawtype {
-        DrawType::AirLike => 15,
-        DrawType::PlantLike | DrawType::PlantLikeRooted => 15,
-        DrawType::GlassLike => 15,
-        DrawType::Liquid => 10,
-        _ => 0,
+        DrawType::AirLike |
+        DrawType::PlantLike | DrawType::PlantLikeRooted |
+        DrawType::GlassLike |
+        DrawType::Liquid => true,
+        _ => false,
     };
 
     let waving: u8 = ([
@@ -838,7 +838,7 @@ pub fn generate_contentfeature(
         || texture.drawtype == DrawType::PlantLike) as u8
         * 100;
 
-    let simplesound_placeholder: SimpleSoundSpec = SimpleSoundSpec {
+    let sound_placeholder: SoundSpec = SoundSpec {
         name: String::from(""),
         gain: 1.0,
         pitch: 1.0,
@@ -850,13 +850,17 @@ pub fn generate_contentfeature(
         texture.drawtype,
         DrawType::GlassLike | DrawType::NodeBox | DrawType::Normal
     );
-    let pointable = texture.drawtype != DrawType::AirLike && texture.drawtype != DrawType::Liquid;
+    let bool_pointable = texture.drawtype != DrawType::AirLike && texture.drawtype != DrawType::Liquid;
+    let mut pointable = PointabilityType::PointableNot;
+    if (bool_pointable) {
+        pointable = PointabilityType::Pointable;
+    }
     ContentFeatures {
         version: 13, // https://github.com/minetest/minetest/blob/master/src/nodedef.h#L313
         name: block.to_string(),
         groups: vec![(String::from("handy_dig"), 1)],
-        param_type: 0,
-        param_type_2: 0,
+        param_type: ParamType::None,
+        param_type_2: ParamType2::None,
         drawtype: texture.drawtype.clone(),
         mesh: String::new(),
         visual_scale: match texture.drawtype {
@@ -888,10 +892,10 @@ pub fn generate_contentfeature(
             && texture.drawtype != DrawType::Liquid
             && texture.drawtype != DrawType::AirLike,
         climbable: false,
-        buildable_to: pointable && !rightclickable,
+        buildable_to: bool_pointable && !rightclickable,
         rightclickable,
         damage_per_second: 0, // the 100 DPS dirt block
-        liquid_type_bc: 0,
+        liquid_type: LiquidType::None,
         liquid_alternative_flowing: String::new(),
         liquid_alternative_source: String::new(),
         liquid_viscosity,
@@ -902,9 +906,9 @@ pub fn generate_contentfeature(
         node_box: texture.nodebox.clone(),
         selection_box: texture.nodebox.clone(),
         collision_box: texture.nodebox.clone(),
-        sound_footstep: simplesound_placeholder.clone(),
-        sound_dig: simplesound_placeholder.clone(),
-        sound_dug: simplesound_placeholder.clone(),
+        sound_footstep: sound_placeholder.clone(),
+        sound_dig: sound_placeholder.clone(),
+        sound_dug: sound_placeholder.clone(),
         legacy_facedir_simple: true,
         legacy_wallmounted: false,
         node_dig_prediction: String::new(),

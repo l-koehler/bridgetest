@@ -3,7 +3,7 @@ use crate::utils::{find_suffix_match, sanitize_model_name};
 use crate::{settings, utils};
 use base64::{Engine, engine::general_purpose};
 use config::Config;
-use glam::Vec3 as v3f32;
+use glam::Vec3 as v3f;
 use log::*;
 use luanti_protocol::commands::client_to_server;
 use luanti_protocol::commands::{server_to_client, server_to_client::ToClientCommand};
@@ -325,12 +325,12 @@ fn generate_nodebox(cuboids: Vec<[i8; 6]>) -> NodeBox {
         let sf_a: f32 = 1.6 * NB_SCALE_FACTOR;
         let sf_b: f32 = 5.0 / NB_SCALE_FACTOR;
         ab_bounds.push(aabb3f {
-            min_edge: (v3f32 {
+            min_edge: (v3f {
                 x: cuboid[0] as f32 / sf_a - sf_b,
                 y: cuboid[1] as f32 / sf_a - sf_b,
                 z: cuboid[2] as f32 / sf_a - sf_b,
             }),
-            max_edge: (v3f32 {
+            max_edge: (v3f {
                 x: cuboid[3] as f32 / sf_a - sf_b,
                 y: cuboid[4] as f32 / sf_a - sf_b,
                 z: cuboid[5] as f32 / sf_a - sf_b,

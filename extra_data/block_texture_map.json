@@ -4586,6 +4586,17 @@
     },
     "drawtype": "full"
   },
+  "minecraft:golden_dandelion": {
+    "textures": {
+      "up": "./block/golden_dandelion.png",
+      "down": "./block/golden_dandelion.png",
+      "north": "./block/golden_dandelion.png",
+      "south": "./block/golden_dandelion.png",
+      "east": "./block/golden_dandelion.png",
+      "west": "./block/golden_dandelion.png"
+    },
+    "drawtype": "flower"
+  },
   "minecraft:granite": {
     "textures": {
       "up": "./block/granite.png",
@@ -8644,6 +8655,17 @@
       "west": "./block/potted_flowering_azalea_bush_side.png"
     },
     "drawtype": "NB_5392846c"
+  },
+  "minecraft:potted_golden_dandelion": {
+    "textures": {
+      "up": "block/flower_pot.png",
+      "down": "block/flower_pot.png",
+      "north": "block/flower_pot.png",
+      "south": "block/flower_pot.png",
+      "east": "block/flower_pot.png",
+      "west": "block/flower_pot.png"
+    },
+    "drawtype": "NB_44d4cd21"
   },
   "minecraft:potted_jungle_sapling": {
     "textures": {

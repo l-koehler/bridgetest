@@ -280,9 +280,7 @@ pub async fn entity_setrot(
 ) {
     let ClientboundMoveEntityRot {
         entity_id,
-        y_rot: _,
-        x_rot: _,
-        on_ground: _,
+        ..
     } = packet_data;
     entity_state.entities_update_scheduled.push(*entity_id);
 }
@@ -495,7 +493,7 @@ pub async fn update_mob_effect(
             }
             _ => (),
         }
-        let duration_ms = Duration::from_millis((data.duration_ticks * 50).into());
+        let duration_ms = Duration::from_millis((data.duration * 50).try_into().unwrap());
         let expires_at = Instant::now().checked_add(duration_ms).unwrap();
         player_state
             .client_effects

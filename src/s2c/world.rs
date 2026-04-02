@@ -1,5 +1,6 @@
 use crate::state;
 use crate::utils;
+use azalea::world::Chunk;
 use state::world::Dimensions;
 
 use azalea::BlockPos;
@@ -27,7 +28,8 @@ use azalea::protocol::packets::game::{
     c_level_chunk_with_light::{ClientboundLevelChunkPacketData, ClientboundLevelChunkWithLight},
     c_set_time::ClientboundSetTime,
 };
-use azalea::world::chunk_storage;
+
+use azalea::world::{World, ChunkStorage};
 use std::io::Cursor;
 use std::sync::Arc;
 
@@ -148,14 +150,14 @@ pub async fn send_level_chunk(
     // for each y level (mc chunks go from top to bottom, while mt chunks are 16 nodes high)
     let mut chunk_data_cursor = Cursor::new(chunk_data.as_slice());
     let dimension_height: u16 = i16::abs_diff(y_bounds.0, y_bounds.1);
-    let mc_chunk: chunk_storage::Chunk = chunk_storage::Chunk::read_with_dimension_height(
+    let mc_chunk: Chunk = Chunk::read_with_dimension_height(
         &mut chunk_data_cursor,
         dimension_height.into(),
         y_bounds.0.into(),
         chunk_heightmaps,
     )
     .expect("Failed to parse chunk!");
-    let chunk_storage::Chunk {
+    let Chunk {
         sections,
         heightmaps: _,
     } = &mc_chunk; // heightmaps get ignored, these are just chunk_heightmaps
@@ -251,17 +253,18 @@ pub async fn section_block_update(
 
 pub async fn set_time(source_packet: &ClientboundSetTime, conn: &LuantiConnection) {
     let ClientboundSetTime {
-        game_time: _,
-        day_time,
-        tick_day_time,
+        game_time,
+        clock_updates: _,
     } = source_packet;
-    let time_speed = if *tick_day_time { Some(1.0) } else { None };
+    let time_speed = Some(1.0);
     // minecraft uses morning as 0, minetest uses midnight
-    // both games use "millihours" here
-    let mt_time: u16 = ((*day_time + 6000) % 24000) as u16;
-    trace!(
-        "Sending S2C TimeOfDay: {} (server time was {})",
-        mt_time, day_time
+    // time in hours: ((day_time+6000) % 24000) / 1000
+    // ticks = millihours, so no conversion needed
+    let mt_time: u16 = ((game_time+6000) % 24000) as u16;
+    
+    debug!(
+        "Sending S2C TimeOfDay: {} (server game time was {})",
+        mt_time, game_time
     );
     let settime_packet = ToClientCommand::TimeOfDay(Box::new(server_to_client::TimeOfDaySpec {
         time_of_day: mt_time,

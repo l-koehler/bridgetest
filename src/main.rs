@@ -1,5 +1,4 @@
 #![feature(variant_count)]
-#![feature(slice_as_array)]
 #![feature(slice_pattern)]
 #![feature(string_remove_matches)]
 #![feature(string_into_chars)]

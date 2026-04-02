@@ -565,6 +565,7 @@
   "minecraft:golden_chestplate_quartz_trim": "./item/golden_chestplate.png",
   "minecraft:golden_chestplate_redstone_trim": "./item/golden_chestplate.png",
   "minecraft:golden_chestplate_resin_trim": "./item/golden_chestplate.png",
+  "minecraft:golden_dandelion": "./block/golden_dandelion.png",
   "minecraft:golden_helmet": "./item/golden_helmet.png",
   "minecraft:golden_helmet_amethyst_trim": "./item/golden_helmet.png",
   "minecraft:golden_helmet_copper_trim": "./item/golden_helmet.png",

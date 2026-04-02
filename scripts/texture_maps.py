@@ -9,7 +9,7 @@ parser = argparse.ArgumentParser(
     description="Generate bridgetest texture mappings",
     epilog="Do not move this program from its place in the repository!"
 )
-parser.add_argument('asset_root', help="Path to a unpacked Minecraft 1.21.11 client jar")
+parser.add_argument('asset_root', help="Path to a unpacked Minecraft 26.1 client jar")
 args = parser.parse_args()
 
 asset_root = Path(args.asset_root)
@@ -97,6 +97,8 @@ def get_face_textures(texture_map):
                     texture = texture_map[texture[1::]]
             elif texture == None:
                 texture = "minecraft:block/air"
+        if (type(texture) == dict):
+            texture = texture["sprite"]
         texture = texture.replace("minecraft:", "./")
         faces[key] = texture+".png"
     return faces
