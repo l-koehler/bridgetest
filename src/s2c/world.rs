@@ -29,7 +29,6 @@ use azalea::protocol::packets::game::{
     c_set_time::ClientboundSetTime,
 };
 
-use azalea::world::{World, ChunkStorage};
 use std::io::Cursor;
 use std::sync::Arc;
 
@@ -80,7 +79,7 @@ pub async fn initialize_16node_chunk(
         },
         block: TransferrableMapBlock {
             is_underground: (y_pos <= 4), // below 64, likely?
-            day_night_differs: false,
+            day_night_differs: y_pos > 4,
             generated: false, // server does not tell us that
             lighting_complete: Some(u16::MAX),
             nodes: MapNodesBulk { nodes },
@@ -252,23 +251,24 @@ pub async fn section_block_update(
 }
 
 pub async fn set_time(source_packet: &ClientboundSetTime, conn: &LuantiConnection) {
-    let ClientboundSetTime {
-        game_time,
-        clock_updates: _,
-    } = source_packet;
-    let time_speed = Some(1.0);
+    let ClientboundSetTime { game_time, clock_updates } = source_packet;
+    let (raw_ticks, rate) = clock_updates
+        .values()
+        .next()
+        .map(|c| (c.total_ticks, c.rate))
+        .unwrap_or((*game_time, 1.0_f32));
     // minecraft uses morning as 0, minetest uses midnight
     // time in hours: ((day_time+6000) % 24000) / 1000
     // ticks = millihours, so no conversion needed
-    let mt_time: u16 = ((game_time+6000) % 24000) as u16;
-    
+    let mt_time: u16 = (((raw_ticks % 24000) as u32 + 6000) % 24000) as u16;
+
     debug!(
-        "Sending S2C TimeOfDay: {} (server game time was {})",
-        mt_time, game_time
+        "Sending S2C TimeOfDay: {} (rate {}, {} clock updates)",
+        mt_time, rate, clock_updates.len()
     );
     let settime_packet = ToClientCommand::TimeOfDay(Box::new(server_to_client::TimeOfDaySpec {
         time_of_day: mt_time,
-        time_speed,
+        time_speed: Some(72.0 * rate),
     }));
     conn.send(settime_packet).unwrap();
 }

@@ -13,7 +13,8 @@ use luanti_protocol::commands::server_to_client::ItemdefList;
 use luanti_protocol::commands::server_to_client::ToClientCommand;
 use luanti_protocol::types::{
     self, AlignStyle, ContentFeatures, DrawType, Inventory, InventoryEntry, InventoryList,
-    ItemStackUpdate, SColor, SoundSpec, TileAnimationParams, TileDef, PointabilityType, ParamType, ParamType2, LiquidType,
+    ItemStackUpdate, LiquidType, ParamType, ParamType2, PointabilityType, SColor, SoundSpec,
+    TileAnimationParams, TileDef,
 };
 use minecraft_data_rs::{Api, models};
 
@@ -82,7 +83,7 @@ pub fn register_misc_late(luanti_conn: &mut LuantiConnection) {
     debug!("Sending S2C Inventory Data");
     luanti_conn.send(empty_inventory()).unwrap();
 
-    debug!("Sending S2C SetSky, SetSun, SetMoon, SetStars, OverrideDayNightRatio");
+    debug!("Sending S2C various sky/lighting-related commands");
     for rule_def in get_sky_stuff() {
         luanti_conn.send(rule_def).unwrap();
     }
@@ -170,8 +171,28 @@ pub fn set_hotbar_selected() -> ToClientCommand {
     }))
 }
 
-pub fn get_sky_stuff() -> [ToClientCommand; 5] {
+// Values here mostly from copying Mineclonia, should not need adjustments
+pub fn get_sky_stuff() -> [ToClientCommand; 7] {
     [
+        ToClientCommand::SetLighting(Box::new(server_to_client::SetLightingSpec {
+            lighting: types::Lighting {
+                shadow_intensity: 0.33,
+                saturation: 1.1,
+                exposure: types::AutoExposure {
+                    luminance_min: -3.5,
+                    luminance_max: -2.5,
+                    exposure_correction: 0.33,
+                    speed_dark_bright: 1500.0,
+                    speed_bright_dark: 700.0,
+                    center_weight_power: 1.0,
+                },
+                volumetric_light_strength: 0.3,
+                shadow_tint: SColor::new(255, 0, 0, 0),
+                bloom_intensity: 0.05,
+                bloom_strength_factor: 1.0,
+                bloom_radius: 1.0,
+            },
+        })),
         ToClientCommand::SetSky(Box::new(server_to_client::SetSkyCommand {
             params: server_to_client::SkyboxParams {
                 bgcolor: SColor::new(255, 255, 255, 255),
@@ -188,10 +209,10 @@ pub fn get_sky_stuff() -> [ToClientCommand; 5] {
                     night_horizon: SColor::new(255, 74, 103, 144),
                     indoors: SColor::new(255, 192, 216, 255),
                 }),
-                r#type: String::from(""), // TODO
+                r#type: String::from("regular"),
                 body_orbit_tilt: 0.0,
-                fog_distance: i16::MAX,
-                fog_start: f32::MAX,
+                fog_distance: -1,
+                fog_start: -1.0,
                 fog_color: SColor::new(0, 0, 0, 255),
             },
         })),
@@ -208,7 +229,7 @@ pub fn get_sky_stuff() -> [ToClientCommand; 5] {
         ToClientCommand::SetMoon(Box::new(server_to_client::SetMoonSpec {
             moon: types::MoonParams {
                 visible: true,
-                texture: String::from("environment-moon_phases.png"),
+                texture: String::from("environment-moon_phases.png^[sheet:4x2:2,1"),
                 tonemap: String::from(""),
                 scale: 3.75,
             },
@@ -221,6 +242,15 @@ pub fn get_sky_stuff() -> [ToClientCommand; 5] {
                 scale: 1.0,
                 day_opacity: Some(0.0),
             },
+        })),
+        ToClientCommand::CloudParams(Box::new(server_to_client::CloudParamsSpec {
+            density: 0.4,
+            color_bright: SColor::new(229, 240, 240, 255),
+            color_ambient: SColor::new(0, 0, 0, 255),
+            height: 65.0,
+            thickness: 4.0,
+            speed: v2f::new(-2.0, 0.0),
+            color_shadow: SColor::new(255, 204, 204, 204),
         })),
         ToClientCommand::OverrideDayNightRatio(Box::new(
             server_to_client::OverrideDayNightRatioSpec {
@@ -814,10 +844,11 @@ pub fn generate_contentfeature(
     };
 
     let sunlight_propagates = match texture.drawtype {
-        DrawType::AirLike |
-        DrawType::PlantLike | DrawType::PlantLikeRooted |
-        DrawType::GlassLike |
-        DrawType::Liquid => true,
+        DrawType::AirLike
+        | DrawType::PlantLike
+        | DrawType::PlantLikeRooted
+        | DrawType::GlassLike
+        | DrawType::Liquid => true,
         _ => false,
     };
 
@@ -850,7 +881,8 @@ pub fn generate_contentfeature(
         texture.drawtype,
         DrawType::GlassLike | DrawType::NodeBox | DrawType::Normal
     );
-    let bool_pointable = texture.drawtype != DrawType::AirLike && texture.drawtype != DrawType::Liquid;
+    let bool_pointable =
+        texture.drawtype != DrawType::AirLike && texture.drawtype != DrawType::Liquid;
     let mut pointable = PointabilityType::PointableNot;
     if (bool_pointable) {
         pointable = PointabilityType::Pointable;
