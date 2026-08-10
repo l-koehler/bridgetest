@@ -94,6 +94,7 @@ pub async fn update_inventory(
     let update_inventory_packet =
         ToClientCommand::Inventory(Box::new(server_to_client::InventorySpec {
             inventory: luanti_protocol::types::Inventory { entries },
+            skip_wield_anim: false,
         }));
     conn.send(update_inventory_packet).unwrap();
 }

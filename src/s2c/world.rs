@@ -251,7 +251,10 @@ pub async fn section_block_update(
 }
 
 pub async fn set_time(source_packet: &ClientboundSetTime, conn: &LuantiConnection) {
-    let ClientboundSetTime { game_time, clock_updates } = source_packet;
+    let ClientboundSetTime {
+        game_time,
+        clock_updates,
+    } = source_packet;
     let (raw_ticks, rate) = clock_updates
         .values()
         .next()
@@ -264,7 +267,9 @@ pub async fn set_time(source_packet: &ClientboundSetTime, conn: &LuantiConnectio
 
     debug!(
         "Sending S2C TimeOfDay: {} (rate {}, {} clock updates)",
-        mt_time, rate, clock_updates.len()
+        mt_time,
+        rate,
+        clock_updates.len()
     );
     let settime_packet = ToClientCommand::TimeOfDay(Box::new(server_to_client::TimeOfDaySpec {
         time_of_day: mt_time,

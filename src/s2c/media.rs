@@ -1,7 +1,6 @@
 // code to get media to the client
 use crate::utils::{find_suffix_match, sanitize_model_name};
 use crate::{settings, utils};
-use base64::{Engine, engine::general_purpose};
 use config::Config;
 use glam::Vec3 as v3f;
 use log::*;
@@ -85,7 +84,7 @@ pub fn get_announcement() -> ToClientCommand {
     {
         announcement_vec.push(MediaAnnouncement {
             name: String::from(texture.to_luanti_safe()),
-            sha1_base64: get_sha1_base64(&texture.get_absolute(false)),
+            sha1: get_sha1(&texture.get_absolute(false)),
         });
     }
     // add models (model-thing.b3d)
@@ -93,7 +92,7 @@ pub fn get_announcement() -> ToClientCommand {
     for model in get_texture_iterator_recursive(model_root, 2, true) {
         announcement_vec.push(MediaAnnouncement {
             name: format!("model-{}", sanitize_model_name(model.to_luanti_safe())),
-            sha1_base64: get_sha1_base64(&model.get_absolute(true)),
+            sha1: get_sha1(&model.get_absolute(true)),
         });
     }
     ToClientCommand::AnnounceMedia(Box::new(server_to_client::AnnounceMediaSpec {
@@ -131,19 +130,16 @@ pub fn get_texture_iterator_recursive(
     return ret;
 }
 
-fn get_sha1_base64(path: &PathBuf) -> String {
+fn get_sha1(path: &PathBuf) -> [u8; 20] {
     let mut file_handle;
     let metadata;
     file_handle = fs::File::open(path).unwrap();
     metadata = fs::metadata(path).expect("Unable to read File Metadata! (Check Permissions?)");
     let mut buffer = vec![0; metadata.len() as usize];
     file_handle.read_exact(&mut buffer).unwrap();
-    // buffer_hash_b64 is base64encode( sha1hash( buffer ) )
     let mut hasher = Sha1::new();
     hasher.update(buffer);
-    let mut buffer_hash_b64 = String::new();
-    general_purpose::STANDARD.encode_string(hasher.finalize(), &mut buffer_hash_b64);
-    buffer_hash_b64
+    hasher.finalize().into()
 }
 
 pub fn handle_request(specbox: Box<client_to_server::RequestMediaSpec>) -> ToClientCommand {

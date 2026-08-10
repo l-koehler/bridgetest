@@ -278,10 +278,7 @@ pub async fn entity_setrot(
     packet_data: &ClientboundMoveEntityRot,
     entity_state: &mut state::EntityState,
 ) {
-    let ClientboundMoveEntityRot {
-        entity_id,
-        ..
-    } = packet_data;
+    let ClientboundMoveEntityRot { entity_id, .. } = packet_data;
     entity_state.entities_update_scheduled.push(*entity_id);
 }
 

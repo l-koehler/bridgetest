@@ -873,7 +873,6 @@ version = "0.1.0"
 dependencies = [
  "azalea",
  "azalea-language",
- "base64",
  "bimap",
  "chrono",
  "clap",
@@ -2614,7 +2613,7 @@ checksum = "112b39cec0b298b6c1999fee3e31427f74f676e4cb9879ed1a121b43661a4154"
 [[package]]
 name = "luanti-core"
 version = "0.2.0"
-source = "git+https://github.com/kawogi/luanti-rs.git#69a09f91f9b7d177e1744367b4bcc4bc8b34fb03"
+source = "git+https://github.com/l-koehler/luanti-rs?branch=update-52#753ad6129990de17fe9791951e987762d5f8f51e"
 dependencies = [
  "glam 0.32.1",
 ]
@@ -2622,7 +2621,7 @@ dependencies = [
 [[package]]
 name = "luanti-protocol"
 version = "0.2.0"
-source = "git+https://github.com/kawogi/luanti-rs.git#69a09f91f9b7d177e1744367b4bcc4bc8b34fb03"
+source = "git+https://github.com/l-koehler/luanti-rs?branch=update-52#753ad6129990de17fe9791951e987762d5f8f51e"
 dependencies = [
  "anyhow",
  "glam 0.32.1",
@@ -2639,7 +2638,7 @@ dependencies = [
 [[package]]
 name = "luanti-protocol-derive"
 version = "0.2.0"
-source = "git+https://github.com/kawogi/luanti-rs.git#69a09f91f9b7d177e1744367b4bcc4bc8b34fb03"
+source = "git+https://github.com/l-koehler/luanti-rs?branch=update-52#753ad6129990de17fe9791951e987762d5f8f51e"
 dependencies = [
  "proc-macro2",
  "quote",

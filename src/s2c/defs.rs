@@ -8,8 +8,10 @@ use luanti_protocol::LuantiConnection;
 use luanti_protocol::commands::server_to_client;
 use luanti_protocol::commands::server_to_client::ItemAlias;
 use luanti_protocol::commands::server_to_client::ItemDef;
+use luanti_protocol::commands::server_to_client::ItemImageDef;
 use luanti_protocol::commands::server_to_client::ItemType;
 use luanti_protocol::commands::server_to_client::ItemdefList;
+use luanti_protocol::commands::server_to_client::TouchInteraction;
 use luanti_protocol::commands::server_to_client::ToClientCommand;
 use luanti_protocol::types::{
     self, AlignStyle, ContentFeatures, DrawType, Inventory, InventoryEntry, InventoryList,
@@ -18,7 +20,6 @@ use luanti_protocol::types::{
 };
 use minecraft_data_rs::{Api, models};
 
-use glam::IVec2 as v2i32;
 use glam::Vec2 as v2f;
 use glam::Vec3 as v3f;
 
@@ -188,6 +189,7 @@ pub fn get_sky_stuff() -> [ToClientCommand; 7] {
                 },
                 volumetric_light_strength: 0.3,
                 shadow_tint: SColor::new(255, 0, 0, 0),
+                shadow_direction: v3f::ZERO,
                 bloom_intensity: 0.05,
                 bloom_strength_factor: 1.0,
                 bloom_radius: 1.0,
@@ -214,6 +216,7 @@ pub fn get_sky_stuff() -> [ToClientCommand; 7] {
                 fog_distance: -1,
                 fog_start: -1.0,
                 fog_color: SColor::new(0, 0, 0, 255),
+                auto_dim_skybox: None,
             },
         })),
         ToClientCommand::SetSun(Box::new(server_to_client::SetSunSpec {
@@ -241,6 +244,7 @@ pub fn get_sky_stuff() -> [ToClientCommand; 7] {
                 starcolor: SColor::new(105, 235, 235, 255),
                 scale: 1.0,
                 day_opacity: Some(0.0),
+                star_seed: None,
             },
         })),
         ToClientCommand::CloudParams(Box::new(server_to_client::CloudParamsSpec {
@@ -292,6 +296,7 @@ pub fn empty_inventory() -> ToClientCommand {
                 }),
             ],
         },
+        skip_wield_anim: false,
     }))
 }
 
@@ -311,15 +316,12 @@ pub fn add_healthbar() -> ToClientCommand {
             x: -265.0,
             y: -88.0,
         },
-        world_pos: Some(v3f {
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
-        }),
-        size: Some(v2i32 { x: 24, y: 24 }),
+        world_pos: v3f::ZERO,
+        size: v2f { x: 24.0, y: 24.0 },
         z_index: Some(0),
         text2: Some(String::from("gui-sprites-hud-heart-container.png")),
         style: Some(0),
+        flags: None,
     }))
 }
 
@@ -336,15 +338,12 @@ pub fn add_foodbar() -> ToClientCommand {
         dir: 0,
         align: v2f { x: 0.0, y: 0.0 },
         offset: v2f { x: 45.0, y: -88.0 },
-        world_pos: Some(v3f {
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
-        }),
-        size: Some(v2i32 { x: 24, y: 24 }),
+        world_pos: v3f::ZERO,
+        size: v2f { x: 24.0, y: 24.0 },
         z_index: Some(0),
         text2: Some(String::from("gui-sprites-hud-food_empty.png")),
         style: Some(0),
+        flags: None,
     }))
 }
 
@@ -361,15 +360,12 @@ pub fn add_airbar() -> ToClientCommand {
         dir: 0,
         align: v2f { x: 0.0, y: 0.0 },
         offset: v2f { x: 45.0, y: -113.0 },
-        world_pos: Some(v3f {
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
-        }),
-        size: Some(v2i32 { x: 24, y: 24 }),
+        world_pos: v3f::ZERO,
+        size: v2f { x: 24.0, y: 24.0 },
         z_index: Some(0),
         text2: Some(String::from("gui-sprites-hud-air_bursting.png")),
         style: Some(0),
+        flags: None,
     }))
 }
 
@@ -389,11 +385,12 @@ pub fn add_subtitlebox() -> ToClientCommand {
             x: -265.0,
             y: -116.0,
         },
-        world_pos: None,
-        size: Some(v2i32 { x: 24, y: 24 }),
+        world_pos: v3f::ZERO,
+        size: v2f { x: 24.0, y: 24.0 },
         z_index: Some(0),
-        text2: None,
+        text2: Some(String::new()),
         style: Some(0),
+        flags: None,
     }))
 }
 
@@ -411,11 +408,12 @@ pub fn add_effect_img() -> ToClientCommand {
         // offset is top-right corner
         align: v2f { x: 1.0, y: 1.0 },
         offset: v2f { x: -54.0, y: 6.0 },
-        world_pos: None,
-        size: Some(v2i32 { x: 24, y: 24 }),
+        world_pos: v3f::ZERO,
+        size: v2f { x: 24.0, y: 24.0 },
         z_index: Some(0),
         text2: None,
         style: None,
+        flags: None,
     }))
 }
 
@@ -617,8 +615,8 @@ pub fn generate_itemdef(
         item_type: item_type.clone(),
         name: String::from(name),
         description: String::from(""),
-        inventory_image: inventory_image.clone(),
-        wield_image: inventory_image,
+        inventory_image: ItemImageDef::plain(inventory_image.clone()),
+        wield_image: ItemImageDef::plain(inventory_image),
         wield_scale: v3f {
             x: 1.0,
             y: 1.0,
@@ -631,16 +629,20 @@ pub fn generate_itemdef(
         groups,
         node_placement_prediction: String::from(""),
         sound_place: sound_placeholder.clone(),
-        sound_place_failed: sound_placeholder,
+        sound_place_failed: sound_placeholder.clone(),
         range: 5.0,
         palette_image: String::from(""),
         color: SColor::new(255, 255, 255, 255),
-        inventory_overlay: String::from(""),
-        wield_overlay: String::from(""),
-        short_description: Some(String::from("Proxy fucked up, sorry!")),
+        inventory_overlay: ItemImageDef::plain(String::from("")),
+        wield_overlay: ItemImageDef::plain(String::from("")),
+        short_description: String::from("Proxy fucked up, sorry!"),
+        sound_use: sound_placeholder.clone(),
+        sound_use_air: sound_placeholder,
         place_param2: None,
-        sound_use: None,
-        sound_use_air: None,
+        wallmounted_rotate_vertical: false,
+        touch_interaction: TouchInteraction::all_user(),
+        pointabilities: types::Option16::None,
+        wear_bar_params: None,
     }
 }
 
@@ -746,6 +748,7 @@ pub async fn get_node_def_command(settings: &Config, media_state: &MediaState) -
             alpha: types::AlphaMode::Opaque,
             move_resistance: 0,
             liquid_move_physics: false,
+            post_effect_color_shaded: false,
         },
     ));
 
@@ -952,5 +955,6 @@ pub fn generate_contentfeature(
         },
         move_resistance: 0,
         liquid_move_physics: texture.drawtype == DrawType::Liquid,
+        post_effect_color_shaded: false,
     }
 }

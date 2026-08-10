@@ -61,7 +61,7 @@ pub async fn handshake(
     let hello_command = ToClientCommand::Hello(Box::new(server_to_client::HelloSpec {
         serialization_version: 29, // as per https://docs.rs/minetest-protocol/0.1.4/src/luanti_protocol/wire/types.rs.html#2256-2262
         compression_mode: 1,
-        protocol_version: 44,
+        protocol_version: 52,
         auth_mechs: types::AuthMechsBitset {
             legacy_password: false,
             srp: false,
