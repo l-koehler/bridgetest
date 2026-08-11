@@ -128,7 +128,7 @@ pub async fn refresh_inv(
     force_full: bool,
 ) {
     let mut to_update: Vec<(String, Vec<inventory::ItemStack>)> = vec![];
-    match mc_client.menu() {
+    match mc_client.menu().unwrap() {
         inventory::Menu::Player(serverside_inventory) => {
             // fields of the inventory needing a update
             to_update.push((

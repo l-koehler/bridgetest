@@ -9,7 +9,7 @@ parser = argparse.ArgumentParser(
     description="Generate bridgetest texture mappings",
     epilog="Do not move this program from its place in the repository!"
 )
-parser.add_argument('asset_root', help="Path to a unpacked Minecraft 26.1 client jar")
+parser.add_argument('asset_root', help="Path to a unpacked Minecraft 26.2 client jar")
 args = parser.parse_args()
 
 asset_root = Path(args.asset_root)

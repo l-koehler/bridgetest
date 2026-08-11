@@ -7,28 +7,28 @@ edition = "2024"
 
 [dependencies]
 # azalea is pretty unstable, update manually from time to time
-azalea = { git = "https://github.com/azalea-rs/azalea.git", rev = "615df92" }
-azalea-language = { git = "https://github.com/azalea-rs/azalea.git", rev = "615df92" }
+azalea = { git = "https://github.com/azalea-rs/azalea.git", rev = "6249c295d353b9b3ef68f665b311cba39211fd19" }
+azalea-language = { git = "https://github.com/azalea-rs/azalea.git", rev = "6249c295d353b9b3ef68f665b311cba39211fd19" }
 
 luanti-protocol = { git = "https://github.com/l-koehler/luanti-rs", branch = "update-52" }
 luanti-core     = { git = "https://github.com/l-koehler/luanti-rs", branch = "update-52" }
 # Has to match with whatever luanti-* uses
 glam = "0.32"
 
-chrono = "^0.4.42"
-config = "^0.15.18"
+chrono = "^0.4.45"
+config = "^0.15.25"
 dirs = "^6.0.0"
-reqwest = { version = "^0.12.24", features = ["blocking", "json"] }
-sha1 = "^0.10.6"
-tokio = "^1.48.0"
-rand = "0.8.5"
-tokio-stream = "^0.1.17"
+reqwest = { version = "^0.13.4", features = ["blocking", "json"] }
+sha1 = "^0.11.0"
+tokio = "^1.53.1"
+rand = "0.10.2"
+tokio-stream = "^0.1.19"
 bimap = "^0.6.3"
 minecraft-data-rs = "^0.8.1"
-serde = { version = "^1.0.228", features = ["derive"] }
-serde_json = "^1.0.145"
-log = "^0.4.28"
-env_logger = "^0.11.8"
-clap = "^4.5.51"
+serde = { version = "^1.0.229", features = ["derive"] }
+serde_json = "^1.0.151"
+log = "^0.4.33"
+env_logger = "^0.11.11"
+clap = "^4.6.6"
 # default includes aes-crypto and time
-zip = { version = "^6.0.0", default-features = false, features = ["deflate", "deflate64", "bzip2", "lzma", "ppmd", "xz", "zstd"] }
+zip = { version = "^8.6.0", default-features = false, features = ["deflate", "deflate64", "bzip2", "lzma", "ppmd", "xz", "zstd"] }

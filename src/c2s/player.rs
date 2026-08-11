@@ -138,10 +138,10 @@ fn entity_in_crosshair(candidate: (&Position, &Physics), line: (Vec3, Vec3)) -> 
 }
 
 pub fn attack_crosshair(mc_client: &mut Client) {
-    let line_origin = mc_client.eye_position();
+    let line_origin = mc_client.eye_position().unwrap();
 
     // convert view direction to radians
-    let look_direction = mc_client.direction();
+    let look_direction = mc_client.direction().unwrap();
     let yaw = utils::normalize_angle(look_direction.y_rot()) * (PI / 180.0);
     let pitch = utils::normalize_angle(look_direction.x_rot()) * (PI / 180.0);
 
@@ -161,7 +161,7 @@ pub fn attack_crosshair(mc_client: &mut Client) {
         .nearest_entity_by::<(&Position, &Physics), (Without<LocalEntity>, Without<Dead>)>(
             |e: (&Position, &Physics)| entity_in_crosshair(e.clone(), (line_origin, line_end)),
         );
-    if let Some(entity) = entity {
+    if let Ok(Some(entity)) = entity {
         mc_client.attack(entity.id())
     }
 }

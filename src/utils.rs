@@ -19,7 +19,7 @@ use luanti_core::ContentId;
 use luanti_core::MapNode;
 use minecraft_data_rs::models::version::Version;
 use minecraft_data_rs::{Api, api};
-use rand::Rng;
+use rand::RngExt;
 use s2c::media::LuantiTexture;
 use std::path::PathBuf;
 
@@ -268,7 +268,7 @@ pub fn get_colormap(texture: &LuantiTexture) -> Option<(u8, u8, u8)> {
 }
 
 pub fn get_block_at(mc_client: &mut Client, pos: &BlockPos) -> Option<BlockKind> {
-    let world_lock = mc_client.world();
+    let world_lock = mc_client.world().unwrap();
     let world = world_lock.read();
     let state = world.get_block_state(*pos);
     if let Some(state_u) = state {
@@ -279,8 +279,8 @@ pub fn get_block_at(mc_client: &mut Client, pos: &BlockPos) -> Option<BlockKind>
 }
 
 pub fn get_random_username() -> String {
-    let hs_name = String::from(settings::HS_NAMES[rand::thread_rng().gen_range(0..26)]);
-    format!("{}{:0>3}", hs_name, rand::thread_rng().gen_range(0..1000))
+    let hs_name = String::from(settings::HS_NAMES[rand::rng().random_range(0..26)]);
+    format!("{}{:0>3}", hs_name, rand::rng().random_range(0..1000))
 }
 
 pub fn find_suffix_match(dir: &PathBuf, suffix: &str) -> Option<PathBuf> {

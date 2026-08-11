@@ -107,7 +107,7 @@ pub async fn tick(
     proxy_state.entities.entities_update_scheduled.clear();
 
     // sync air supply to client
-    let air_supply = mc_client.component::<metadata::AirSupply>().clone();
+    let air_supply = mc_client.component::<metadata::AirSupply>().unwrap().clone();
     // format of air_supply: 0 - 299
     // 0 -> 0 bubbles displayed
     // 299 -> 20 bubbles
@@ -123,7 +123,7 @@ pub async fn tick(
     };
 
     // check for sprinting/sneaking, change client movement speed if needed
-    let sprinting = *mc_client.component::<metadata::Sprinting>();
+    let sprinting = *mc_client.component::<metadata::Sprinting>().unwrap();
     if sprinting.0 && proxy_state.player.is_sneaking {
         proxy_state.player.is_sneaking = false
     }

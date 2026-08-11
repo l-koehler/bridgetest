@@ -52,7 +52,7 @@
       "east": "./block/stripped_acacia_log.png",
       "west": "./block/stripped_acacia_log.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_37b48d03"
   },
   "minecraft:acacia_leaves": {
     "textures": {
@@ -129,7 +129,7 @@
       "east": "./block/acacia_planks.png",
       "west": "./block/acacia_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_62b0ca57"
   },
   "minecraft:acacia_slab": {
     "textures": {
@@ -173,7 +173,7 @@
       "east": "./block/stripped_acacia_log.png",
       "west": "./block/stripped_acacia_log.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_e145b601"
   },
   "minecraft:acacia_wall_sign": {
     "textures": {
@@ -184,7 +184,7 @@
       "east": "./block/acacia_planks.png",
       "west": "./block/acacia_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_517c7d2c"
   },
   "minecraft:acacia_wood": {
     "textures": {
@@ -448,7 +448,7 @@
       "east": "./block/bamboo_planks.png",
       "west": "./block/bamboo_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_37b48d03"
   },
   "minecraft:bamboo_mosaic": {
     "textures": {
@@ -536,7 +536,7 @@
       "east": "./block/bamboo_planks.png",
       "west": "./block/bamboo_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_62b0ca57"
   },
   "minecraft:bamboo_slab": {
     "textures": {
@@ -580,7 +580,7 @@
       "east": "./block/bamboo_planks.png",
       "west": "./block/bamboo_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_e145b601"
   },
   "minecraft:bamboo_wall_sign": {
     "textures": {
@@ -591,7 +591,7 @@
       "east": "./block/bamboo_planks.png",
       "west": "./block/bamboo_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_517c7d2c"
   },
   "minecraft:barrel": {
     "textures": {
@@ -767,7 +767,7 @@
       "east": "./block/stripped_birch_log.png",
       "west": "./block/stripped_birch_log.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_37b48d03"
   },
   "minecraft:birch_leaves": {
     "textures": {
@@ -844,7 +844,7 @@
       "east": "./block/birch_planks.png",
       "west": "./block/birch_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_62b0ca57"
   },
   "minecraft:birch_slab": {
     "textures": {
@@ -888,7 +888,7 @@
       "east": "./block/stripped_birch_log.png",
       "west": "./block/stripped_birch_log.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_e145b601"
   },
   "minecraft:birch_wall_sign": {
     "textures": {
@@ -899,7 +899,7 @@
       "east": "./block/birch_planks.png",
       "west": "./block/birch_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_517c7d2c"
   },
   "minecraft:birch_wood": {
     "textures": {
@@ -925,14 +925,14 @@
   },
   "minecraft:black_bed": {
     "textures": {
-      "up": "./block/oak_planks.png",
-      "down": "./block/oak_planks.png",
+      "up": "./block/black_bed_foot_up.png",
+      "down": "./block/bed_down.png",
       "north": "./block/oak_planks.png",
-      "south": "./block/oak_planks.png",
-      "east": "./block/oak_planks.png",
-      "west": "./block/oak_planks.png"
+      "south": "./block/black_bed_foot_south.png",
+      "east": "./block/black_bed_foot_east.png",
+      "west": "./block/black_bed_foot_west.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_6f194ac5"
   },
   "minecraft:black_candle": {
     "textures": {
@@ -1134,14 +1134,14 @@
   },
   "minecraft:blue_bed": {
     "textures": {
-      "up": "./block/oak_planks.png",
-      "down": "./block/oak_planks.png",
+      "up": "./block/blue_bed_foot_up.png",
+      "down": "./block/bed_down.png",
       "north": "./block/oak_planks.png",
-      "south": "./block/oak_planks.png",
-      "east": "./block/oak_planks.png",
-      "west": "./block/oak_planks.png"
+      "south": "./block/blue_bed_foot_south.png",
+      "east": "./block/blue_bed_foot_east.png",
+      "west": "./block/blue_bed_foot_west.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_6f194ac5"
   },
   "minecraft:blue_candle": {
     "textures": {
@@ -1431,14 +1431,14 @@
   },
   "minecraft:brown_bed": {
     "textures": {
-      "up": "./block/oak_planks.png",
-      "down": "./block/oak_planks.png",
+      "up": "./block/brown_bed_foot_up.png",
+      "down": "./block/bed_down.png",
       "north": "./block/oak_planks.png",
-      "south": "./block/oak_planks.png",
-      "east": "./block/oak_planks.png",
-      "west": "./block/oak_planks.png"
+      "south": "./block/brown_bed_foot_south.png",
+      "east": "./block/brown_bed_foot_east.png",
+      "west": "./block/brown_bed_foot_west.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_6f194ac5"
   },
   "minecraft:brown_candle": {
     "textures": {
@@ -1900,7 +1900,7 @@
       "east": "./block/stripped_cherry_log.png",
       "west": "./block/stripped_cherry_log.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_37b48d03"
   },
   "minecraft:cherry_leaves": {
     "textures": {
@@ -1977,7 +1977,7 @@
       "east": "./block/cherry_planks.png",
       "west": "./block/cherry_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_62b0ca57"
   },
   "minecraft:cherry_slab": {
     "textures": {
@@ -2021,7 +2021,7 @@
       "east": "./block/stripped_cherry_log.png",
       "west": "./block/stripped_cherry_log.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_e145b601"
   },
   "minecraft:cherry_wall_sign": {
     "textures": {
@@ -2032,7 +2032,7 @@
       "east": "./block/cherry_planks.png",
       "west": "./block/cherry_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_517c7d2c"
   },
   "minecraft:cherry_wood": {
     "textures": {
@@ -2075,6 +2075,17 @@
       "south": "block/chiseled_bookshelf_side.png",
       "east": "block/chiseled_bookshelf_side.png",
       "west": "block/chiseled_bookshelf_side.png"
+    },
+    "drawtype": "full"
+  },
+  "minecraft:chiseled_cinnabar": {
+    "textures": {
+      "up": "./block/chiseled_cinnabar.png",
+      "down": "./block/chiseled_cinnabar.png",
+      "north": "./block/chiseled_cinnabar.png",
+      "south": "./block/chiseled_cinnabar.png",
+      "east": "./block/chiseled_cinnabar.png",
+      "west": "./block/chiseled_cinnabar.png"
     },
     "drawtype": "full"
   },
@@ -2177,6 +2188,17 @@
     },
     "drawtype": "full"
   },
+  "minecraft:chiseled_sulfur": {
+    "textures": {
+      "up": "./block/chiseled_sulfur.png",
+      "down": "./block/chiseled_sulfur.png",
+      "north": "./block/chiseled_sulfur.png",
+      "south": "./block/chiseled_sulfur.png",
+      "east": "./block/chiseled_sulfur.png",
+      "west": "./block/chiseled_sulfur.png"
+    },
+    "drawtype": "full"
+  },
   "minecraft:chiseled_tuff": {
     "textures": {
       "up": "./block/chiseled_tuff_top.png",
@@ -2220,6 +2242,94 @@
       "west": "block/chorus_plant.png"
     },
     "drawtype": "NB_6b63e855"
+  },
+  "minecraft:cinnabar": {
+    "textures": {
+      "up": "./block/cinnabar.png",
+      "down": "./block/cinnabar.png",
+      "north": "./block/cinnabar.png",
+      "south": "./block/cinnabar.png",
+      "east": "./block/cinnabar.png",
+      "west": "./block/cinnabar.png"
+    },
+    "drawtype": "full"
+  },
+  "minecraft:cinnabar_brick_slab": {
+    "textures": {
+      "up": "./block/cinnabar_bricks.png",
+      "down": "./block/cinnabar_bricks.png",
+      "north": "./block/cinnabar_bricks.png",
+      "south": "./block/cinnabar_bricks.png",
+      "east": "./block/cinnabar_bricks.png",
+      "west": "./block/cinnabar_bricks.png"
+    },
+    "drawtype": "NB_6a753e90"
+  },
+  "minecraft:cinnabar_brick_stairs": {
+    "textures": {
+      "up": "./block/cinnabar_bricks.png",
+      "down": "./block/cinnabar_bricks.png",
+      "north": "./block/cinnabar_bricks.png",
+      "south": "./block/cinnabar_bricks.png",
+      "east": "./block/cinnabar_bricks.png",
+      "west": "./block/cinnabar_bricks.png"
+    },
+    "drawtype": "NB_2a103b85"
+  },
+  "minecraft:cinnabar_brick_wall": {
+    "textures": {
+      "up": "./block/cinnabar_bricks.png",
+      "down": "./block/cinnabar_bricks.png",
+      "north": "./block/cinnabar_bricks.png",
+      "south": "./block/cinnabar_bricks.png",
+      "east": "./block/cinnabar_bricks.png",
+      "west": "./block/cinnabar_bricks.png"
+    },
+    "drawtype": "NB_dbf938b5"
+  },
+  "minecraft:cinnabar_bricks": {
+    "textures": {
+      "up": "./block/cinnabar_bricks.png",
+      "down": "./block/cinnabar_bricks.png",
+      "north": "./block/cinnabar_bricks.png",
+      "south": "./block/cinnabar_bricks.png",
+      "east": "./block/cinnabar_bricks.png",
+      "west": "./block/cinnabar_bricks.png"
+    },
+    "drawtype": "full"
+  },
+  "minecraft:cinnabar_slab": {
+    "textures": {
+      "up": "./block/cinnabar.png",
+      "down": "./block/cinnabar.png",
+      "north": "./block/cinnabar.png",
+      "south": "./block/cinnabar.png",
+      "east": "./block/cinnabar.png",
+      "west": "./block/cinnabar.png"
+    },
+    "drawtype": "NB_6a753e90"
+  },
+  "minecraft:cinnabar_stairs": {
+    "textures": {
+      "up": "./block/cinnabar.png",
+      "down": "./block/cinnabar.png",
+      "north": "./block/cinnabar.png",
+      "south": "./block/cinnabar.png",
+      "east": "./block/cinnabar.png",
+      "west": "./block/cinnabar.png"
+    },
+    "drawtype": "NB_2a103b85"
+  },
+  "minecraft:cinnabar_wall": {
+    "textures": {
+      "up": "./block/cinnabar.png",
+      "down": "./block/cinnabar.png",
+      "north": "./block/cinnabar.png",
+      "south": "./block/cinnabar.png",
+      "east": "./block/cinnabar.png",
+      "west": "./block/cinnabar.png"
+    },
+    "drawtype": "NB_dbf938b5"
   },
   "minecraft:clay": {
     "textures": {
@@ -2758,7 +2868,7 @@
       "east": "./block/stripped_crimson_stem.png",
       "west": "./block/stripped_crimson_stem.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_37b48d03"
   },
   "minecraft:crimson_hyphae": {
     "textures": {
@@ -2835,7 +2945,7 @@
       "east": "./block/crimson_planks.png",
       "west": "./block/crimson_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_62b0ca57"
   },
   "minecraft:crimson_slab": {
     "textures": {
@@ -2890,7 +3000,7 @@
       "east": "./block/stripped_crimson_stem.png",
       "west": "./block/stripped_crimson_stem.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_e145b601"
   },
   "minecraft:crimson_wall_sign": {
     "textures": {
@@ -2901,7 +3011,7 @@
       "east": "./block/crimson_planks.png",
       "west": "./block/crimson_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_517c7d2c"
   },
   "minecraft:crying_obsidian": {
     "textures": {
@@ -3004,14 +3114,14 @@
   },
   "minecraft:cyan_bed": {
     "textures": {
-      "up": "./block/oak_planks.png",
-      "down": "./block/oak_planks.png",
+      "up": "./block/cyan_bed_foot_up.png",
+      "down": "./block/bed_down.png",
       "north": "./block/oak_planks.png",
-      "south": "./block/oak_planks.png",
-      "east": "./block/oak_planks.png",
-      "west": "./block/oak_planks.png"
+      "south": "./block/cyan_bed_foot_south.png",
+      "east": "./block/cyan_bed_foot_east.png",
+      "west": "./block/cyan_bed_foot_west.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_6f194ac5"
   },
   "minecraft:cyan_candle": {
     "textures": {
@@ -3220,7 +3330,7 @@
       "east": "./block/stripped_dark_oak_log.png",
       "west": "./block/stripped_dark_oak_log.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_37b48d03"
   },
   "minecraft:dark_oak_leaves": {
     "textures": {
@@ -3297,7 +3407,7 @@
       "east": "./block/dark_oak_planks.png",
       "west": "./block/dark_oak_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_62b0ca57"
   },
   "minecraft:dark_oak_slab": {
     "textures": {
@@ -3341,7 +3451,7 @@
       "east": "./block/stripped_dark_oak_log.png",
       "west": "./block/stripped_dark_oak_log.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_e145b601"
   },
   "minecraft:dark_oak_wall_sign": {
     "textures": {
@@ -3352,7 +3462,7 @@
       "east": "./block/dark_oak_planks.png",
       "west": "./block/dark_oak_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_517c7d2c"
   },
   "minecraft:dark_oak_wood": {
     "textures": {
@@ -4676,14 +4786,14 @@
   },
   "minecraft:gray_bed": {
     "textures": {
-      "up": "./block/oak_planks.png",
-      "down": "./block/oak_planks.png",
+      "up": "./block/gray_bed_foot_up.png",
+      "down": "./block/bed_down.png",
       "north": "./block/oak_planks.png",
-      "south": "./block/oak_planks.png",
-      "east": "./block/oak_planks.png",
-      "west": "./block/oak_planks.png"
+      "south": "./block/gray_bed_foot_south.png",
+      "east": "./block/gray_bed_foot_east.png",
+      "west": "./block/gray_bed_foot_west.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_6f194ac5"
   },
   "minecraft:gray_candle": {
     "textures": {
@@ -4830,14 +4940,14 @@
   },
   "minecraft:green_bed": {
     "textures": {
-      "up": "./block/oak_planks.png",
-      "down": "./block/oak_planks.png",
+      "up": "./block/green_bed_foot_up.png",
+      "down": "./block/bed_down.png",
       "north": "./block/oak_planks.png",
-      "south": "./block/oak_planks.png",
-      "east": "./block/oak_planks.png",
-      "west": "./block/oak_planks.png"
+      "south": "./block/green_bed_foot_south.png",
+      "east": "./block/green_bed_foot_east.png",
+      "west": "./block/green_bed_foot_west.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_6f194ac5"
   },
   "minecraft:green_candle": {
     "textures": {
@@ -5354,7 +5464,7 @@
       "east": "./block/stripped_jungle_log.png",
       "west": "./block/stripped_jungle_log.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_37b48d03"
   },
   "minecraft:jungle_leaves": {
     "textures": {
@@ -5431,7 +5541,7 @@
       "east": "./block/jungle_planks.png",
       "west": "./block/jungle_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_62b0ca57"
   },
   "minecraft:jungle_slab": {
     "textures": {
@@ -5475,7 +5585,7 @@
       "east": "./block/stripped_jungle_log.png",
       "west": "./block/stripped_jungle_log.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_e145b601"
   },
   "minecraft:jungle_wall_sign": {
     "textures": {
@@ -5486,7 +5596,7 @@
       "east": "./block/jungle_planks.png",
       "west": "./block/jungle_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_517c7d2c"
   },
   "minecraft:jungle_wood": {
     "textures": {
@@ -5666,14 +5776,14 @@
   },
   "minecraft:light_blue_bed": {
     "textures": {
-      "up": "./block/oak_planks.png",
-      "down": "./block/oak_planks.png",
+      "up": "./block/light_blue_bed_foot_up.png",
+      "down": "./block/bed_down.png",
       "north": "./block/oak_planks.png",
-      "south": "./block/oak_planks.png",
-      "east": "./block/oak_planks.png",
-      "west": "./block/oak_planks.png"
+      "south": "./block/light_blue_bed_foot_south.png",
+      "east": "./block/light_blue_bed_foot_east.png",
+      "west": "./block/light_blue_bed_foot_west.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_6f194ac5"
   },
   "minecraft:light_blue_candle": {
     "textures": {
@@ -5820,14 +5930,14 @@
   },
   "minecraft:light_gray_bed": {
     "textures": {
-      "up": "./block/oak_planks.png",
-      "down": "./block/oak_planks.png",
+      "up": "./block/light_gray_bed_foot_up.png",
+      "down": "./block/bed_down.png",
       "north": "./block/oak_planks.png",
-      "south": "./block/oak_planks.png",
-      "east": "./block/oak_planks.png",
-      "west": "./block/oak_planks.png"
+      "south": "./block/light_gray_bed_foot_south.png",
+      "east": "./block/light_gray_bed_foot_east.png",
+      "west": "./block/light_gray_bed_foot_west.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_6f194ac5"
   },
   "minecraft:light_gray_candle": {
     "textures": {
@@ -6029,14 +6139,14 @@
   },
   "minecraft:lime_bed": {
     "textures": {
-      "up": "./block/oak_planks.png",
-      "down": "./block/oak_planks.png",
+      "up": "./block/lime_bed_foot_up.png",
+      "down": "./block/bed_down.png",
       "north": "./block/oak_planks.png",
-      "south": "./block/oak_planks.png",
-      "east": "./block/oak_planks.png",
-      "west": "./block/oak_planks.png"
+      "south": "./block/lime_bed_foot_south.png",
+      "east": "./block/lime_bed_foot_east.png",
+      "west": "./block/lime_bed_foot_west.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_6f194ac5"
   },
   "minecraft:lime_candle": {
     "textures": {
@@ -6205,14 +6315,14 @@
   },
   "minecraft:magenta_bed": {
     "textures": {
-      "up": "./block/oak_planks.png",
-      "down": "./block/oak_planks.png",
+      "up": "./block/magenta_bed_foot_up.png",
+      "down": "./block/bed_down.png",
       "north": "./block/oak_planks.png",
-      "south": "./block/oak_planks.png",
-      "east": "./block/oak_planks.png",
-      "west": "./block/oak_planks.png"
+      "south": "./block/magenta_bed_foot_south.png",
+      "east": "./block/magenta_bed_foot_east.png",
+      "west": "./block/magenta_bed_foot_west.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_6f194ac5"
   },
   "minecraft:magenta_candle": {
     "textures": {
@@ -6410,7 +6520,7 @@
       "east": "./block/stripped_mangrove_log.png",
       "west": "./block/stripped_mangrove_log.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_37b48d03"
   },
   "minecraft:mangrove_leaves": {
     "textures": {
@@ -6498,7 +6608,7 @@
       "east": "./block/mangrove_planks.png",
       "west": "./block/mangrove_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_62b0ca57"
   },
   "minecraft:mangrove_slab": {
     "textures": {
@@ -6542,7 +6652,7 @@
       "east": "./block/stripped_mangrove_log.png",
       "west": "./block/stripped_mangrove_log.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_e145b601"
   },
   "minecraft:mangrove_wall_sign": {
     "textures": {
@@ -6553,7 +6663,7 @@
       "east": "./block/mangrove_planks.png",
       "west": "./block/mangrove_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_517c7d2c"
   },
   "minecraft:mangrove_wood": {
     "textures": {
@@ -7015,7 +7125,7 @@
       "east": "./block/stripped_oak_log.png",
       "west": "./block/stripped_oak_log.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_37b48d03"
   },
   "minecraft:oak_leaves": {
     "textures": {
@@ -7092,7 +7202,7 @@
       "east": "./block/oak_planks.png",
       "west": "./block/oak_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_62b0ca57"
   },
   "minecraft:oak_slab": {
     "textures": {
@@ -7136,7 +7246,7 @@
       "east": "./block/stripped_oak_log.png",
       "west": "./block/stripped_oak_log.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_e145b601"
   },
   "minecraft:oak_wall_sign": {
     "textures": {
@@ -7147,7 +7257,7 @@
       "east": "./block/oak_planks.png",
       "west": "./block/oak_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_517c7d2c"
   },
   "minecraft:oak_wood": {
     "textures": {
@@ -7217,14 +7327,14 @@
   },
   "minecraft:orange_bed": {
     "textures": {
-      "up": "./block/oak_planks.png",
-      "down": "./block/oak_planks.png",
+      "up": "./block/orange_bed_foot_up.png",
+      "down": "./block/bed_down.png",
       "north": "./block/oak_planks.png",
-      "south": "./block/oak_planks.png",
-      "east": "./block/oak_planks.png",
-      "west": "./block/oak_planks.png"
+      "south": "./block/orange_bed_foot_south.png",
+      "east": "./block/orange_bed_foot_east.png",
+      "west": "./block/orange_bed_foot_west.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_6f194ac5"
   },
   "minecraft:orange_candle": {
     "textures": {
@@ -7653,7 +7763,7 @@
       "east": "./block/stripped_pale_oak_log.png",
       "west": "./block/stripped_pale_oak_log.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_37b48d03"
   },
   "minecraft:pale_oak_leaves": {
     "textures": {
@@ -7730,7 +7840,7 @@
       "east": "./block/pale_oak_planks.png",
       "west": "./block/pale_oak_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_62b0ca57"
   },
   "minecraft:pale_oak_slab": {
     "textures": {
@@ -7774,7 +7884,7 @@
       "east": "./block/stripped_pale_oak_log.png",
       "west": "./block/stripped_pale_oak_log.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_e145b601"
   },
   "minecraft:pale_oak_wall_sign": {
     "textures": {
@@ -7785,7 +7895,7 @@
       "east": "./block/pale_oak_planks.png",
       "west": "./block/pale_oak_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_517c7d2c"
   },
   "minecraft:pale_oak_wood": {
     "textures": {
@@ -7866,14 +7976,14 @@
   },
   "minecraft:pink_bed": {
     "textures": {
-      "up": "./block/oak_planks.png",
-      "down": "./block/oak_planks.png",
+      "up": "./block/pink_bed_foot_up.png",
+      "down": "./block/bed_down.png",
       "north": "./block/oak_planks.png",
-      "south": "./block/oak_planks.png",
-      "east": "./block/oak_planks.png",
-      "west": "./block/oak_planks.png"
+      "south": "./block/pink_bed_foot_south.png",
+      "east": "./block/pink_bed_foot_east.png",
+      "west": "./block/pink_bed_foot_west.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_6f194ac5"
   },
   "minecraft:pink_candle": {
     "textures": {
@@ -8271,6 +8381,50 @@
     },
     "drawtype": "NB_dbf938b5"
   },
+  "minecraft:polished_cinnabar": {
+    "textures": {
+      "up": "./block/polished_cinnabar.png",
+      "down": "./block/polished_cinnabar.png",
+      "north": "./block/polished_cinnabar.png",
+      "south": "./block/polished_cinnabar.png",
+      "east": "./block/polished_cinnabar.png",
+      "west": "./block/polished_cinnabar.png"
+    },
+    "drawtype": "full"
+  },
+  "minecraft:polished_cinnabar_slab": {
+    "textures": {
+      "up": "./block/polished_cinnabar.png",
+      "down": "./block/polished_cinnabar.png",
+      "north": "./block/polished_cinnabar.png",
+      "south": "./block/polished_cinnabar.png",
+      "east": "./block/polished_cinnabar.png",
+      "west": "./block/polished_cinnabar.png"
+    },
+    "drawtype": "NB_6a753e90"
+  },
+  "minecraft:polished_cinnabar_stairs": {
+    "textures": {
+      "up": "./block/polished_cinnabar.png",
+      "down": "./block/polished_cinnabar.png",
+      "north": "./block/polished_cinnabar.png",
+      "south": "./block/polished_cinnabar.png",
+      "east": "./block/polished_cinnabar.png",
+      "west": "./block/polished_cinnabar.png"
+    },
+    "drawtype": "NB_2a103b85"
+  },
+  "minecraft:polished_cinnabar_wall": {
+    "textures": {
+      "up": "./block/polished_cinnabar.png",
+      "down": "./block/polished_cinnabar.png",
+      "north": "./block/polished_cinnabar.png",
+      "south": "./block/polished_cinnabar.png",
+      "east": "./block/polished_cinnabar.png",
+      "west": "./block/polished_cinnabar.png"
+    },
+    "drawtype": "NB_dbf938b5"
+  },
   "minecraft:polished_deepslate": {
     "textures": {
       "up": "./block/polished_deepslate.png",
@@ -8381,6 +8535,50 @@
     },
     "drawtype": "NB_2a103b85"
   },
+  "minecraft:polished_sulfur": {
+    "textures": {
+      "up": "./block/polished_sulfur.png",
+      "down": "./block/polished_sulfur.png",
+      "north": "./block/polished_sulfur.png",
+      "south": "./block/polished_sulfur.png",
+      "east": "./block/polished_sulfur.png",
+      "west": "./block/polished_sulfur.png"
+    },
+    "drawtype": "full"
+  },
+  "minecraft:polished_sulfur_slab": {
+    "textures": {
+      "up": "./block/polished_sulfur.png",
+      "down": "./block/polished_sulfur.png",
+      "north": "./block/polished_sulfur.png",
+      "south": "./block/polished_sulfur.png",
+      "east": "./block/polished_sulfur.png",
+      "west": "./block/polished_sulfur.png"
+    },
+    "drawtype": "NB_6a753e90"
+  },
+  "minecraft:polished_sulfur_stairs": {
+    "textures": {
+      "up": "./block/polished_sulfur.png",
+      "down": "./block/polished_sulfur.png",
+      "north": "./block/polished_sulfur.png",
+      "south": "./block/polished_sulfur.png",
+      "east": "./block/polished_sulfur.png",
+      "west": "./block/polished_sulfur.png"
+    },
+    "drawtype": "NB_2a103b85"
+  },
+  "minecraft:polished_sulfur_wall": {
+    "textures": {
+      "up": "./block/polished_sulfur.png",
+      "down": "./block/polished_sulfur.png",
+      "north": "./block/polished_sulfur.png",
+      "south": "./block/polished_sulfur.png",
+      "east": "./block/polished_sulfur.png",
+      "west": "./block/polished_sulfur.png"
+    },
+    "drawtype": "NB_dbf938b5"
+  },
   "minecraft:polished_tuff": {
     "textures": {
       "up": "./block/polished_tuff.png",
@@ -8446,6 +8644,17 @@
       "west": "./block/potatoes_stage0.png"
     },
     "drawtype": "NB_57d4a3bc"
+  },
+  "minecraft:potent_sulfur": {
+    "textures": {
+      "up": "./block/potent_sulfur.png",
+      "down": "./block/potent_sulfur.png",
+      "north": "./block/potent_sulfur.png",
+      "south": "./block/potent_sulfur.png",
+      "east": "./block/potent_sulfur.png",
+      "west": "./block/potent_sulfur.png"
+    },
+    "drawtype": "full"
   },
   "minecraft:potted_acacia_sapling": {
     "textures": {
@@ -9010,14 +9219,14 @@
   },
   "minecraft:purple_bed": {
     "textures": {
-      "up": "./block/oak_planks.png",
-      "down": "./block/oak_planks.png",
+      "up": "./block/purple_bed_foot_up.png",
+      "down": "./block/bed_down.png",
       "north": "./block/oak_planks.png",
-      "south": "./block/oak_planks.png",
-      "east": "./block/oak_planks.png",
-      "west": "./block/oak_planks.png"
+      "south": "./block/purple_bed_foot_south.png",
+      "east": "./block/purple_bed_foot_east.png",
+      "west": "./block/purple_bed_foot_west.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_6f194ac5"
   },
   "minecraft:purple_candle": {
     "textures": {
@@ -9166,10 +9375,10 @@
     "textures": {
       "up": "./block/purpur_pillar_top.png",
       "down": "./block/purpur_pillar_top.png",
-      "north": "./block/purpur_pillar.png",
-      "south": "./block/purpur_pillar.png",
-      "east": "./block/purpur_pillar.png",
-      "west": "./block/purpur_pillar.png"
+      "north": "./block/purpur_pillar_side.png",
+      "south": "./block/purpur_pillar_side.png",
+      "east": "./block/purpur_pillar_side.png",
+      "west": "./block/purpur_pillar_side.png"
     },
     "drawtype": "full"
   },
@@ -9221,10 +9430,10 @@
     "textures": {
       "up": "./block/quartz_pillar_top.png",
       "down": "./block/quartz_pillar_top.png",
-      "north": "./block/quartz_pillar.png",
-      "south": "./block/quartz_pillar.png",
-      "east": "./block/quartz_pillar.png",
-      "west": "./block/quartz_pillar.png"
+      "north": "./block/quartz_pillar_side.png",
+      "south": "./block/quartz_pillar_side.png",
+      "east": "./block/quartz_pillar_side.png",
+      "west": "./block/quartz_pillar_side.png"
     },
     "drawtype": "full"
   },
@@ -9307,14 +9516,14 @@
   },
   "minecraft:red_bed": {
     "textures": {
-      "up": "./block/oak_planks.png",
-      "down": "./block/oak_planks.png",
+      "up": "./block/red_bed_foot_up.png",
+      "down": "./block/bed_down.png",
       "north": "./block/oak_planks.png",
-      "south": "./block/oak_planks.png",
-      "east": "./block/oak_planks.png",
-      "west": "./block/oak_planks.png"
+      "south": "./block/red_bed_foot_south.png",
+      "east": "./block/red_bed_foot_east.png",
+      "west": "./block/red_bed_foot_west.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_6f194ac5"
   },
   "minecraft:red_candle": {
     "textures": {
@@ -10381,7 +10590,7 @@
       "east": "./block/stripped_spruce_log.png",
       "west": "./block/stripped_spruce_log.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_37b48d03"
   },
   "minecraft:spruce_leaves": {
     "textures": {
@@ -10458,7 +10667,7 @@
       "east": "./block/spruce_planks.png",
       "west": "./block/spruce_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_62b0ca57"
   },
   "minecraft:spruce_slab": {
     "textures": {
@@ -10502,7 +10711,7 @@
       "east": "./block/stripped_spruce_log.png",
       "west": "./block/stripped_spruce_log.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_e145b601"
   },
   "minecraft:spruce_wall_sign": {
     "textures": {
@@ -10513,7 +10722,7 @@
       "east": "./block/spruce_planks.png",
       "west": "./block/spruce_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_517c7d2c"
   },
   "minecraft:spruce_wood": {
     "textures": {
@@ -10932,6 +11141,105 @@
       "west": "./block/sugar_cane.png"
     },
     "drawtype": "flower"
+  },
+  "minecraft:sulfur": {
+    "textures": {
+      "up": "./block/sulfur.png",
+      "down": "./block/sulfur.png",
+      "north": "./block/sulfur.png",
+      "south": "./block/sulfur.png",
+      "east": "./block/sulfur.png",
+      "west": "./block/sulfur.png"
+    },
+    "drawtype": "full"
+  },
+  "minecraft:sulfur_brick_slab": {
+    "textures": {
+      "up": "./block/sulfur_bricks.png",
+      "down": "./block/sulfur_bricks.png",
+      "north": "./block/sulfur_bricks.png",
+      "south": "./block/sulfur_bricks.png",
+      "east": "./block/sulfur_bricks.png",
+      "west": "./block/sulfur_bricks.png"
+    },
+    "drawtype": "NB_6a753e90"
+  },
+  "minecraft:sulfur_brick_stairs": {
+    "textures": {
+      "up": "./block/sulfur_bricks.png",
+      "down": "./block/sulfur_bricks.png",
+      "north": "./block/sulfur_bricks.png",
+      "south": "./block/sulfur_bricks.png",
+      "east": "./block/sulfur_bricks.png",
+      "west": "./block/sulfur_bricks.png"
+    },
+    "drawtype": "NB_2a103b85"
+  },
+  "minecraft:sulfur_brick_wall": {
+    "textures": {
+      "up": "./block/sulfur_bricks.png",
+      "down": "./block/sulfur_bricks.png",
+      "north": "./block/sulfur_bricks.png",
+      "south": "./block/sulfur_bricks.png",
+      "east": "./block/sulfur_bricks.png",
+      "west": "./block/sulfur_bricks.png"
+    },
+    "drawtype": "NB_dbf938b5"
+  },
+  "minecraft:sulfur_bricks": {
+    "textures": {
+      "up": "./block/sulfur_bricks.png",
+      "down": "./block/sulfur_bricks.png",
+      "north": "./block/sulfur_bricks.png",
+      "south": "./block/sulfur_bricks.png",
+      "east": "./block/sulfur_bricks.png",
+      "west": "./block/sulfur_bricks.png"
+    },
+    "drawtype": "full"
+  },
+  "minecraft:sulfur_slab": {
+    "textures": {
+      "up": "./block/sulfur.png",
+      "down": "./block/sulfur.png",
+      "north": "./block/sulfur.png",
+      "south": "./block/sulfur.png",
+      "east": "./block/sulfur.png",
+      "west": "./block/sulfur.png"
+    },
+    "drawtype": "NB_6a753e90"
+  },
+  "minecraft:sulfur_spike": {
+    "textures": {
+      "up": "./block/sulfur_spike_down_base.png",
+      "down": "./block/sulfur_spike_down_base.png",
+      "north": "./block/sulfur_spike_down_base.png",
+      "south": "./block/sulfur_spike_down_base.png",
+      "east": "./block/sulfur_spike_down_base.png",
+      "west": "./block/sulfur_spike_down_base.png"
+    },
+    "drawtype": "flower"
+  },
+  "minecraft:sulfur_stairs": {
+    "textures": {
+      "up": "./block/sulfur.png",
+      "down": "./block/sulfur.png",
+      "north": "./block/sulfur.png",
+      "south": "./block/sulfur.png",
+      "east": "./block/sulfur.png",
+      "west": "./block/sulfur.png"
+    },
+    "drawtype": "NB_2a103b85"
+  },
+  "minecraft:sulfur_wall": {
+    "textures": {
+      "up": "./block/sulfur.png",
+      "down": "./block/sulfur.png",
+      "north": "./block/sulfur.png",
+      "south": "./block/sulfur.png",
+      "east": "./block/sulfur.png",
+      "west": "./block/sulfur.png"
+    },
+    "drawtype": "NB_dbf938b5"
   },
   "minecraft:sunflower": {
     "textures": {
@@ -11437,7 +11745,7 @@
       "east": "./block/stripped_warped_stem.png",
       "west": "./block/stripped_warped_stem.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_37b48d03"
   },
   "minecraft:warped_hyphae": {
     "textures": {
@@ -11514,7 +11822,7 @@
       "east": "./block/warped_planks.png",
       "west": "./block/warped_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_62b0ca57"
   },
   "minecraft:warped_slab": {
     "textures": {
@@ -11569,7 +11877,7 @@
       "east": "./block/stripped_warped_stem.png",
       "west": "./block/stripped_warped_stem.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_e145b601"
   },
   "minecraft:warped_wall_sign": {
     "textures": {
@@ -11580,7 +11888,7 @@
       "east": "./block/warped_planks.png",
       "west": "./block/warped_planks.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_517c7d2c"
   },
   "minecraft:warped_wart_block": {
     "textures": {
@@ -12497,14 +12805,14 @@
   },
   "minecraft:white_bed": {
     "textures": {
-      "up": "./block/oak_planks.png",
-      "down": "./block/oak_planks.png",
+      "up": "./block/white_bed_foot_up.png",
+      "down": "./block/bed_down.png",
       "north": "./block/oak_planks.png",
-      "south": "./block/oak_planks.png",
-      "east": "./block/oak_planks.png",
-      "west": "./block/oak_planks.png"
+      "south": "./block/white_bed_foot_south.png",
+      "east": "./block/white_bed_foot_east.png",
+      "west": "./block/white_bed_foot_west.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_6f194ac5"
   },
   "minecraft:white_candle": {
     "textures": {
@@ -12706,14 +13014,14 @@
   },
   "minecraft:yellow_bed": {
     "textures": {
-      "up": "./block/oak_planks.png",
-      "down": "./block/oak_planks.png",
+      "up": "./block/yellow_bed_foot_up.png",
+      "down": "./block/bed_down.png",
       "north": "./block/oak_planks.png",
-      "south": "./block/oak_planks.png",
-      "east": "./block/oak_planks.png",
-      "west": "./block/oak_planks.png"
+      "south": "./block/yellow_bed_foot_south.png",
+      "east": "./block/yellow_bed_foot_east.png",
+      "west": "./block/yellow_bed_foot_west.png"
     },
-    "drawtype": "full"
+    "drawtype": "NB_6f194ac5"
   },
   "minecraft:yellow_candle": {
     "textures": {

@@ -122,9 +122,9 @@ pub async fn death(
         });
     let setpos_packet = ToClientCommand::MovePlayer(Box::new(server_to_client::MovePlayerSpec {
         pos: v3f {
-            x: mc_client.position().x as f32,
-            y: mc_client.position().y as f32,
-            z: mc_client.position().z as f32,
+            x: mc_client.position().unwrap().x as f32,
+            y: mc_client.position().unwrap().y as f32,
+            z: mc_client.position().unwrap().z as f32,
         },
         pitch: 0.0,
         yaw: 0.0,
@@ -355,7 +355,7 @@ pub async fn sync_client_pos(
     conn: &mut LuantiConnection,
     player_state: &mut state::PlayerState,
 ) {
-    let vec_serverpos = mc_client.position();
+    let vec_serverpos = mc_client.position().unwrap();
     // some collision box weirdness on block edges
     // -0.5 fixes it, don't touch
     let serverpos = (

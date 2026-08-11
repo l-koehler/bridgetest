@@ -3,12 +3,13 @@
 **This program is unstable and a mess. Please read this section before using it.**  
 This program is supposed to let a unmodified [Luanti (Minetest)](https://www.luanti.org/) client connect to  
 a unmodified Minecraft (Java Edition) server.  
-The Minecraft server version needed is 26.1, use [ViaProxy](https://github.com/ViaVersion/ViaProxy) if you need another version.  
-Compile it using `cargo build --release`, then run `--help` for usage info.  
-Due to [luanti-rs](https://github.com/kawogi/luanti-rs), the supported/required Luanti version is 5.11.0.  
-Other versions should work if the protocol didn't change, try it if you need these.  
-Debug mode causes weird performance issues, don't use it.  
 
+The Minecraft server version needed is 26.2, use [ViaProxy](https://github.com/ViaVersion/ViaProxy) if you need another version.  
+The currently-supported Luanti protocol revision is 52 (corresponding to the git/development version as of 11-08-2026).  
+Consider checking out a commit from around there (`4f8b52c93f466344feda1cc07c9391d841a7fbb6` has been "tested") and using that.  
+
+Compile this program using `cargo build --release`, then run `--help` for usage info.  
+Debug mode causes weird performance issues, don't use it.  
 You need nightly Rust to build this and some dependencies (`rustup default nightly`).  
 You should follow the instructions below to install and configure the proxy.  
 
@@ -18,7 +19,7 @@ This program needs the minecraft textures.
 I won't bundle these due to copyright reasons, but you can get them:  
 
 * From the Minecraft client:  
-  * Get a minecraft jar file (should be something like `minecraft-26.1-client.jar`)  
+  * Get a minecraft jar file (should be something like `minecraft-26.2-client.jar`)  
   * Unpack it (jar files are glorified zip archives)  
   * Grab the folders in `assets/minecraft/textures/`  
 * or from the internet:  

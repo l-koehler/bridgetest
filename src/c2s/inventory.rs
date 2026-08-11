@@ -83,7 +83,7 @@ fn to_inv_index(mt_index: u16, mt_list: &str) -> u16 {
 pub fn drop_item(count: u16, from_list: String, from_i: i16, mc_client: &mut Client) {
     match from_list.as_str() {
         "container" => {
-            let handle = mc_client.get_inventory();
+            let handle = mc_client.get_inventory().unwrap();
             if handle.id() == 0 {
                 info!(
                     "[Minetest] Client attempted to drop items from a container while no container was opened"
@@ -107,7 +107,7 @@ pub fn drop_item(count: u16, from_list: String, from_i: i16, mc_client: &mut Cli
             }
         }
         "main" | "armor" | "offhand" | "craft" | "craftpreview" => {
-            let maybe_handle = mc_client.open_inventory();
+            let maybe_handle = mc_client.open_inventory().ok().flatten();
             if maybe_handle.is_none() {
                 info!(
                     "[Minetest] Client attempted to drop items from the inventory while a container was opened",
@@ -157,13 +157,13 @@ pub async fn move_item(
         // drop the handle, if we are dealing with containers we cannot use the 2x2 at the same time
         inventory_state.inventory_handle = None;
     } else {
-        let offset = mc_client.menu().player_slots_range().min().unwrap();
+        let offset = mc_client.menu().unwrap().player_slots_range().min().unwrap();
         // -9 to shift to main-only (to_inv_index includes armor, offhand and 2x2)
         index_from = (to_inv_index(from_i as u16, &from_list) - 9) + offset as u16;
         // hold handle in case we need the 2x2 grid
         // don't do that if a container is open
         if inventory_state.inventory_handle.is_none() {
-            if let Some(handle) = mc_client.open_inventory() {
+            if let Ok(Some(handle)) = mc_client.open_inventory() {
                 inventory_state.inventory_handle = Some(Arc::new(Mutex::new(handle)))
             }
         }
@@ -175,7 +175,7 @@ pub async fn move_item(
         return;
     };
     let click;
-    let menu = mc_client.menu();
+    let menu = mc_client.menu().unwrap();
     if menu.slot(index_from as usize).is_none() {
         // client tried to pick up empty slot
         return;
@@ -199,7 +199,7 @@ pub async fn move_item(
         index_to = to_i.unwrap() as u16;
         inventory_state.inventory_handle = None;
     } else {
-        let offset = mc_client.menu().player_slots_range().min().unwrap();
+        let offset = mc_client.menu().unwrap().player_slots_range().min().unwrap();
         index_to = (to_inv_index(to_i.unwrap() as u16, &to_list) - 9) + offset as u16;
     }
     debug!("Depositing item at index {}", index_to);

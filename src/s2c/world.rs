@@ -214,7 +214,7 @@ pub async fn section_block_update(
     } = packet;
     // the section we need to update is smaller than the entire array
     let mut nodearr: [BlockState; 4096] = [BlockState::AIR; 4096];
-    let world_lock = mc_client.world();
+    let world_lock = mc_client.world().unwrap();
     let world = world_lock.read();
     for z in 0..16 {
         for y in 0..16 {

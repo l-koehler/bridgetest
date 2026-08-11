@@ -311,7 +311,7 @@ pub async fn entity_event(
         entity_id,
         event_id,
     } = packet_data;
-    let Some(entity) = mc_client.entity_by_minecraft_id(*entity_id) else {
+    let Ok(Some(entity)) = mc_client.entity_by_minecraft_id(*entity_id) else {
         warn!("Got S2C EntityEvent for unknown ID, skipping!");
         return;
     };
@@ -400,7 +400,7 @@ pub async fn set_entity_data(
         return;
     };
 
-    let Some(entity) = mc_client.entity_by_minecraft_id(*id) else {
+    let Ok(Some(entity)) = mc_client.entity_by_minecraft_id(*id) else {
         warn!("Got S2C SetEntityData for unknown ID, skipping!");
         return;
     };
@@ -483,7 +483,7 @@ pub async fn update_mob_effect(
             MobEffect::Hunger => {
                 s2c::player::edit_foodbar(
                     s2c::defs::FoodDisplay::Hunger,
-                    mc_client.hunger().food,
+                    mc_client.hunger().unwrap().food,
                     conn,
                 )
                 .await
@@ -519,7 +519,7 @@ pub async fn remove_mob_effect(
             MobEffect::Hunger => {
                 s2c::player::edit_foodbar(
                     s2c::defs::FoodDisplay::Normal,
-                    mc_client.hunger().food,
+                    mc_client.hunger().unwrap().food,
                     conn,
                 )
                 .await
