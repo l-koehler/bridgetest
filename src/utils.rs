@@ -9,7 +9,7 @@ use crate::state;
 use azalea::BlockPos;
 use azalea::Client;
 use azalea::block::BlockState;
-use azalea::core::{aabb::Aabb, position::Vec3};
+use azalea::core::{aabb::Aabb, bitset::BitSet, position::Vec3};
 use azalea::events::Event;
 use azalea::inventory::ItemStack;
 use azalea::registry::Registry;
@@ -179,7 +179,7 @@ pub fn state_to_node(state: BlockState, cave_air_glow: bool) -> MapNode {
     let param2: u8 = 0;
     param0 = BlockKind::try_from(state).unwrap().to_u32() as u16 + 128;
 
-    // param1: transparency i think
+    // param1 (CPT_LIGHT): lower nibble = day/sky light, upper nibble = block light
     if state.is_air() {
         param0 = 126;
         param1 = 0xEE;
@@ -187,7 +187,10 @@ pub fn state_to_node(state: BlockState, cave_air_glow: bool) -> MapNode {
         param0 = 120; // custom node: glowing_air, used in nether
         param1 = 0xEE;
     } else {
-        param1 = 0x00;
+        // no light context available on this code path; assume full sky light so the
+        // client's sky ray-march (and lighting) works. blockupdate/section_block_update
+        // could refine this later.
+        param1 = 0xEE;
     }
 
     MapNode {
@@ -195,6 +198,56 @@ pub fn state_to_node(state: BlockState, cave_air_glow: bool) -> MapNode {
         param1,
         param2,
     }
+}
+
+/// Decode the MC "Section Light" layer into per-section light levels (0..15).
+///
+/// `layers` holds one 2048-byte layer per set bit in `y_mask` (in ascending bit order,
+/// starting from the lowest value). Each layer stores the light for a single 16-high
+/// chunk section: two X-values per byte, with y and z as the outer loops.
+///
+/// `y_mask` has one bit per world section plus 2: bit 0 covers the section *one below*
+/// the min world height and the topmost bit covers the section *one above* the max.
+/// Thus mask bit `b` corresponds to world section index `(b - 1)`. Sections outside
+/// `[min_y, max_y)` are left all-zero.
+///
+/// Returns one `[u8; 4096]` per 16-high section (index = x + y*16 + z*256), matching
+/// the node layout used by initialize_16node_chunk.
+pub fn decode_light_layers(
+    layers: &[Box<[u8]>],
+    y_mask: &BitSet,
+    _min_y: i32,
+    _max_y: i32, // exclusive
+    num_sections: usize,
+) -> Vec<[u8; 4096]> {
+    let mut out: Vec<[u8; 4096]> = vec![[0u8; 4096]; num_sections];
+
+    // Walk set bits in ascending order; the i-th set bit maps to layers[i].
+    for (layer_idx, bit) in y_mask.iter_ones().enumerate() {
+        if layer_idx >= layers.len() || layers[layer_idx].len() != 2048 {
+            break;
+        }
+        let data: &[u8] = &layers[layer_idx];
+        // mask bit `bit` -> world section index (bit - 1)
+        let section_index = (bit as i32) - 1;
+        if section_index < 0 || section_index >= num_sections as i32 {
+            continue;
+        }
+        let local_section = section_index as usize;
+        let levels = &mut out[local_section];
+        for y in 0..16usize {
+            for z in 0..16usize {
+                for x in (0..16usize).step_by(2) {
+                    let byte = data[((y * 16 + z) * 8) + (x / 2)];
+                    let i_lo = x + y * 16 + z * 256;
+                    let i_hi = (x + 1) + y * 16 + z * 256;
+                    levels[i_lo] = byte & 0xF;
+                    levels[i_hi] = (byte >> 4) & 0xF;
+                }
+            }
+        }
+    }
+    out
 }
 
 pub fn vec3_to_v3f(input_vector: &Vec3, scale: i32) -> v3f {
@@ -694,6 +747,8 @@ pub fn mc_packet_name(command: &Event) -> String {
 // Basically Api::latest() but compatible with azalea
 
 pub fn compatible_data_api() -> Api {
+    return Api::latest().expect("Found no Rust data version!");
+    //FIXME Api::latest good enough for now, this otherwise somehow manages to return a broken api
     let Ok(versions) = api::versions() else {
         error!("Failed to retrieve minecraft data versions!");
         std::process::exit(1)

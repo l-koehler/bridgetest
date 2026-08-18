@@ -468,7 +468,7 @@ pub async fn update_mob_effect(
         data,
     } = packet_data;
     // if player is affected, we may need to update the formspecs
-    if (*entity_id == *mc_client.get_component::<MinecraftEntityId>().unwrap()) {
+    if (*entity_id == *mc_client.component::<MinecraftEntityId>().unwrap()) {
         let health: u32 = player_state.mt_last_known_health.into();
         match mob_effect {
             MobEffect::Wither => {
@@ -510,7 +510,7 @@ pub async fn remove_mob_effect(
     mc_client: &Client,
 ) {
     let ClientboundRemoveMobEffect { entity_id, effect } = packet_data;
-    if (*entity_id == *mc_client.get_component::<MinecraftEntityId>().unwrap()) {
+    if (*entity_id == *mc_client.component::<MinecraftEntityId>().unwrap()) {
         match effect {
             MobEffect::Wither | MobEffect::Poison | MobEffect::Absorption => {
                 let health: u32 = player_state.mt_last_known_health.into();

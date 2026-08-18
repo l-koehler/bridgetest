@@ -71,7 +71,9 @@ pub async fn client_handler(
     )
     .await;
     // set dimension before parsing chunks
-    let worldname = mc_client.query_self::<&WorldName, _>(|r| r.0.clone()).unwrap();
+    let worldname = mc_client
+        .query_self::<&WorldName, _>(|r| r.0.clone())
+        .unwrap();
     proxy_state.player.current_dimension = match worldname.path() {
         "the_end" => Dimensions::End,
         "overworld" => Dimensions::Overworld,

@@ -157,7 +157,12 @@ pub async fn move_item(
         // drop the handle, if we are dealing with containers we cannot use the 2x2 at the same time
         inventory_state.inventory_handle = None;
     } else {
-        let offset = mc_client.menu().unwrap().player_slots_range().min().unwrap();
+        let offset = mc_client
+            .menu()
+            .unwrap()
+            .player_slots_range()
+            .min()
+            .unwrap();
         // -9 to shift to main-only (to_inv_index includes armor, offhand and 2x2)
         index_from = (to_inv_index(from_i as u16, &from_list) - 9) + offset as u16;
         // hold handle in case we need the 2x2 grid
@@ -199,7 +204,12 @@ pub async fn move_item(
         index_to = to_i.unwrap() as u16;
         inventory_state.inventory_handle = None;
     } else {
-        let offset = mc_client.menu().unwrap().player_slots_range().min().unwrap();
+        let offset = mc_client
+            .menu()
+            .unwrap()
+            .player_slots_range()
+            .min()
+            .unwrap();
         index_to = (to_inv_index(to_i.unwrap() as u16, &to_list) - 9) + offset as u16;
     }
     debug!("Depositing item at index {}", index_to);

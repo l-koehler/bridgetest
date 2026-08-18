@@ -107,7 +107,10 @@ pub async fn tick(
     proxy_state.entities.entities_update_scheduled.clear();
 
     // sync air supply to client
-    let air_supply = mc_client.component::<metadata::AirSupply>().unwrap().clone();
+    let air_supply = mc_client
+        .component::<metadata::AirSupply>()
+        .unwrap()
+        .clone();
     // format of air_supply: 0 - 299
     // 0 -> 0 bubbles displayed
     // 299 -> 20 bubbles

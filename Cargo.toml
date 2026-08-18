@@ -2,6 +2,7 @@
 name = "bridgetest"
 version = "0.1.0"
 edition = "2024"
+default-run = "bridgetest"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -24,7 +25,7 @@ tokio = "^1.53.1"
 rand = "0.10.2"
 tokio-stream = "^0.1.19"
 bimap = "^0.6.3"
-minecraft-data-rs = "^0.8.1"
+minecraft-data-rs = {version = "^0.8.1", features = ["include-data"]}
 serde = { version = "^1.0.229", features = ["derive"] }
 serde_json = "^1.0.151"
 log = "^0.4.33"

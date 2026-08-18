@@ -28,6 +28,7 @@ use azalea::protocol::packets::game::{
     c_level_chunk_with_light::{ClientboundLevelChunkPacketData, ClientboundLevelChunkWithLight},
     c_set_time::ClientboundSetTime,
 };
+use azalea::registry::DataRegistry;
 
 use std::io::Cursor;
 use std::sync::Arc;
@@ -39,6 +40,8 @@ pub async fn initialize_16node_chunk(
     conn: &LuantiConnection,
     state_arr: [BlockState; 4096],
     cave_air_glow: bool,
+    sky_levels: Option<&[u8; 4096]>,
+    block_levels: Option<&[u8; 4096]>,
 ) {
     // Fills a 16^3 area with a vector of map nodes, where param0 is a MC-compatible ID.
     // remember that this is limited to 16 blocks of heigth, while a MC chunk goes from -64 to 320
@@ -66,9 +69,18 @@ pub async fn initialize_16node_chunk(
         param2: 0,
     }; 4096];
     let mut state: BlockState;
-    for state_arr_i in 0..4095 {
+    for state_arr_i in 0..4096 {
         state = state_arr[state_arr_i];
-        nodes[state_arr_i] = utils::state_to_node(state, cave_air_glow)
+        let mut node = utils::state_to_node(state, cave_air_glow);
+        // Write chunk light data into every node (including air).
+        // lower 4 bit = day/sky light (for luanti sky ray-march), upper 4 bit = block light.
+        // Air nodes must carry sky light in the day bank: the sky-brightness raymarch samples air overhead and looks for a day-light 15 node to set sunlight_seen
+        if let (Some(sky), Some(block)) = (sky_levels, block_levels) {
+            let day = sky[state_arr_i];
+            let bl = block[state_arr_i];
+            node.param1 = (day & 0x0f) | ((bl & 0x0f) << 4);
+        }
+        nodes[state_arr_i] = node
     }
 
     let addblockcommand = ToClientCommand::Blockdata(Box::new(server_to_client::BlockdataSpec {
@@ -135,7 +147,7 @@ pub async fn send_level_chunk(
         x: chunk_x_pos,
         z: chunk_z_pos,
         chunk_data: chunk_packet_data,
-        light_data: _,
+        light_data,
     } = packet_data;
     let ClientboundLevelChunkPacketData {
         heightmaps: chunk_heightmaps,
@@ -169,7 +181,33 @@ pub async fn send_level_chunk(
      * 127: Ignored (The stuff unloaded chunks are considered to consist of)
      */
 
-    let mut chunk_y_pos = y_bounds.0 / 16;
+    // Decode Minecraft light data into per-section day/block light levels.
+    // Sky light goes in Luanti's day bank, block light in the night bank so that
+    // darkness at night and in caves works via Luantis getLightBlend()
+    let min_y = y_bounds.0 as i32;
+    let max_y = y_bounds.1 as i32 + 1; // exclusive
+    let num_sections = (((max_y - min_y) / 16) as usize).max(1);
+
+    let sky_levels = utils::decode_light_layers(
+        &light_data.sky_updates,
+        &light_data.sky_y_mask,
+        min_y,
+        max_y,
+        num_sections,
+    );
+    let block_levels = utils::decode_light_layers(
+        &light_data.block_updates,
+        &light_data.block_y_mask,
+        min_y,
+        max_y,
+        num_sections,
+    );
+
+    // Luanti chunk y positions are relative to the aligned origin (min_y rounded down
+    // to a multiple of 16). the light arrays above are indexed from tje same origin.
+    let base_section = -((-min_y) / 16) * 16; // min_y floored to a multiple of 16
+    let mut chunk_y_pos: i16 = (base_section / 16) as i16;
+    let mut section_index = 0usize;
     for section in sections {
         // foreach possible section height (-4 .. 20)
         // for each block in the 16^3 chunke
@@ -196,9 +234,12 @@ pub async fn send_level_chunk(
             luanti_conn,
             nodearr,
             is_nether,
+            Some(&sky_levels[section_index]),
+            Some(&block_levels[section_index]),
         )
         .await;
         chunk_y_pos += 1;
+        section_index += 1;
     }
 }
 
@@ -246,34 +287,46 @@ pub async fn section_block_update(
         conn,
         nodearr,
         player_state.current_dimension == Dimensions::Nether,
+        None,
+        None,
     )
     .await;
 }
 
-pub async fn set_time(source_packet: &ClientboundSetTime, conn: &LuantiConnection) {
+pub async fn set_time(
+    source_packet: &ClientboundSetTime,
+    conn: &LuantiConnection,
+    time_state: &mut state::TimeState,
+) {
     let ClientboundSetTime {
         game_time,
         clock_updates,
     } = source_packet;
-    let (raw_ticks, rate) = clock_updates
-        .values()
-        .next()
-        .map(|c| (c.total_ticks, c.rate))
-        .unwrap_or((*game_time, 1.0_f32));
-    // minecraft uses morning as 0, minetest uses midnight
-    // time in hours: ((day_time+6000) % 24000) / 1000
-    // ticks = millihours, so no conversion needed
-    let mt_time: u16 = (((raw_ticks % 24000) as u32 + 6000) % 24000) as u16;
+
+    // use overworld world clock specifically (ID 0)
+    if let Some((_clock_id, clock)) = clock_updates.iter().find(|(id, _)| id.protocol_id() == 0) {
+        time_state.clock_total = clock.total_ticks;
+        time_state.anchor_game_time = *game_time;
+    }
+
+    let elapsed = game_time.saturating_sub(time_state.anchor_game_time);
+    let phase = (time_state.clock_total + elapsed) % 24000;
+
+    // Minecraft: 0 = sunrise, 6000 = noon, 12000 = sunset, 18000 = midnight
+    // Luanti   : 0 = midnight, 6000 = sunrise, 12000 = noon, 18000 = sunset
+    // -> luanti_tod = mc_phase + 6000 (mod 24000).
+    let mt_time: u16 = ((phase + 6000) % 24000) as u16;
 
     debug!(
-        "Sending S2C TimeOfDay: {} (rate {}, {} clock updates)",
+        "Sending S2C TimeOfDay: {} (mc_phase {}, game_time {}, {} clock updates)",
         mt_time,
-        rate,
+        phase,
+        game_time,
         clock_updates.len()
     );
     let settime_packet = ToClientCommand::TimeOfDay(Box::new(server_to_client::TimeOfDaySpec {
         time_of_day: mt_time,
-        time_speed: Some(72.0 * rate),
+        time_speed: Some(72.0),
     }));
     conn.send(settime_packet).unwrap();
 }

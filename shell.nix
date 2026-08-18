@@ -13,5 +13,6 @@ pkgs.mkShell {
   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${pkgs.lib.makeLibraryPath[
     pkgs.openssl
   ]};
+  rustup default nightly
   '';
 }

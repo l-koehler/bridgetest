@@ -7,11 +7,11 @@ pub mod world;
 
 pub use chat::*;
 pub use entities::*;
-// world state is unused right now
-//pub use world::*;
 pub use inventory::*;
 pub use media::*;
 pub use player::*;
+// world state is partially used (TimeState, Dimensions)
+pub use world::*;
 
 #[derive(Clone, Default)]
 pub struct ProxyState {
@@ -20,5 +20,5 @@ pub struct ProxyState {
     pub inventory: InventoryState,
     pub media: MediaState,
     pub player: PlayerState,
-    // pub world: WorldState // could go here, but i don't need it right now
+    pub time: TimeState,
 }

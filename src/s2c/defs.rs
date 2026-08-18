@@ -11,8 +11,8 @@ use luanti_protocol::commands::server_to_client::ItemDef;
 use luanti_protocol::commands::server_to_client::ItemImageDef;
 use luanti_protocol::commands::server_to_client::ItemType;
 use luanti_protocol::commands::server_to_client::ItemdefList;
-use luanti_protocol::commands::server_to_client::TouchInteraction;
 use luanti_protocol::commands::server_to_client::ToClientCommand;
+use luanti_protocol::commands::server_to_client::TouchInteraction;
 use luanti_protocol::types::{
     self, AlignStyle, ContentFeatures, DrawType, Inventory, InventoryEntry, InventoryList,
     ItemStackUpdate, LiquidType, ParamType, ParamType2, PointabilityType, SColor, SoundSpec,
@@ -80,6 +80,9 @@ pub fn register_misc_late(luanti_conn: &mut LuantiConnection) {
     luanti_conn.send(set_hotbar_size()).unwrap();
     luanti_conn.send(set_hotbar_texture()).unwrap();
     luanti_conn.send(set_hotbar_selected()).unwrap();
+
+    debug!("Sending S2C HUD Flags");
+    luanti_conn.send(set_hud_flags()).unwrap();
 
     debug!("Sending S2C Inventory Data");
     luanti_conn.send(empty_inventory()).unwrap();
@@ -172,6 +175,34 @@ pub fn set_hotbar_selected() -> ToClientCommand {
     }))
 }
 
+pub fn set_hud_flags() -> ToClientCommand {
+    ToClientCommand::HudSetFlags(Box::new(server_to_client::HudSetFlagsSpec {
+        flags: types::HudFlags {
+            hotbar_visible: true,
+            healthbar_visible: true,
+            crosshair_visible: true,
+            wielditem_visible: true,
+            breathbar_visible: true,
+            minimap_visible: false,
+            minimap_radar_visible: false,
+            basic_debug: true,
+            chat_visible: true,
+        },
+        // which of the above should be applied (all)
+        mask: types::HudFlags {
+            hotbar_visible: true,
+            healthbar_visible: true,
+            crosshair_visible: true,
+            wielditem_visible: true,
+            breathbar_visible: true,
+            minimap_visible: true,
+            minimap_radar_visible: true,
+            basic_debug: true,
+            chat_visible: true,
+        },
+    }))
+}
+
 // Values here mostly from copying Mineclonia, should not need adjustments
 pub fn get_sky_stuff() -> [ToClientCommand; 7] {
     [
@@ -215,7 +246,7 @@ pub fn get_sky_stuff() -> [ToClientCommand; 7] {
                 body_orbit_tilt: 0.0,
                 fog_distance: -1,
                 fog_start: -1.0,
-                fog_color: SColor::new(0, 0, 0, 255),
+                fog_color: SColor::new(0, 0, 0, 0),
                 auto_dim_skybox: None,
             },
         })),
@@ -894,7 +925,10 @@ pub fn generate_contentfeature(
         version: 13, // https://github.com/minetest/minetest/blob/master/src/nodedef.h#L313
         name: block.to_string(),
         groups: vec![(String::from("handy_dig"), 1)],
-        param_type: ParamType::None,
+        // CPT_LIGHT: tells the client that param1 carries light data (low 4 bit = day/sky,
+        // high 4 bit = block). Without this, has_light=false and getLightRaw() returns 0,
+        // so blocks ignore our light values entirely and never dim at night.
+        param_type: ParamType::Light,
         param_type_2: ParamType2::None,
         drawtype: texture.drawtype.clone(),
         mesh: String::new(),

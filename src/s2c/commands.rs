@@ -42,7 +42,7 @@ pub async fn process(
                     .await
             }
             ClientboundGamePacket::SetTime(settime_packet) => {
-                s2c::world::set_time(&settime_packet, luanti_conn).await
+                s2c::world::set_time(&settime_packet, luanti_conn, &mut proxy_state.time).await
             }
             ClientboundGamePacket::SetHealth(sethealth_packet) => {
                 s2c::player::set_health(&sethealth_packet, luanti_conn, &mut proxy_state.player)

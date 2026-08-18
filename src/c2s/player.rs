@@ -45,7 +45,7 @@ pub async fn playerpos(
         movement_direction: _,
     } = player_pos;
 
-    mc_client.set_direction(yaw, pitch);
+    let _ = mc_client.set_direction(yaw, pitch);
     player_state.client_rotation = (yaw, pitch);
     // all coordinates from/to the minetest client are/have to be *10 for some reason
     player_state.mt_clientside_pos = (position.x / 10.0, position.y / 10.0, position.z / 10.0);
@@ -74,7 +74,7 @@ pub async fn playerpos(
         // this is also the only occasion where rotation will be
         // sent to the server, as to minimize "rubberbanding"
         // with rotation.
-        mc_client.set_direction(yaw, pitch);
+        let _ = mc_client.set_direction(yaw, pitch);
         match (
             aux1_pressed,
             up_pressed,
@@ -99,7 +99,7 @@ pub async fn playerpos(
         player_state.keys_pressed = keys_pressed;
     }
 
-    mc_client.set_jumping(jump_pressed);
+    let _ = mc_client.set_jumping(jump_pressed);
 
     if player_state.is_sneaking != sneak_pressed {
         player_state.is_sneaking = sneak_pressed
