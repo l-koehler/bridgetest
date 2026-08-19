@@ -1,6 +1,9 @@
 # Brigetest
 
-**This program is unstable and a mess. Please read this section before using it.**  
+> [!NOTE]
+> This program is hosted on [Codeberg](https://codeberg.org/l-koehler/bridgetest) and automatically mirrored to [its GitHub](https://github.com/l-koehler/bridgetest)!  
+> If you are reading this on Github, please open issues/pull requests on Codeberg.
+
 This program is supposed to let a unmodified [Luanti (Minetest)](https://www.luanti.org/) client connect to  
 a unmodified Minecraft (Java Edition) server.  
 
