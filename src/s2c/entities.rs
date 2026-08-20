@@ -64,7 +64,12 @@ pub async fn add_entity(
             is_player = false;
             name = format!("UUID-{}", uuid);
             c_id = utils::allocate_id(serverside_id.0 as u32, entity_state);
-            position = utils::vec3_to_v3f(&vec_pos, 10);
+            // mirror_pos operates on raw block-unit coordinates, so it's
+            // applied before vec3_to_v3f's *10 wire scale (utils::mirror_pos).
+            position = v3f {
+                x: utils::mirror_pos(vec_pos.x as f32) * 10.0,
+                ..utils::vec3_to_v3f(&vec_pos, 10)
+            };
             if entity_type.clone() == EntityKind::Item {
                 visual = String::from("sprite");
                 mesh = String::new();

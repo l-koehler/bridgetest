@@ -15,13 +15,16 @@ pub async fn interact_node(
     mc_client: &mut Client,
     player_state: &mut PlayerState,
 ) {
+    // under_surface/above_surface are node coordinates in Luanti's frame;
+    // mirror_block_pos converts the X axis into Minecraft's frame (see
+    // utils::mirror_pos for why this mirroring is needed at all).
     let under_blockpos = azalea::BlockPos {
-        x: under_surface.x.into(),
+        x: utils::mirror_block_pos(under_surface.x.into()),
         y: under_surface.y.into(),
         z: under_surface.z.into(),
     };
     let above_blockpos = azalea::BlockPos {
-        x: above_surface.x.into(),
+        x: utils::mirror_block_pos(above_surface.x.into()),
         y: above_surface.y.into(),
         z: above_surface.z.into(),
     };

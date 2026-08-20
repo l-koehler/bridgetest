@@ -66,15 +66,25 @@ pub async fn tick(
                 warn!("Tried to update entity without clientside ID!");
                 continue;
             };
+            // See utils::mirror_pos
             aom_vector.push(ActiveObjectMessage {
                 id: *clientside_id,
                 data: types::ActiveObjectCommand::UpdatePosition(types::AOCUpdatePosition {
-                    position: utils::vec3_to_v3f(position, 10),
-                    velocity: utils::vec3_to_v3f(&physics.velocity, 400),
-                    acceleration: utils::vec3_to_v3f(&acceleration, 10),
+                    position: v3f {
+                        x: utils::mirror_pos(position.x as f32) * 10.0,
+                        ..utils::vec3_to_v3f(position, 10)
+                    },
+                    velocity: v3f {
+                        x: utils::mirror_vec(physics.velocity.x as f32) * 400.0,
+                        ..utils::vec3_to_v3f(&physics.velocity, 400)
+                    },
+                    acceleration: v3f {
+                        x: utils::mirror_vec(acceleration.x as f32) * 10.0,
+                        ..utils::vec3_to_v3f(&acceleration, 10)
+                    },
                     rotation: v3f {
                         x: look_direction.x_rot(),
-                        y: look_direction.y_rot(),
+                        y: utils::mirror_yaw(look_direction.y_rot()),
                         z: 0.0,
                     },
                     // these values *might* be wrong in case of teleport packets

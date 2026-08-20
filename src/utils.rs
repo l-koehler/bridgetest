@@ -79,6 +79,29 @@ pub fn normalize_angle(angle: f32) -> f32 {
     normalized_angle
 }
 
+// translate between luanti/minecraft
+// the two programs disagree on X handedness, so a bunch of stuff needs converting
+
+/// mirror block-unit X coordinate
+pub fn mirror_pos(x: f32) -> f32 {
+    -x - 1.0
+}
+
+/// mirror an integer block/chunk-index X coordinate, staying aligned to 16-node chunk boundaries
+pub fn mirror_block_pos(x: i32) -> i32 {
+    -x - 1
+}
+
+/// mirror a direction-like (velocity, accel)
+pub fn mirror_vec(x: f32) -> f32 {
+    -x
+}
+
+/// mirror a yaw angle in degrees
+pub fn mirror_yaw(yaw: f32) -> f32 {
+    -yaw
+}
+
 pub fn allocate_id(serverside_id: u32, entity_state: &mut state::EntityState) -> u16 {
     // pick smallest range
     let i_smallest_range = entity_state

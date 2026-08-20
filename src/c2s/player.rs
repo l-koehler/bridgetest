@@ -45,9 +45,11 @@ pub async fn playerpos(
         movement_direction: _,
     } = player_pos;
 
-    let _ = mc_client.set_direction(yaw, pitch);
+    // x handedness needs conversion
+    let mc_yaw = utils::mirror_yaw(yaw);
+    let _ = mc_client.set_direction(mc_yaw, pitch);
     player_state.client_rotation = (yaw, pitch);
-    // all coordinates from/to the minetest client are/have to be *10 for some reason
+    // all coordinates from/to the minetest client are *10 on the wire
     player_state.mt_clientside_pos = (position.x / 10.0, position.y / 10.0, position.z / 10.0);
 
     // keys_pressed:
@@ -74,7 +76,9 @@ pub async fn playerpos(
         // this is also the only occasion where rotation will be
         // sent to the server, as to minimize "rubberbanding"
         // with rotation.
-        let _ = mc_client.set_direction(yaw, pitch);
+        let _ = mc_client.set_direction(mc_yaw, pitch);
+        // left/right intentionally not swapped despite X-handedness being swapped
+        // this is fine
         match (
             aux1_pressed,
             up_pressed,
@@ -102,11 +106,9 @@ pub async fn playerpos(
     let _ = mc_client.set_jumping(jump_pressed);
 
     if player_state.is_sneaking != sneak_pressed {
-        player_state.is_sneaking = sneak_pressed
+        player_state.is_sneaking = sneak_pressed;
         // player started/stopped sneaking, update the mc client
-        // TODO: not added to azalea yet, check if this is still accurate:
-        // https://github.com/azalea-rs/azalea/commits/sneaking
-        // currently just changes client-side speed, but resyncing makes the player move at normal speed regardless
+        let _ = mc_client.set_crouching(player_state.is_sneaking);
     };
 
     if !player_state.next_click_no_attack && dig_pressed && !player_state.previous_dig_held {
@@ -147,7 +149,7 @@ pub fn attack_crosshair(mc_client: &mut Client) {
 
     // Calculate the end point of the line
     let dx = ATTACK_MAX_DIST * pitch.cos() * -yaw.sin();
-    let dy = ATTACK_MAX_DIST * pitch.sin();
+    let dy = -ATTACK_MAX_DIST * pitch.sin();
     let dz = ATTACK_MAX_DIST * pitch.cos() * yaw.cos();
 
     let line_end = Vec3 {

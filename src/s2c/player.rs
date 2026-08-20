@@ -7,6 +7,7 @@ extern crate alloc;
 
 use crate::settings;
 use crate::state;
+use crate::utils;
 use azalea::entity::MobEffectData;
 use state::world::Dimensions;
 
@@ -77,7 +78,9 @@ pub async fn set_spawn(
 ) {
     let ClientboundSetDefaultSpawnPosition { global_pos, .. } = source_packet;
     let BlockPos { x, y, z } = global_pos.pos;
-    let dest_x = x as f32;
+    // Stored mirrored to Luantis coordinate frame, as respawn_pos is only
+    // ever used to send it to Luanti
+    let dest_x = utils::mirror_pos(x as f32);
     let dest_y = y as f32;
     let dest_z = z as f32;
     player_state.respawn_pos = (dest_x, dest_y, dest_z);
@@ -120,16 +123,19 @@ pub async fn death(
         .write_message(azalea::respawn::PerformRespawnEvent {
             entity: mc_client.entity,
         });
+    // all coordinates from/to the minetest client are/have to be *10 for some reason
+    // (mirror_pos is applied to the raw block-unit x before that wire scale)
     let setpos_packet = ToClientCommand::MovePlayer(Box::new(server_to_client::MovePlayerSpec {
         pos: v3f {
-            x: mc_client.position().unwrap().x as f32,
-            y: mc_client.position().unwrap().y as f32,
-            z: mc_client.position().unwrap().z as f32,
+            x: utils::mirror_pos(mc_client.position().unwrap().x as f32) * 10.0,
+            y: mc_client.position().unwrap().y as f32 * 10.0,
+            z: mc_client.position().unwrap().z as f32 * 10.0,
         },
         pitch: 0.0,
         yaw: 0.0,
     }));
     conn.send(setpos_packet).unwrap();
+    // respawn_pos.0 is already mirrored into Luanti's frame (see set_spawn).
     player_state.mt_clientside_pos = (
         respawn_pos.0 * 10.0,
         respawn_pos.1 * 10.0,
@@ -332,9 +338,12 @@ pub async fn set_player_pos(
         relative: _,
     } = source_packet;
 
-    let dest_x = change.pos.x as f32 * 10.0;
+    // mirror_pos operates on raw block-unit coordinates, so it has to be
+    // applied before the *10 wire scale (see utils::mirror_pos).
+    let dest_x = utils::mirror_pos(change.pos.x as f32) * 10.0;
     let dest_y = change.pos.y as f32 * 10.0;
     let dest_z = change.pos.z as f32 * 10.0;
+    let mt_yaw = utils::mirror_yaw(change.look_direction.y_rot());
 
     let setpos_packet = ToClientCommand::MovePlayer(Box::new(server_to_client::MovePlayerSpec {
         pos: v3f {
@@ -343,11 +352,11 @@ pub async fn set_player_pos(
             z: dest_z,
         },
         pitch: change.look_direction.x_rot(),
-        yaw: change.look_direction.y_rot(),
+        yaw: mt_yaw,
     }));
     conn.send(setpos_packet).unwrap();
     player_state.mt_clientside_pos = (dest_x, dest_y, dest_z);
-    player_state.client_rotation = (change.look_direction.y_rot(), change.look_direction.x_rot());
+    player_state.client_rotation = (mt_yaw, change.look_direction.x_rot());
 }
 
 pub async fn sync_client_pos(
@@ -359,7 +368,7 @@ pub async fn sync_client_pos(
     // some collision box weirdness on block edges
     // -0.5 fixes it, don't touch
     let serverpos = (
-        vec_serverpos.x as f32 - 0.5,
+        utils::mirror_pos(vec_serverpos.x as f32 - 0.5),
         vec_serverpos.y as f32,
         vec_serverpos.z as f32 - 0.5,
     );

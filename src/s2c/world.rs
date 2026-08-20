@@ -80,12 +80,19 @@ pub async fn initialize_16node_chunk(
             let bl = block[state_arr_i];
             node.param1 = (day & 0x0f) | ((bl & 0x0f) << 4);
         }
-        nodes[state_arr_i] = node
+        // minecraft and luanti disagree on x handedness
+        // the node order within each x-row has to be reversed
+        let x = state_arr_i % 16;
+        let y = (state_arr_i / 16) % 16;
+        let z = state_arr_i / 256;
+        let mirrored_i = (15 - x) + y * 16 + z * 256;
+        nodes[mirrored_i] = node
     }
 
     let addblockcommand = ToClientCommand::Blockdata(Box::new(server_to_client::BlockdataSpec {
         pos: v3i16 {
-            x: x_pos,
+            // see above, we also mirror the nodes inside the chunk
+            x: utils::mirror_block_pos(x_pos as i32) as i16,
             y: y_pos,
             z: z_pos,
         },
@@ -342,7 +349,7 @@ pub async fn blockupdate(
     let BlockPos { x, y, z } = pos;
     let addnodecommand = ToClientCommand::Addnode(Box::new(server_to_client::AddnodeSpec {
         pos: v3i16 {
-            x: *x as i16,
+            x: utils::mirror_block_pos(*x) as i16,
             y: *y as i16,
             z: *z as i16,
         },
