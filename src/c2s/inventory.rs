@@ -1,5 +1,4 @@
 use azalea::Client;
-use azalea::entity::inventory::Inventory;
 use azalea::inventory::operations::{ClickOperation, PickupClick, ThrowClick};
 use azalea::protocol::packets::game::ServerboundSetCarriedItem;
 use log::*;
@@ -25,9 +24,9 @@ pub async fn inventory_action(
     luanti_conn: &mut LuantiConnection,
     specbox: Box<InventoryActionSpec>,
     inventory_state: &mut state::InventoryState,
-    player_state: &state::PlayerState,
 ) {
     let InventoryActionSpec { action } = *specbox;
+    debug!("C2S InventoryAction received: {:?}", action);
     match action {
         InventoryAction::Drop {
             count,
@@ -52,7 +51,6 @@ pub async fn inventory_action(
                 to_i,
                 mc_client,
                 inventory_state,
-                player_state,
                 luanti_conn,
             )
             .await
@@ -138,87 +136,84 @@ pub async fn move_item(
     to_i: Option<i16>,
     mc_client: &mut Client,
     inventory_state: &mut state::InventoryState,
-    player_state: &state::PlayerState,
     luanti_conn: &mut LuantiConnection,
 ) {
-    info!(
-        "Moving {} item(s) from {}@{} to {}@{}",
-        count,
-        from_i,
-        from_list,
-        to_i.unwrap(),
-        to_list
+    let Some(to_i) = to_i else {
+        warn!("Client sent InventoryAction::Move without a destination slot, ignoring.");
+        return;
+    };
+    debug!(
+        "Moving {} item(s) from {}@{} to {}@{} (Luanti indices/lists)",
+        count, from_i, from_list, to_i, to_list
     );
-    // pick up item
-    let index_from: u16;
-    if from_list == "container" {
-        // implicitly correct by formspecs
-        index_from = from_i as u16;
-        // drop the handle, if we are dealing with containers we cannot use the 2x2 at the same time
-        inventory_state.inventory_handle = None;
-    } else {
-        let offset = mc_client
-            .menu()
-            .unwrap()
-            .player_slots_range()
-            .min()
-            .unwrap();
-        // -9 to shift to main-only (to_inv_index includes armor, offhand and 2x2)
-        index_from = (to_inv_index(from_i as u16, &from_list) - 9) + offset as u16;
-        // hold handle in case we need the 2x2 grid
-        // don't do that if a container is open
-        if inventory_state.inventory_handle.is_none() {
-            if let Ok(Some(handle)) = mc_client.open_inventory() {
-                inventory_state.inventory_handle = Some(Arc::new(Mutex::new(handle)))
-            }
-        }
-    }
-    debug!("Picking item from index {}", index_from);
-    let mut ecs = mc_client.ecs.write();
-    let Some(mut inventory) = ecs.get_mut::<Inventory>(mc_client.entity) else {
+
+    let Ok(menu) = mc_client.menu() else {
         error!("Client does not have an inventory component!");
         return;
     };
-    let click;
-    let menu = mc_client.menu().unwrap();
-    if menu.slot(index_from as usize).is_none() {
-        // client tried to pick up empty slot
+    let offset = menu.player_slots_range().min().unwrap() as u16;
+
+    // pick up item
+    // -9 to shift to main-only (to_inv_index includes armor, offhand and 2x2)
+    let index_from = if from_list == "container" {
+        // implicitly correct by formspecs
+        from_i as u16
+    } else {
+        (to_inv_index(from_i as u16, &from_list) - 9) + offset
+    };
+    // deposit item somewhere else
+    let index_to = if to_list == "container" {
+        to_i as u16
+    } else {
+        (to_inv_index(to_i as u16, &to_list) - 9) + offset
+    };
+
+    let Some(src_slot) = menu.slot(index_from as usize) else {
+        // client tried to pick up an empty slot
         return;
-    }
-    // if we didn't pick up all items, right-click
-    if menu.slot(index_from as usize).unwrap().count() as u16 != count {
-        click = PickupClick::Right {
+    };
+    // if we didn't pick up all items, right-click to pick up half
+    let pickup_click = if src_slot.count() as u16 != count {
+        PickupClick::Right {
             slot: Some(index_from),
         }
     } else {
-        click = PickupClick::Left {
+        PickupClick::Left {
             slot: Some(index_from),
-        };
-    }
+        }
+    };
+    drop(menu);
 
-    inventory.simulate_click(&ClickOperation::Pickup(click), &player_state.abilities);
-
-    // deposit item somewhere else
-    let index_to: u16;
-    if to_list == "container" {
-        index_to = to_i.unwrap() as u16;
+    // "container" only ever shows up while a container is open
+    // the default inventory formspec (armor/craft/craftpreview/offhand/main) has no "container" list
+    if from_list == "container" || to_list == "container" {
+        // can't use the 2x2 crafting grid at the same time as a real container
         inventory_state.inventory_handle = None;
+        let Ok(handle) = mc_client.get_inventory() else {
+            error!("Client does not have an inventory component!");
+            return;
+        };
+        handle.click(ClickOperation::Pickup(pickup_click));
+        handle.click(ClickOperation::Pickup(PickupClick::Left {
+            slot: Some(index_to),
+        }));
     } else {
-        let offset = mc_client
-            .menu()
-            .unwrap()
-            .player_slots_range()
-            .min()
-            .unwrap();
-        index_to = (to_inv_index(to_i.unwrap() as u16, &to_list) - 9) + offset as u16;
+        // hold the handle open across calls in case we need the 2x2 grid again
+        if inventory_state.inventory_handle.is_none()
+            && let Ok(Some(new_handle)) = mc_client.open_inventory()
+        {
+            inventory_state.inventory_handle = Some(Arc::new(Mutex::new(new_handle)));
+        }
+        let Some(handle) = &inventory_state.inventory_handle else {
+            error!("Failed to open the player inventory!");
+            return;
+        };
+        let handle = handle.lock().unwrap();
+        handle.click(ClickOperation::Pickup(pickup_click));
+        handle.click(ClickOperation::Pickup(PickupClick::Left {
+            slot: Some(index_to),
+        }));
     }
-    debug!("Depositing item at index {}", index_to);
-    let operation = ClickOperation::Pickup(PickupClick::Left {
-        // shift to container indexing
-        slot: Some(index_to),
-    });
-    inventory.simulate_click(&operation, &player_state.abilities);
-    drop(ecs);
 
     // unknown state, but not what it was before
     inventory_state.clientside_fields = Vec::new();
