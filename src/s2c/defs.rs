@@ -417,7 +417,7 @@ pub fn add_subtitlebox() -> ToClientCommand {
             y: -116.0,
         },
         world_pos: v3f::ZERO,
-        size: v2f { x: 24.0, y: 24.0 },
+        size: v2f { x: 1.0, y: 1.0 },
         z_index: Some(0),
         text2: Some(String::new()),
         style: Some(0),
