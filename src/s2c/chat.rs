@@ -62,7 +62,7 @@ pub fn show_sound(packet_data: &ClientboundSound, chat_state: &mut state::ChatSt
     };
 
     let Some(subtitle_str) = azalea_language::get(&key) else {
-        info!("Did not find subtitle in azalea_language, using key as value!");
+        trace!("Did not find subtitle in azalea_language, using key as value!");
         chat_state.subtitles.push((key, Instant::now()));
         return;
     };

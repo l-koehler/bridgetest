@@ -432,7 +432,7 @@ pub async fn set_entity_data(
                     "Got S2C SetEntityData with ItemStack, but this is only implemented for dropped items! Dropping this EntityDataItem"
                 ),
             },
-            _ => info!(
+            _ => trace!(
                 "Got S2C SetEntityData with unsupported EntityDataValue ({:?})! Dropping this EntityDataItem",
                 value
             ),
