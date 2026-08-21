@@ -111,6 +111,8 @@ pub fn register_rules(luanti_conn: &mut LuantiConnection) {
     luanti_conn.send(add_subtitlebox()).unwrap();
     debug!("Sending S2C AddHUD (Effects)");
     luanti_conn.send(add_effect_img()).unwrap();
+    debug!("Sending S2C AddHUD (Hotbar)");
+    luanti_conn.send(add_hudbar()).unwrap();
 
     debug!("Sending S2C Formspec (Inventory)");
     luanti_conn
@@ -127,6 +129,7 @@ pub const FOODBAR_ID: u32 = 1;
 pub const AIRBAR_ID: u32 = 2;
 pub const SUBTITLE_ID: u32 = 3;
 pub const EFFECTS_ID: u32 = 4;
+pub const HOTBAR_ID: u32 = 5;
 
 pub const PLAYER_INV_FORMSPEC: &str = "\
 formspec_version[7]
@@ -182,7 +185,7 @@ pub fn set_hud_flags() -> ToClientCommand {
             healthbar_visible: true,
             crosshair_visible: true,
             wielditem_visible: true,
-            breathbar_visible: true,
+            breathbar_visible: false, // tick.rs updates that
             minimap_visible: false,
             minimap_radar_visible: false,
             basic_debug: true,
@@ -441,6 +444,29 @@ pub fn add_effect_img() -> ToClientCommand {
         offset: v2f { x: -54.0, y: 6.0 },
         world_pos: v3f::ZERO,
         size: v2f { x: 24.0, y: 24.0 },
+        z_index: Some(0),
+        text2: None,
+        style: None,
+        flags: None,
+    }))
+}
+
+pub fn add_hudbar() -> ToClientCommand {
+    ToClientCommand::Hudadd(Box::new(server_to_client::HudaddSpec {
+        server_id: HOTBAR_ID,
+        typ: 8, // HUD_ELEM_HOTBAR
+        pos: v2f { x: 0.5, y: 1.0 },
+        name: String::new(),
+        scale: v2f::ZERO,
+        text: String::new(),
+        number: 0,
+        item: 0,
+        dir: 0,
+        align: v2f { x: 0.0, y: -1.0 },
+        // extra padding below the hotbar
+        offset: v2f { x: 0.0, y: -4.0 },
+        world_pos: v3f::ZERO,
+        size: v2f::ZERO,
         z_index: Some(0),
         text2: None,
         style: None,
