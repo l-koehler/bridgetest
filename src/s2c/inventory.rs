@@ -12,6 +12,7 @@ use azalea::Client;
 use azalea::inventory;
 use azalea::registry::builtin::MenuKind;
 
+use azalea::protocol::packets::game::c_container_close::ClientboundContainerClose;
 use azalea::protocol::packets::game::c_open_screen::ClientboundOpenScreen;
 
 pub fn get_container_formspec(container: &MenuKind, title: &str) -> String {
@@ -110,6 +111,8 @@ pub async fn open_screen(
         title,
     } = packet_data;
     inventory_state.container_id = Some(*container_id);
+    // a real container can't be open at the same time as the 2x2 grid, drop it to be safe
+    inventory_state.inventory_handle = None;
     let form_spec = get_container_formspec(menu_type, &title.to_string());
     debug!("Sending S2C ShowFormspec for opened container");
     let formspec_command =
@@ -118,6 +121,28 @@ pub async fn open_screen(
             form_name: String::from("current-container-form"),
         }));
     conn.send(formspec_command).unwrap();
+}
+
+// minecraft server can close containers on its own
+// (e.g got pushed away from it and out of range)
+pub async fn server_closed_container(
+    packet: &ClientboundContainerClose,
+    conn: &mut LuantiConnection,
+    inventory_state: &mut state::InventoryState,
+) {
+    if inventory_state.container_id != Some(packet.container_id) {
+        // stale/already-known-closed or not a container we opened for luanti
+        return;
+    }
+    inventory_state.container_id = None;
+    debug!("MC server closed our container, dismissing the luanti formspec for it");
+    // an empty formspec closes whatever's currently shown under that name
+    let close_command =
+        ToClientCommand::ShowFormspec(Box::new(server_to_client::ShowFormspecSpec {
+            form_spec: String::new(),
+            form_name: String::from("current-container-form"),
+        }));
+    conn.send(close_command).unwrap();
 }
 
 // see https://minecraft.wiki/w/Java_Edition_protocol/Inventory#Crafting

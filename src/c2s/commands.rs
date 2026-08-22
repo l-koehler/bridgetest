@@ -27,13 +27,7 @@ pub async fn process(
             trace!("Client sent TSModchannelMsg, this is not implemented and will be ignored.")
         }
         ToServerCommand::Playerpos(specbox) => {
-            c2s::player::playerpos(
-                mc_client,
-                specbox,
-                &mut proxy_state.player,
-                &mut proxy_state.inventory,
-            )
-            .await
+            c2s::player::playerpos(mc_client, specbox, &mut proxy_state.player).await
         }
         ToServerCommand::TSChatMessage(specbox) => c2s::chat::send_message(mc_client, specbox),
         ToServerCommand::Interact(specbox) => {
@@ -48,6 +42,9 @@ pub async fn process(
                 &mut proxy_state.inventory,
             )
             .await
+        }
+        ToServerCommand::InventoryFields(specbox) => {
+            c2s::inventory::handle_form_fields(mc_client, specbox, &mut proxy_state.inventory)
         }
         ToServerCommand::GotBlocks(_) => (), // Gotblocks just confirms to the server that blocks were received
         _ => warn!(

@@ -2,7 +2,6 @@ use azalea::Client;
 use azalea::Vec3;
 use azalea::ecs::prelude::Without;
 use azalea::entity::{Dead, LocalEntity, Physics, Position};
-use azalea::protocol::packets::game::ServerboundContainerClose;
 use log::*;
 
 use crate::c2s;
@@ -17,20 +16,7 @@ pub async fn playerpos(
     mc_client: &mut Client,
     specbox: Box<PlayerPosCommand>,
     player_state: &mut state::PlayerState,
-    inventory_state: &mut state::InventoryState,
 ) {
-    // the player moved, if a handle to the inventory is kept we may now drop it.
-    // this is needed as (unlike the minecraft client) the minetest client does not seem to send packets on container close
-    inventory_state.inventory_handle = None;
-
-    // for the same reason, close containers
-    if let Some(container_id) = inventory_state.container_id {
-        // CloseContainerEvent would be the proper way to do this, but idk what's wrong with the ecs fuck this
-        // probably needs to implement Message or i tried using the wrong type entirely.
-        mc_client.write_packet(ServerboundContainerClose { container_id });
-        inventory_state.container_id = None;
-    };
-
     let PlayerPosCommand { player_pos } = *specbox;
     let PlayerPos {
         position,

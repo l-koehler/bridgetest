@@ -6,6 +6,7 @@ use luanti_protocol::LuantiConnection;
 
 use log::*;
 
+use azalea::entity::inventory::Inventory;
 use azalea::events::Event;
 use azalea::protocol::packets::game::ClientboundGamePacket;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -156,11 +157,37 @@ pub async fn process(
                 )
                 .await
             }
-            // use on-tick and azalea abstractions for containers
-            ClientboundGamePacket::ContainerSetSlot(_) => (),
-            ClientboundGamePacket::ContainerSetData(_) => (),
-            ClientboundGamePacket::ContainerSetContent(_) => (),
-            ClientboundGamePacket::ContainerClose(_) => (),
+            ClientboundGamePacket::ContainerSetSlot(_)
+            | ClientboundGamePacket::ContainerSetData(_) => {
+                s2c::inventory::refresh_inv(
+                    mc_client,
+                    luanti_conn,
+                    &mut proxy_state.inventory,
+                    false,
+                )
+                .await
+            }
+            ClientboundGamePacket::ContainerSetContent(content_packet) => {
+                // prevent stale state_ids
+                let _ = mc_client.query_self::<&mut Inventory, _>(|mut inv| {
+                    inv.state_id = content_packet.state_id;
+                });
+                s2c::inventory::refresh_inv(
+                    mc_client,
+                    luanti_conn,
+                    &mut proxy_state.inventory,
+                    false,
+                )
+                .await
+            }
+            ClientboundGamePacket::ContainerClose(close_packet) => {
+                s2c::inventory::server_closed_container(
+                    &close_packet,
+                    luanti_conn,
+                    &mut proxy_state.inventory,
+                )
+                .await
+            }
             _ => warn!(
                 "Got unimplemented S2C ClientboundGamePacket, dropping {}",
                 command_name
