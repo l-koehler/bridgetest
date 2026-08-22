@@ -285,7 +285,7 @@ pub fn get_sky_stuff() -> [ToClientCommand; 7] {
             density: 0.4,
             color_bright: SColor::new(229, 240, 240, 255),
             color_ambient: SColor::new(0, 0, 0, 255),
-            height: 65.0,
+            height: 196.0, // :3
             thickness: 4.0,
             speed: v2f::new(-2.0, 0.0),
             color_shadow: SColor::new(255, 204, 204, 204),
