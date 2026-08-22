@@ -63,6 +63,7 @@ pub async fn process(
                     s2c::entities::EAddType::Entity(addentity_packet),
                     luanti_conn,
                     &mut proxy_state.entities,
+                    mc_client,
                 )
                 .await
             }
@@ -86,9 +87,13 @@ pub async fn process(
             ClientboundGamePacket::EntityPositionSync(entitysync_packet) => {
                 s2c::entities::entity_sync(&entitysync_packet, &mut proxy_state.entities)
             }
-            // would need a better implementation of models and bones than this
-            ClientboundGamePacket::RotateHead(_) => {
-                trace!("Got S2C RotateHead packet, ignoring it.")
+            ClientboundGamePacket::RotateHead(rotatehead_packet) => {
+                s2c::entities::entity_rotate_head(
+                    &rotatehead_packet,
+                    &mut proxy_state.entities,
+                    mc_client,
+                )
+                .await
             }
             // should mostly not matter, server-controlled stuff
             ClientboundGamePacket::UpdateAttributes(_) => {

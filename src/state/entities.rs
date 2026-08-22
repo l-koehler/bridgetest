@@ -1,4 +1,5 @@
 use azalea::core::entity_id::MinecraftEntityId;
+use bevy_ecs::component::Component;
 use bimap::BiMap;
 
 #[derive(Clone)]
@@ -25,3 +26,8 @@ impl Default for EntityState {
         }
     }
 }
+
+// Azalea doesn't store head rotation in the ECS by itself for some reason
+// we do get pitch in the ECS (one field: body for non-swiveling entities, otherwise head pitch)
+#[derive(Component, Clone, Copy, Debug)]
+pub struct HeadYaw(pub f32);

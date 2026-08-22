@@ -4,7 +4,7 @@ use crate::utils;
 use azalea::Client;
 use azalea::core::entity_id::MinecraftEntityId;
 use azalea::ecs::prelude::With;
-use azalea::entity::{LookDirection, Physics, Position, metadata};
+use azalea::entity::{EntityKindComponent, LookDirection, Physics, Position, metadata};
 use glam::Vec3 as v3f;
 use log::*;
 use luanti_protocol::LuantiConnection;
@@ -48,9 +48,17 @@ pub async fn tick(
     let mut chunks: Vec<Vec<ActiveObjectMessage>> = Vec::new();
     let mut aom_vector: Vec<ActiveObjectMessage> = Vec::new();
     let mut ecs = (*mc_client.ecs).write();
-    let mut query = ecs.query_filtered::<(&MinecraftEntityId, &Position, &LookDirection, &Physics), With<metadata::AbstractEntity>>();
+    let mut query = ecs.query_filtered::<(
+        &MinecraftEntityId,
+        &Position,
+        &LookDirection,
+        &Physics,
+        &EntityKindComponent,
+        Option<&state::HeadYaw>,
+    ), With<metadata::AbstractEntity>>();
     // check each entity in the ECS
-    for (&entity_id, position, look_direction, physics) in query.iter(&ecs) {
+    for (&entity_id, position, look_direction, physics, entity_kind, head_yaw) in query.iter(&ecs)
+    {
         if proxy_state
             .entities
             .entities_update_scheduled
@@ -66,35 +74,84 @@ pub async fn tick(
                 warn!("Tried to update entity without clientside ID!");
                 continue;
             };
-            // See utils::mirror_pos
+            let body_yaw = look_direction.y_rot();
+            let head_pitch = look_direction.x_rot();
+            // update body rotation and pos/vel/acc
             aom_vector.push(ActiveObjectMessage {
                 id: *clientside_id,
                 data: types::ActiveObjectCommand::UpdatePosition(types::AOCUpdatePosition {
                     position: v3f {
                         x: utils::mirror_pos(position.x as f32) * 10.0,
-                        ..utils::vec3_to_v3f(position, 10)
+                        y: utils::align_pos(position.y as f32) * 10.0,
+                        z: utils::align_pos(position.z as f32) * 10.0,
                     },
                     velocity: v3f {
-                        x: utils::mirror_vec(physics.velocity.x as f32) * 400.0,
-                        ..utils::vec3_to_v3f(&physics.velocity, 400)
+                        // blocks-per-tick to wireblocks-per-second (20Hz ticks * luanti wire format 10x)
+                        x: utils::mirror_vec(physics.velocity.x as f32) * 200.0,
+                        ..utils::vec3_to_v3f(&physics.velocity, 200)
                     },
                     acceleration: v3f {
                         x: utils::mirror_vec(acceleration.x as f32) * 10.0,
                         ..utils::vec3_to_v3f(&acceleration, 10)
                     },
                     rotation: v3f {
-                        x: look_direction.x_rot(),
-                        y: utils::mirror_yaw(look_direction.y_rot()),
+                        x: 0.0,
+                        y: utils::mirror_yaw(body_yaw) + utils::get_body_phase(entity_kind.0),
                         z: 0.0,
                     },
-                    // these values *might* be wrong in case of teleport packets
-                    // but that's not a big problem, interpolation just affects client-side graphics a tiny bit.
                     do_interpolate: true,
                     is_end_position: false,
-                    update_interval: 1.0,
+                    update_interval: 0.1,
                 }),
             });
-            if aom_vector.len() == 20 {
+            // if the entity has a rotatable head, also update that
+            if let Some(swivel) = utils::get_head_swivel(entity_kind.0) {
+                let head_yaw = head_yaw.map(|h| h.0).unwrap_or(body_yaw);
+                // get smallest angular difference
+                let head_yaw = ((head_yaw - body_yaw + 180.0) % 360.0) - 180.0;
+                trace!(
+                    "head swivel for {:?}: bone={} pitch={:.1} yaw={:.1} (body_yaw={:.1} head_yaw={:.1})",
+                    entity_id, swivel.bone, head_pitch, head_yaw, body_yaw, head_yaw
+                );
+                let bone_rotation = match swivel.axis {
+                    utils::SwivelAxis::Y => v3f {
+                        x: head_pitch,
+                        y: head_yaw + swivel.phase,
+                        z: 0.0,
+                    },
+                    utils::SwivelAxis::Z => v3f {
+                        x: head_pitch,
+                        y: 0.0,
+                        z: -head_yaw + swivel.phase,
+                    },
+                };
+                aom_vector.push(ActiveObjectMessage {
+                    id: *clientside_id,
+                    data: types::ActiveObjectCommand::SetBonePosition(types::AOCSetBonePosition {
+                        bone: swivel.bone,
+                        // relative: (0,0,0) to ignore
+                        position: v3f {
+                            x: 0.0,
+                            y: 0.0,
+                            z: 0.0,
+                        },
+                        rotation: bone_rotation,
+                        scale: Some(v3f {
+                            x: 1.0,
+                            y: 1.0,
+                            z: 1.0,
+                        }),
+                        // interpolate rotation over 1 tick
+                        position_interp_duration: Some(0.05),
+                        rotation_interp_duration: Some(0.0),
+                        scale_interp_duration: Some(0.0),
+                        // position relative (to easily ignore it)
+                        // rotation absolute
+                        absolute_flags: Some(0b010),
+                    }),
+                });
+            }
+            if aom_vector.len() >= 20 {
                 chunks.push(aom_vector);
                 aom_vector = Vec::new()
             }

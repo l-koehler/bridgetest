@@ -81,8 +81,8 @@ pub async fn set_spawn(
     // Stored mirrored to Luantis coordinate frame, as respawn_pos is only
     // ever used to send it to Luanti
     let dest_x = utils::mirror_pos(x as f32);
-    let dest_y = y as f32;
-    let dest_z = z as f32;
+    let dest_y = utils::align_pos(y as f32);
+    let dest_z = utils::align_pos(z as f32);
     player_state.respawn_pos = (dest_x, dest_y, dest_z);
 }
 
@@ -124,12 +124,12 @@ pub async fn death(
             entity: mc_client.entity,
         });
     // all coordinates from/to the minetest client are/have to be *10 for some reason
-    // (mirror_pos is applied to the raw block-unit x before that wire scale)
+    // (mirror_pos/align_pos are applied to the raw block-unit x/y/z before that wire scale)
     let setpos_packet = ToClientCommand::MovePlayer(Box::new(server_to_client::MovePlayerSpec {
         pos: v3f {
             x: utils::mirror_pos(mc_client.position().unwrap().x as f32) * 10.0,
-            y: mc_client.position().unwrap().y as f32 * 10.0,
-            z: mc_client.position().unwrap().z as f32 * 10.0,
+            y: utils::align_pos(mc_client.position().unwrap().y as f32) * 10.0,
+            z: utils::align_pos(mc_client.position().unwrap().z as f32) * 10.0,
         },
         pitch: 0.0,
         yaw: 0.0,
@@ -338,11 +338,11 @@ pub async fn set_player_pos(
         relative: _,
     } = source_packet;
 
-    // mirror_pos operates on raw block-unit coordinates, so it has to be
-    // applied before the *10 wire scale (see utils::mirror_pos).
+    // mirror_pos/align_pos operate on raw block-unit coordinates, so they have
+    // to be applied before the *10 wire scale (see utils::mirror_pos).
     let dest_x = utils::mirror_pos(change.pos.x as f32) * 10.0;
-    let dest_y = change.pos.y as f32 * 10.0;
-    let dest_z = change.pos.z as f32 * 10.0;
+    let dest_y = utils::align_pos(change.pos.y as f32) * 10.0;
+    let dest_z = utils::align_pos(change.pos.z as f32) * 10.0;
     let mt_yaw = utils::mirror_yaw(change.look_direction.y_rot());
 
     let setpos_packet = ToClientCommand::MovePlayer(Box::new(server_to_client::MovePlayerSpec {
@@ -365,12 +365,10 @@ pub async fn sync_client_pos(
     player_state: &mut state::PlayerState,
 ) {
     let vec_serverpos = mc_client.position().unwrap();
-    // some collision box weirdness on block edges
-    // -0.5 fixes it, don't touch
     let serverpos = (
-        utils::mirror_pos(vec_serverpos.x as f32 - 0.5),
-        vec_serverpos.y as f32,
-        vec_serverpos.z as f32 - 0.5,
+        utils::mirror_pos(vec_serverpos.x as f32),
+        utils::align_pos(vec_serverpos.y as f32),
+        utils::align_pos(vec_serverpos.z as f32),
     );
     let clientpos = player_state.mt_clientside_pos;
     // we count height as half, otherwise jumping is noticeably broken

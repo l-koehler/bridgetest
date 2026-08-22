@@ -22,16 +22,16 @@ use azalea::protocol::packets::game::{
     c_move_entity_pos::ClientboundMoveEntityPos,
     c_move_entity_pos_rot::ClientboundMoveEntityPosRot,
     c_move_entity_rot::ClientboundMoveEntityRot, c_remove_entities::ClientboundRemoveEntities,
-    c_remove_mob_effect::ClientboundRemoveMobEffect, c_set_entity_data::ClientboundSetEntityData,
-    c_set_entity_motion::ClientboundSetEntityMotion, c_teleport_entity::ClientboundTeleportEntity,
-    c_update_mob_effect::ClientboundUpdateMobEffect,
+    c_remove_mob_effect::ClientboundRemoveMobEffect, c_rotate_head::ClientboundRotateHead,
+    c_set_entity_data::ClientboundSetEntityData, c_set_entity_motion::ClientboundSetEntityMotion,
+    c_teleport_entity::ClientboundTeleportEntity, c_update_mob_effect::ClientboundUpdateMobEffect,
 };
 
 use std::time::Instant;
 
 use crate::s2c;
 use crate::state;
-use crate::utils;
+use crate::utils::{self, get_head_swivel};
 
 pub enum EAddType {
     Entity(ClientboundAddEntity),
@@ -43,11 +43,13 @@ pub async fn add_entity(
     optional_packet: EAddType,
     conn: &mut LuantiConnection,
     entity_state: &mut state::EntityState,
+    mc_client: &Client,
 ) {
     let is_player: bool;
     let name: String;
     let c_id: u16;
     let position: v3f;
+    let rotation: v3f;
     let mesh: String;
     let textures: Vec<String>;
     let visual: String;
@@ -59,17 +61,41 @@ pub async fn add_entity(
                 uuid,
                 entity_type, // TODO: textures and models depend on this thing
                 position: vec_pos,
+                x_rot,
+                y_rot,
+                y_head_rot,
                 ..
             } = packet_data;
             is_player = false;
             name = format!("UUID-{}", uuid);
             c_id = utils::allocate_id(serverside_id.0 as u32, entity_state);
-            // mirror_pos operates on raw block-unit coordinates, so it's
-            // applied before vec3_to_v3f's *10 wire scale (utils::mirror_pos).
+
+            // mirror_pos/align_pos operate on raw block-unit coordinates, so
+            // they're applied before the *10 wire scale.
             position = v3f {
                 x: utils::mirror_pos(vec_pos.x as f32) * 10.0,
-                ..utils::vec3_to_v3f(&vec_pos, 10)
+                y: utils::align_pos(vec_pos.y as f32) * 10.0,
+                z: utils::align_pos(vec_pos.z as f32) * 10.0,
             };
+            // rotation behavior depends on the model bones
+            if let Some(_) = get_head_swivel(entity_type) {
+                // body only gets yaw, no pitch allowed
+                rotation = v3f {
+                    x: x_rot as f32 * (360.0 / 256.0),
+                    y: 0.0,
+                    z: 0.0,
+                };
+                insert_y_head_rot(&serverside_id, &y_head_rot, mc_client);
+            } else {
+                // vehicles etc, no rotatable head
+                // can have a body pitch
+                rotation = v3f {
+                    x: x_rot as f32 * (360.0 / 256.0),
+                    y: utils::mirror_yaw(y_rot as f32 * (360.0 / 256.0)),
+                    z: 0.0
+                };
+            }
+
             if entity_type.clone() == EntityKind::Item {
                 visual = String::from("sprite");
                 mesh = String::new();
@@ -85,12 +111,9 @@ pub async fn add_entity(
             is_player = true;
             name = p_name;
             visual = String::from("mesh");
-            c_id = 0; // ensured to be "free" by the allocatable range starting at 1
-            position = v3f {
-                x: 0.0,
-                y: 0.0,
-                z: 0.0,
-            }; // player will be moved somewhere else later
+            c_id = 0;
+            position = v3f::ZERO; // player will be moved somewhere else later
+            rotation = v3f::ZERO;
             mesh = String::from("model-villager.b3d"); // TODO
             textures = vec![String::from("entity-player-slim-steve.png")];
         }
@@ -105,17 +128,15 @@ pub async fn add_entity(
             is_player, // possibly a lie, but thats not the clients problem anyways
             id: c_id,
             position,
-            rotation: v3f {
-                x: 0.0,
-                y: 0.0,
-                z: 0.0,
-            },
+            rotation,
             hp: 100, // entity deaths handled by server
             messages: vec![
                 ActiveObjectCommand::SetProperties(luanti_protocol::types::AOCSetProperties {
                     newprops: ObjectProperties {
                         version: 4,
                         hp_max: 100,
+                        // luanti physics are inaccurate,
+                        // but at least prevent mobs from sinking in the ground
                         physical: true,
                         _unused: 0,
                         // player hitbox
@@ -159,7 +180,7 @@ pub async fn add_entity(
                         automatic_rotate: 0.0,
                         mesh: String::from(mesh),
                         colors: vec![SColor::new(255, 255, 255, 255)],
-                        collide_with_objects: false,
+                        collide_with_objects: true,
                         stepheight: 0.0,
                         automatic_face_movement_dir: false,
                         automatic_face_movement_dir_offset: 0.0,
@@ -285,6 +306,35 @@ pub async fn entity_setrot(
 ) {
     let ClientboundMoveEntityRot { entity_id, .. } = packet_data;
     entity_state.entities_update_scheduled.push(*entity_id);
+}
+
+pub async fn entity_rotate_head(
+    packet_data: &ClientboundRotateHead,
+    entity_state: &mut state::EntityState,
+    mc_client: &Client,
+) {
+    let ClientboundRotateHead {
+        entity_id,
+        y_head_rot,
+    } = packet_data;
+    insert_y_head_rot(entity_id, y_head_rot, mc_client);
+    entity_state.entities_update_scheduled.push(*entity_id);
+}
+
+// Head yaw does not get stored by the ECS by-default
+fn insert_y_head_rot(entity_id: &MinecraftEntityId, y_head_rot: &i8, mc_client: &Client) {
+    // stash it on the ECS entity itself (state::HeadYaw) rather than a side
+    // table, so tick() reads head and body rotation the same way
+    match mc_client.entity_by_minecraft_id(*entity_id) {
+        Ok(Some(entity_ref)) => {
+            let mut ecs = mc_client.ecs.write();
+            if let Ok(mut entity_mut) = ecs.get_entity_mut(entity_ref.id()) {
+                // Convert from 1/256turn to 1/360turn (degrees)
+                entity_mut.insert(state::HeadYaw(*y_head_rot as f32 * (360.0 / 256.0)));
+            }
+        }
+        _ => warn!("Got head rotation for unknown entity {:?}, ignoring it", entity_id),
+    }
 }
 
 pub async fn entity_setmotion(

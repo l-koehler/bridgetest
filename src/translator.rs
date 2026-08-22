@@ -68,6 +68,7 @@ pub async fn client_handler(
         s2c::entities::EAddType::Player(player_name),
         &mut luanti_conn,
         &mut proxy_state.entities,
+        &mc_client,
     )
     .await;
     // set dimension before parsing chunks

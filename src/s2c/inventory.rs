@@ -136,7 +136,7 @@ pub async fn server_closed_container(
     }
     inventory_state.container_id = None;
     debug!("MC server closed our container, dismissing the luanti formspec for it");
-    // an empty formspec closes whatever's currently shown under that name
+    // empty formspec closes whatever is currently shown under that name
     let close_command =
         ToClientCommand::ShowFormspec(Box::new(server_to_client::ShowFormspecSpec {
             form_spec: String::new(),

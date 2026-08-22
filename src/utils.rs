@@ -21,7 +21,10 @@ use minecraft_data_rs::models::version::Version;
 use minecraft_data_rs::{Api, api};
 use rand::RngExt;
 use s2c::media::LuantiTexture;
+use serde::Deserialize;
+use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::LazyLock;
 
 use glam::Vec3 as v3f;
 
@@ -82,9 +85,16 @@ pub fn normalize_angle(angle: f32) -> f32 {
 // translate between luanti/minecraft
 // the two programs disagree on X handedness, so a bunch of stuff needs converting
 
-/// mirror block-unit X coordinate
+// MC uses block corners, luanti uses centers
+// irrelevant for the map, but entities need this converted
+// also do handedness change
 pub fn mirror_pos(x: f32) -> f32 {
-    -x - 1.0
+    -x - 0.5
+}
+
+// block-grid alignment
+pub fn align_pos(v: f32) -> f32 {
+    v - 0.5
 }
 
 /// mirror an integer block/chunk-index X coordinate, staying aligned to 16-node chunk boundaries
@@ -136,6 +146,8 @@ pub fn free_id(serverside_id: u32, entity_state: &mut state::EntityState) {
     entity_state
         .entities_update_scheduled
         .retain(|x| *x != serverside_id.into()); // may be scheduled several times
+    // HeadYaw lives on the ECS entity itself (see state::HeadYaw), azalea drops it
+    // along with everything else when it despawns the entity for us
     // add new range and re-optimize the ranges
     match id_pair {
         Some((_, clientside_id)) => {
@@ -374,414 +386,6 @@ pub fn find_suffix_match(dir: &PathBuf, suffix: &str) -> Option<PathBuf> {
     None
 }
 
-pub fn get_entity_model(entity: EntityKind) -> (String, Vec<String>) {
-    let (model, texture) = match entity {
-        // TODO for entitys without models choose the least stupid-looking fallback
-        EntityKind::Axolotl => (
-            "model-axolotl.b3d",
-            vec![String::from("entity-mobs_mc_axolotl_brown.png")],
-        ),
-        EntityKind::Bat => (
-            "model-bat.b3d",
-            vec![String::from("entity-mobs_mc_bat.png")],
-        ),
-        EntityKind::Blaze => (
-            "model-blaze.b3d",
-            vec![String::from("entity-mobs_mc_blaze.png")],
-        ),
-
-        EntityKind::AcaciaBoat => (
-            "model-boat.b3d",
-            vec![String::from("entity-mcl_boats_texture_acacia_boat.png")],
-        ),
-        EntityKind::BirchBoat => (
-            "model-boat.b3d",
-            vec![String::from("entity-mcl_boats_texture_birch_boat.png")],
-        ),
-        EntityKind::BambooRaft => (
-            "model-raft.b3d",
-            vec![String::from("entity-mcl_boats_texture_bamboo_boat.png")],
-        ),
-        EntityKind::CherryBoat => (
-            "model-boat.b3d",
-            vec![String::from(
-                "entity-mcl_boats_texture_cherry_blossom_boat.png",
-            )],
-        ),
-        EntityKind::DarkOakBoat => (
-            "model-boat.b3d",
-            vec![String::from("entity-mcl_boats_texture_dark_oak_boat.png")],
-        ),
-        EntityKind::JungleBoat => (
-            "model-boat.b3d",
-            vec![String::from("entity-mcl_boats_texture_jungle_boat.png")],
-        ),
-        EntityKind::MangroveBoat => (
-            "model-boat.b3d",
-            vec![String::from("entity-mcl_boats_texture_mangrove_boat.png")],
-        ),
-        EntityKind::OakBoat => (
-            "model-boat.b3d",
-            vec![String::from("entity-mcl_boats_texture_oak_boat.png")],
-        ),
-        EntityKind::PaleOakBoat => (
-            "model-boat.b3d",
-            vec![String::from("entity-mcl_boats_texture_pale_oak_boat.png")],
-        ),
-        EntityKind::SpruceBoat => (
-            "model-boat.b3d",
-            vec![String::from("entity-mcl_boats_texture_spruce_boat.png")],
-        ),
-
-        EntityKind::Cat => (
-            "model-cat.b3d",
-            vec![String::from("entity-mobs_mc_cat_red.png")],
-        ),
-        EntityKind::CaveSpider => (
-            "model-spider.b3d",
-            vec![String::from("entity-mobs_mc_cave_spider.png")],
-        ),
-        EntityKind::ChestMinecart => (
-            "model-minecart_chest.b3d",
-            vec![String::from("entity-minecart.png")],
-        ), // minecraft adds the chest texture, there is no separate minecart texture
-        EntityKind::Chicken => (
-            "model-chicken.b3d",
-            vec![String::from("entity-mobs_mc_chicken.png")],
-        ),
-        EntityKind::Cod => (
-            "model-cod.b3d",
-            vec![String::from("entity-extra_mobs_cod.png")],
-        ),
-        EntityKind::CommandBlockMinecart => (
-            "model-minecart_block.b3d",
-            vec![
-                String::from("entity-minecart.png"),
-                String::from("block-command_block_side.png"),
-            ],
-        ),
-        EntityKind::Cow => (
-            "model-cow.b3d",
-            vec![
-                String::from("entity-mobs_mc_cow.png"),
-                String::from("block-red_mushroom.png^[opacity:0"),
-            ],
-        ), // transparent
-        EntityKind::Creeper => (
-            "model-creeper.b3d",
-            vec![String::from("entity-mobs_mc_creeper.png")],
-        ),
-        EntityKind::Dolphin => (
-            "model-dolphin.b3d",
-            vec![String::from("entity-extra_mobs_dolphin.png")],
-        ),
-        EntityKind::Donkey => (
-            "model-horse.b3d",
-            vec![String::from("entity-mobs_mc_horse_brown.png")],
-        ),
-        EntityKind::Drowned => (
-            "model-drowned.b3d",
-            vec![
-                String::from("entity-mobs_mc_drowned.png"),
-                String::from("entity-mobs_mc_drowned_overlay.png"),
-            ],
-        ),
-        EntityKind::ElderGuardian => (
-            "model-guardian.b3d",
-            vec![String::from("entity-mobs_mc_guardian_elder.png")],
-        ),
-        EntityKind::EndCrystal => (
-            "model-end_crystal.b3d",
-            vec![String::from("entity-end_crystal-end_crystal.png")],
-        ),
-        EntityKind::EnderDragon => (
-            "model-dragon.b3d",
-            vec![String::from("entity-mobs_mc_dragon.png")],
-        ),
-        EntityKind::Enderman => (
-            "model-enderman.b3d",
-            vec![String::from("entity-mobs_mc_enderman.png")],
-        ),
-        EntityKind::Endermite => (
-            "model-endermite.b3d",
-            vec![String::from("entity-mobs_mc_endermite.png")],
-        ),
-        EntityKind::Evoker => (
-            "model-evoker.b3d",
-            vec![String::from("entity-mobs_mc_evoker.png")],
-        ),
-        EntityKind::Fox => (
-            "model-cat.b3d",
-            vec![String::from("entity-mobs_mc_cat_red.png")],
-        ),
-        EntityKind::FurnaceMinecart => (
-            "model-minecart_block.b3d",
-            vec![
-                String::from("entity-minecart.png"),
-                String::from("block-furnace_side.png"),
-            ],
-        ),
-        EntityKind::Ghast => (
-            "model-ghast.b3d",
-            vec![String::from("entity-mobs_mc_ghast.png")],
-        ),
-        EntityKind::GlowSquid => (
-            "model-glow_squid.b3d",
-            vec![String::from("entity-extra_mobs_glow_squid.png")],
-        ),
-        EntityKind::Goat => (
-            "model-sheepfur.b3d",
-            vec![String::from("entity-mobs_mc_sheep.png")],
-        ),
-        EntityKind::Guardian => (
-            "model-guardian.b3d",
-            vec![String::from("entity-mobs_mc_guardian.png")],
-        ),
-        EntityKind::Hoglin => (
-            "model-hoglin.b3d",
-            vec![String::from("entity-extra_mobs_hoglin.png")],
-        ),
-        EntityKind::HopperMinecart => (
-            "model-minecart_hopper.b3d",
-            vec![String::from("entity-minecart.png")],
-        ),
-        EntityKind::Horse => (
-            "model-horse.b3d",
-            vec![String::from("entity-mobs_mc_horse_brown.png")],
-        ),
-        EntityKind::Husk => (
-            "model-zombie.b3d",
-            vec![String::from("entity-mobs_mc_husk.png")],
-        ),
-        EntityKind::Illusioner => (
-            "model-illusioner.b3d",
-            vec![String::from("entity-mobs_mc_illusionist.png")],
-        ),
-        EntityKind::IronGolem => (
-            "model-iron_golem.b3d",
-            vec![String::from("entity-mobs_mc_iron_golem.png")],
-        ),
-        EntityKind::Llama => (
-            "model-llama.b3d",
-            vec![String::from("entity-mobs_mc_llama_creamy.png")],
-        ),
-        EntityKind::MagmaCube => (
-            "model-magmacube.b3d",
-            vec![String::from("entity-mobs_mc_magmacube.png")],
-        ),
-        EntityKind::Minecart => (
-            "model-minecart.b3d",
-            vec![String::from("entity-minecart.png")],
-        ),
-        EntityKind::Mooshroom => (
-            "model-cow.b3d",
-            vec![
-                String::from("entity-mobs_mc_mooshroom.png"),
-                String::from("block-red_mushroom.png"),
-            ],
-        ),
-        EntityKind::Mule => (
-            "model-horse.b3d",
-            vec![String::from("entity-mobs_mc_mule.png")],
-        ),
-        EntityKind::Ocelot => (
-            "model-cat.b3d",
-            vec![String::from("entity-mobs_mc_cat_ocelot.png")],
-        ),
-        EntityKind::Parrot => (
-            "model-parrot.b3d",
-            vec![String::from("entity-mobs_mc_parrot_red_blue.png")],
-        ),
-        EntityKind::Pig => (
-            "model-pig.b3d",
-            vec![String::from("entity-mobs_mc_pig.png")],
-        ),
-        EntityKind::Piglin => (
-            "model-piglin.b3d",
-            vec![
-                String::from("entity-extra_mobs_piglin.png"),
-                String::from("item-golden_sword.png"),
-            ],
-        ),
-        EntityKind::PiglinBrute => (
-            "model-piglin.b3d",
-            vec![
-                String::from("entity-extra_mobs_piglin_brute.png"),
-                String::from("item-golden_axe.png"),
-            ],
-        ),
-        EntityKind::Pillager => (
-            "model-pillager.b3d",
-            vec![
-                String::from("entity-mobs_mc_pillager.png"),
-                String::from("item-crossbow_arrow.png"),
-            ],
-        ),
-        EntityKind::PolarBear => (
-            "model-polarbear.b3d",
-            vec![String::from("entity-mobs_mc_polarbear.png")],
-        ),
-        EntityKind::Rabbit => (
-            "model-rabbit.b3d",
-            vec![String::from("entity-mobs_mc_rabbit_brown.png")],
-        ),
-        EntityKind::Salmon => (
-            "model-salmon.b3d",
-            vec![String::from("entity-extra_mobs_salmon.png")],
-        ),
-        EntityKind::Sheep => (
-            "model-sheepfur.b3d",
-            vec![
-                String::from("entity-mobs_mc_sheep_fur.png"),
-                String::from("entity-mobs_mc_sheep.png"),
-            ],
-        ),
-        EntityKind::Shulker => (
-            "model-shulker.b3d",
-            vec![String::from("entity-mobs_mc_shulker_purple.png")],
-        ),
-        EntityKind::Silverfish => (
-            "model-silverfish.b3d",
-            vec![String::from("entity-mobs_mc_silverfish.png")],
-        ),
-        EntityKind::Skeleton => (
-            "model-skeleton.b3d",
-            vec![
-                String::from("entity-mobs_mc_skeleton.png"),
-                String::from("bow_pulling_2.png"),
-            ],
-        ),
-        EntityKind::Slime => (
-            "model-slime.b3d",
-            vec![String::from("entity-mobs_mc_slime.png")],
-        ),
-        EntityKind::SnowGolem => (
-            "model-snowman.b3d",
-            vec![String::from("entity-mobs_mc_snowman.png")],
-        ),
-        EntityKind::SpawnerMinecart => (
-            "model-minecart_block.b3d",
-            vec![
-                String::from("entity-minecart.png"),
-                String::from("block-spawner.png"),
-            ],
-        ),
-        EntityKind::Spider => (
-            "model-spider.b3d",
-            vec![String::from("entity-mobs_mc_spider.png")],
-        ),
-        EntityKind::Squid => (
-            "model-squid.b3d",
-            vec![String::from("entity-mobs_mc_squid.png")],
-        ),
-        EntityKind::Stray => (
-            "model-stray.b3d",
-            vec![
-                String::from("entity-mobs_mc_stray.png"),
-                String::from("entity-mobs_mc_stray_overlay.png"),
-            ],
-        ),
-        EntityKind::Strider => (
-            "model-strider.b3d",
-            vec![String::from("entity-extra_mobs_strider.png")],
-        ),
-        EntityKind::TntMinecart => (
-            "model-minecart_block.b3d",
-            vec![
-                String::from("entity-minecart.png"),
-                String::from("block-tnt_side.png"),
-            ],
-        ),
-        EntityKind::TraderLlama => (
-            "model-llama.b3d",
-            vec![String::from("entity-mobs_mc_llama_brown.png")],
-        ),
-        EntityKind::TropicalFish => (
-            "model-tropical_fish_a.b3d",
-            vec![String::from("entity-extra_mobs_tropical_fish_a.png")],
-        ), // a/b textures with patterns
-        EntityKind::Vex => (
-            "model-vex.b3d",
-            vec![String::from("entity-mobs_mc_vex.png")],
-        ),
-        EntityKind::Villager => (
-            "model-villager.b3d",
-            vec![String::from("entity-mobs_mc_villager.png")],
-        ),
-        EntityKind::Vindicator => (
-            "model-vindicator.b3d",
-            vec![
-                String::from("entity-mobs_mc_vindicator.png"),
-                String::from("item-iron_axe.png"),
-            ],
-        ),
-        EntityKind::WanderingTrader => (
-            "model-villager.b3d",
-            vec![String::from("entity-mobs_mc_villager.png")],
-        ),
-        EntityKind::Warden => (
-            "model-iron_golem.b3d",
-            vec![String::from("entity-mobs_mc_iron_golem.png")],
-        ),
-        EntityKind::Witch => (
-            "model-witch.b3d",
-            vec![String::from("entity-mobs_mc_witch.png")],
-        ),
-        EntityKind::Wither => (
-            "model-wither.b3d",
-            vec![String::from("entity-mobs_mc_wither.png")],
-        ),
-        EntityKind::WitherSkeleton => (
-            "model-witherskeleton.b3d",
-            vec![String::from("entity-mobs_mc_wither_skeleton.png")],
-        ),
-        EntityKind::Wolf => (
-            "model-wolf.b3d",
-            vec![String::from("entity-mobs_mc_wolf.png")],
-        ),
-        EntityKind::Zoglin => (
-            "model-hoglin.b3d",
-            vec![String::from("entity-extra_mobs_zoglin.png")],
-        ),
-        EntityKind::Zombie => (
-            "model-zombie.b3d",
-            vec![String::from("entity-mobs_mc_zombie.png")],
-        ),
-        EntityKind::ZombieHorse => (
-            "model-horse.b3d",
-            vec![String::from("entity-mobs_mc_horse_zombie.png")],
-        ),
-        EntityKind::ZombieVillager => (
-            "model-villager_zombie.b3d",
-            vec![String::from("entity-mobs_mc_zombie_villager.png")],
-        ),
-        EntityKind::ZombifiedPiglin => (
-            "model-piglin.b3d",
-            vec![
-                String::from("entity-extra_mobs_zombified_piglin.png"),
-                String::from("item-golden_sword.png"),
-            ],
-        ),
-        EntityKind::Player => (
-            "model-armor_character.b3d",
-            vec![String::from("entity-player-wide-steve.png")],
-        ),
-        _ => (
-            "model-pig.b3d",
-            vec![String::from("entity-mobs_mc_pig.png")],
-        ),
-    };
-    return (String::from(model), texture);
-}
-
-pub fn sanitize_model_name(mut name: String) -> String {
-    let prefixes = ["mobs_mc_", "extra_mobs_", "mcl_boats_"];
-    for prefix in prefixes {
-        name.remove_matches(prefix);
-    }
-    return name;
-}
-
 pub fn mc_packet_name(command: &Event) -> String {
     return String::from(match command {
         Event::Init => "Init",
@@ -833,4 +437,72 @@ pub fn compatible_data_api() -> Api {
         };
     }
     return Api::new(closest_match.expect("Found no version possibly matching azalea!"));
+}
+
+
+// Helpers for extra_data/entity_info.json
+#[derive(Debug, Clone, Deserialize)]
+pub enum SwivelAxis {
+    Y,
+    Z,
+}
+
+// entity_info allows offsetting head yaw
+fn default_head_phase() -> f32 {
+    0.0
+}
+// and body yaw
+fn default_body_phase() -> f32 {
+    0.0
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SwivelInfo {
+    pub bone: String,
+    pub axis: SwivelAxis,
+    #[serde(default = "default_head_phase")]
+    pub phase: f32,
+}
+
+#[derive(Debug, Deserialize)]
+struct RawEntityInfo {
+    model: String,
+    textures: Vec<String>,
+    head_swivel: Option<SwivelInfo>,
+    #[serde(default = "default_body_phase")]
+    body_phase: f32,
+}
+
+static ENTITY_INFO: LazyLock<HashMap<String, RawEntityInfo>> = LazyLock::new(|| {
+    let data = include_str!("../extra_data/entity_info.json");
+    serde_json::from_str(data).expect("extra_data/entity_info.json is invalid")
+});
+
+fn entity_info(entity: EntityKind) -> &'static RawEntityInfo {
+    ENTITY_INFO.get(entity.to_str()).unwrap_or_else(|| {
+        ENTITY_INFO
+            .get("_default")
+            .expect("extra_data/entity_info.json missing a \"_default\" entry")
+    })
+}
+
+pub fn get_head_swivel(entity: EntityKind) -> Option<SwivelInfo> {
+    entity_info(entity).head_swivel.clone()
+}
+
+pub fn get_body_phase(entity: EntityKind) -> f32 {
+    entity_info(entity).body_phase
+}
+
+pub fn get_entity_model(entity: EntityKind) -> (String, Vec<String>) {
+    let info = entity_info(entity);
+    return (info.model.clone(), info.textures.clone());
+}
+
+pub fn sanitize_model_name(mut name: String) -> String {
+    let prefixes = ["mobs_mc_", "extra_mobs_", "mcl_boats_"];
+    for prefix in prefixes {
+        name.remove_matches(prefix);
+    }
+    return name;
 }
