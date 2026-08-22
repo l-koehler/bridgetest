@@ -30,7 +30,7 @@ use std::str::FromStr;
 async fn main() {
     env_logger::init();
     let settings: Config = load_config();
-    s2c::media::fetch_models(&settings).await;
+    s2c::media::fetch_media(&settings).await;
     start_client_handler(settings).await;
 }
 

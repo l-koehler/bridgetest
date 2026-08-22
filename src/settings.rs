@@ -31,6 +31,12 @@ microsoft_email = \"\"
 [media]
 # url to a zip file containing the mineclonia models
 model_url = \"https://codeberg.org/mineclonia/mineclonia/archive/main:mods/ENTITIES/mobs_mc/models.zip\"
+# url to a zip file containing the textures for those models
+entity_texture_url = \"https://codeberg.org/mineclonia/mineclonia/archive/main:mods/ENTITIES/mobs_mc/textures.zip\"
+# url to a zip file containing the mineclonia boat/raft models
+boat_model_url = \"https://codeberg.org/mineclonia/mineclonia/archive/main:mods/ENTITIES/mcl_boats/models.zip\"
+# url to a zip file containing the textures for those boats/rafts
+boat_texture_url = \"https://codeberg.org/mineclonia/mineclonia/archive/main:mods/ENTITIES/mcl_boats/textures.zip\"
 # resolution of installed textures
 # should be 16 unless you changed them
 texture_pack_res = 16

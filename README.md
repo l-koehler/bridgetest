@@ -107,7 +107,7 @@ If you don't use a microsoft account, the server you connect to has to be in off
 
 ## Attributions
 
-This program automatically downloads entity models.  
+This program automatically downloads entity models and their textures.  
 These were not made by me and are licensed under the [CC-BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/legalcode.en).  
-The Models are taken from [Mineclonia](https://content.minetest.net/packages/ryvnf/mineclonia/), a minetest mod.  
+The Models and Textures are taken from [Mineclonia](https://content.minetest.net/packages/ryvnf/mineclonia/), a minetest mod.  
 Mineclonia is owned on ContentDB by [ryvnf](https://content.minetest.net/users/ryvnf/), a full list of contributors is [in their repository](https://codeberg.org/mineclonia/mineclonia/src/branch/main/CREDITS.md).  

@@ -367,34 +367,93 @@ pub fn get_empty_tiledefs() -> [TileDef; 6] {
     ];
 }
 
-pub async fn fetch_models(settings: &Config) {
-    // ensure data dir exists
-    let _ = std::fs::create_dir_all(dirs::data_local_dir().unwrap().join("bridgetest/"));
-    // if the models are already downloaded, exit.
-    let models_folder: PathBuf = dirs::data_local_dir().unwrap().join("bridgetest/models/");
-    let url_file = models_folder.join("url.txt");
-    let model_url = &settings.get_string("media.model_url").unwrap();
-    if url_file.exists() && fs::read(&url_file).unwrap() == model_url.clone().into_bytes() {
-        debug!("Not downloading models: url.txt exists and is up-to-date.");
+// fetchable media
+// several sources can share the same dest, so ids need to be distinct
+struct MediaSource {
+    label: &'static str,
+    id: &'static str,
+    url_key: &'static str,
+    dest: PathBuf,
+    model_mode: bool,
+}
+
+pub async fn fetch_media(settings: &Config) {
+    let data_dir = dirs::data_local_dir().unwrap().join("bridgetest/");
+    let _ = std::fs::create_dir_all(&data_dir);
+    let models_dir = data_dir.join("models/");
+    let entity_textures_dir = data_dir.join("textures/entity/");
+    let state_dir = data_dir.join(".fetch_state/");
+    let _ = std::fs::create_dir_all(&state_dir);
+    let sources = [
+        MediaSource {
+            label: "Entity models",
+            id: "mob_models",
+            url_key: "media.model_url",
+            dest: models_dir.clone(),
+            model_mode: true,
+        },
+        MediaSource {
+            label: "Entity textures",
+            id: "mob_textures",
+            url_key: "media.entity_texture_url",
+            dest: entity_textures_dir.clone(),
+            model_mode: false,
+        },
+        MediaSource {
+            label: "Boat models",
+            id: "boat_models",
+            url_key: "media.boat_model_url",
+            dest: models_dir,
+            model_mode: true,
+        },
+        MediaSource {
+            label: "Boat textures",
+            id: "boat_textures",
+            url_key: "media.boat_texture_url",
+            dest: entity_textures_dir,
+            model_mode: false,
+        },
+    ];
+    for source in sources {
+        fetch_source(settings, &state_dir, source).await;
+    }
+}
+
+async fn fetch_source(settings: &Config, state_dir: &PathBuf, source: MediaSource) {
+    // if this media is already downloaded, skip it.
+    let url_file = state_dir.join(format!("{}.url", source.id));
+    let url = &settings.get_string(source.url_key).unwrap();
+    if url_file.exists() && fs::read(&url_file).unwrap() == url.clone().into_bytes() {
+        debug!(
+            "Not downloading {}: {}.url exists and is up-to-date.",
+            source.label, source.id
+        );
         return;
     }
-    warn!("Models missing/outdated, downloading ({})", model_url);
-    std::fs::create_dir_all(&models_folder).unwrap();
+    warn!("{} missing/outdated, downloading ({})", source.label, url);
+    std::fs::create_dir_all(&source.dest).unwrap();
     // attempt to get zip
-    let resp = reqwest::get(model_url).await.unwrap_or_else(|_| {
+    let resp = reqwest::get(url).await.unwrap_or_else(|_| {
         error!(
-            "Failed to get missing models. Retry later or check the model_url in the config file."
+            "Failed to get {}. Retry later or check {} in the config file.",
+            source.label, source.url_key
         );
         std::process::exit(1)
     });
-    let texture_pack_data = Cursor::new(resp.bytes().await.unwrap());
+    let archive_data = Cursor::new(resp.bytes().await.unwrap());
     debug!("Extracting downloaded zip file...");
-    let archive = zip::ZipArchive::new(texture_pack_data);
+    let archive = zip::ZipArchive::new(archive_data);
     archive
-        .expect("Could not decompress models, file not a valid zip archive?")
-        .extract_unwrapped_root_dir(models_folder, root_dir_common_filter)
-        .expect("Could not decompress models!");
-    debug!("Creating url.txt file");
-    fs::write(url_file, model_url).unwrap();
-    info!("Models downloaded!");
+        .expect("Could not decompress media, file not a valid zip archive?")
+        .extract_unwrapped_root_dir(&source.dest, root_dir_common_filter)
+        .expect("Could not decompress media!");
+    debug!("Creating {}.url marker", source.id);
+    fs::write(&url_file, url).unwrap();
+
+    let found = get_texture_iterator_recursive(source.dest, 2, source.model_mode);
+    info!(
+        "{} downloaded! ({} files available in total)",
+        source.label,
+        found.len()
+    );
 }
