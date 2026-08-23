@@ -1,6 +1,5 @@
 #![feature(variant_count)]
 #![feature(slice_pattern)]
-#![feature(string_remove_matches)]
 #![feature(string_into_chars)]
 // fuck this warning.
 // sure the language doesn't need the parens, but this isn't codegolf. i need legible code
@@ -30,7 +29,7 @@ use std::str::FromStr;
 async fn main() {
     env_logger::init();
     let settings: Config = load_config();
-    s2c::media::fetch_media(&settings).await;
+    s2c::media::fetch_media().await;
     start_client_handler(settings).await;
 }
 

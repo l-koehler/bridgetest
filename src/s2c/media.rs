@@ -1,7 +1,5 @@
 // code to get media to the client
-use crate::utils::{find_suffix_match, sanitize_model_name};
 use crate::{settings, utils};
-use config::Config;
 use glam::Vec3 as v3f;
 use log::*;
 use luanti_protocol::commands::client_to_server;
@@ -19,9 +17,25 @@ use std::io::{Cursor, Read};
 use std::path::PathBuf;
 use zip::read::root_dir_common_filter;
 
+// Helpers for our various stored data
+fn data_root() -> PathBuf {
+    dirs::data_local_dir().unwrap().join("bridgetest/")
+}
+fn texture_root() -> PathBuf {
+    data_root().join("textures/")
+}
+fn assets_root() -> PathBuf {
+    data_root().join("bridgetest_assets/")
+}
+fn asset_model_root() -> PathBuf {
+    assets_root().join("models/")
+}
+fn asset_texture_root() -> PathBuf {
+    assets_root().join("textures/")
+}
+
 // resolves ambiguity in mapping minecraft:thing to textures
-// important! only stores paths relative to the texture pack root.
-// Stores models using the fake ./model/ path
+// important! only stores paths relative to the texture pack root (or the model root, for models).
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Deserialize)]
 pub struct LuantiTexture {
     rel_path: String,
@@ -31,18 +45,17 @@ impl LuantiTexture {
     pub fn get_relative(&self) -> &str {
         return &self.rel_path;
     }
+    // models always in bridgetest_assets
+    // textures can be either, prefer texture pack if available
     pub fn get_absolute(&self, model_mode: bool) -> PathBuf {
-        let relative_root;
         if model_mode {
-            relative_root = dirs::data_local_dir().unwrap().join("bridgetest/models/");
-            // remove "fake" model/ path
-            // "desanitize" name, glob by *file_post
-            let file_post = &self.rel_path.replace("./model/", "");
-            return find_suffix_match(&relative_root, &file_post).unwrap();
-        } else {
-            relative_root = dirs::data_local_dir().unwrap().join("bridgetest/textures/");
-            return relative_root.join(PathBuf::from(&self.rel_path));
+            return asset_model_root().join(PathBuf::from(&self.rel_path));
         }
+        let in_pack = texture_root().join(PathBuf::from(&self.rel_path));
+        if in_pack.exists() {
+            return in_pack;
+        }
+        return asset_texture_root().join(PathBuf::from(&self.rel_path));
     }
     // ./block/thing.png -> block-thing.png
     // we need to keep the extension, luanti relies on that for file type
@@ -59,12 +72,13 @@ impl LuantiTexture {
         }
     }
     pub fn from_absolute(apath: PathBuf, model_mode: bool) -> LuantiTexture {
-        let relative_root;
-        if model_mode {
-            relative_root = dirs::data_local_dir().unwrap().join("bridgetest/models/");
+        let relative_root = if model_mode {
+            asset_model_root()
+        } else if apath.starts_with(texture_root()) {
+            texture_root()
         } else {
-            relative_root = dirs::data_local_dir().unwrap().join("bridgetest/textures/");
-        }
+            asset_texture_root()
+        };
         let rel_path = apath
             .strip_prefix(relative_root)
             .unwrap()
@@ -77,21 +91,21 @@ impl LuantiTexture {
 
 pub fn get_announcement() -> ToClientCommand {
     let mut announcement_vec: Vec<MediaAnnouncement> = Vec::new();
-    // add textures (block-thing.png)
-    let texture_root = dirs::data_local_dir().unwrap().join("bridgetest/textures/");
-    for texture in
-        get_texture_iterator_recursive(texture_root, settings::TEXTURE_MAX_RECURSION, false)
-    {
-        announcement_vec.push(MediaAnnouncement {
-            name: String::from(texture.to_luanti_safe()),
-            sha1: get_sha1(&texture.get_absolute(false)),
-        });
+    // add textures
+    for root in [texture_root(), asset_texture_root()] {
+        for texture in
+            get_texture_iterator_recursive(root, settings::TEXTURE_MAX_RECURSION, false)
+        {
+            announcement_vec.push(MediaAnnouncement {
+                name: String::from(texture.to_luanti_safe()),
+                sha1: get_sha1(&texture.get_absolute(false)),
+            });
+        }
     }
-    // add models (model-thing.b3d)
-    let model_root = dirs::data_local_dir().unwrap().join("bridgetest/models/");
-    for model in get_texture_iterator_recursive(model_root, 2, true) {
+    // add models
+    for model in get_texture_iterator_recursive(asset_model_root(), 2, true) {
         announcement_vec.push(MediaAnnouncement {
-            name: format!("model-{}", sanitize_model_name(model.to_luanti_safe())),
+            name: model.to_luanti_safe(),
             sha1: get_sha1(&model.get_absolute(true)),
         });
     }
@@ -147,7 +161,7 @@ pub fn handle_request(specbox: Box<client_to_server::RequestMediaSpec>) -> ToCli
     let mut file_data: Vec<MediaFileData> = Vec::new();
     for file_name in files {
         let texture = LuantiTexture::from_luanti_safe(&file_name);
-        let model_mode = texture.get_relative().starts_with("./model/");
+        let model_mode = file_name.ends_with(".b3d");
         let path = texture.get_absolute(model_mode);
         let mut file_handle = fs::File::open(&path).unwrap();
         let metadata =
@@ -367,77 +381,34 @@ pub fn get_empty_tiledefs() -> [TileDef; 6] {
     ];
 }
 
-// fetchable media
-// several sources can share the same dest, so ids need to be distinct
-struct MediaSource {
-    label: &'static str,
-    id: &'static str,
-    url_key: &'static str,
-    dest: PathBuf,
-    model_mode: bool,
-}
+// fetches entity/boat models and textures from the bridgetest_assets repo
+pub async fn fetch_media() {
+    let assets_dir = assets_root();
+    let _ = std::fs::create_dir_all(&assets_dir);
+    let version_file = assets_dir.join("version.txt");
 
-pub async fn fetch_media(settings: &Config) {
-    let data_dir = dirs::data_local_dir().unwrap().join("bridgetest/");
-    let _ = std::fs::create_dir_all(&data_dir);
-    let models_dir = data_dir.join("models/");
-    let entity_textures_dir = data_dir.join("textures/entity/");
-    let state_dir = data_dir.join(".fetch_state/");
-    let _ = std::fs::create_dir_all(&state_dir);
-    let sources = [
-        MediaSource {
-            label: "Entity models",
-            id: "mob_models",
-            url_key: "media.model_url",
-            dest: models_dir.clone(),
-            model_mode: true,
-        },
-        MediaSource {
-            label: "Entity textures",
-            id: "mob_textures",
-            url_key: "media.entity_texture_url",
-            dest: entity_textures_dir.clone(),
-            model_mode: false,
-        },
-        MediaSource {
-            label: "Boat models",
-            id: "boat_models",
-            url_key: "media.boat_model_url",
-            dest: models_dir,
-            model_mode: true,
-        },
-        MediaSource {
-            label: "Boat textures",
-            id: "boat_textures",
-            url_key: "media.boat_texture_url",
-            dest: entity_textures_dir,
-            model_mode: false,
-        },
-    ];
-    for source in sources {
-        fetch_source(settings, &state_dir, source).await;
-    }
-}
-
-async fn fetch_source(settings: &Config, state_dir: &PathBuf, source: MediaSource) {
-    // if this media is already downloaded, skip it.
-    let url_file = state_dir.join(format!("{}.url", source.id));
-    let url = &settings.get_string(source.url_key).unwrap();
-    if url_file.exists() && fs::read(&url_file).unwrap() == url.clone().into_bytes() {
+    let installed_version: i32 = fs::read_to_string(&version_file)
+        .ok()
+        .and_then(|version| version.trim().parse().ok())
+        .unwrap_or(0);
+    // backwards compatibility assumed, don't downgrade
+    if installed_version >= settings::BRIDGETEST_ASSETS_VER {
         debug!(
-            "Not downloading {}: {}.url exists and is up-to-date.",
-            source.label, source.id
+            "Not downloading bridgetest_assets (have {}, need {})",
+            installed_version,
+            settings::BRIDGETEST_ASSETS_VER
         );
         return;
     }
-    warn!("{} missing/outdated, downloading ({})", source.label, url);
-    std::fs::create_dir_all(&source.dest).unwrap();
-    // attempt to get zip
-    let resp = reqwest::get(url).await.unwrap_or_else(|_| {
-        error!(
-            "Failed to get {}. Retry later or check {} in the config file.",
-            source.label, source.url_key
-        );
+
+    warn!(
+        "bridgetest_assets missing/outdated (have {}, need {}), downloading ({})",
+        installed_version,
+        settings::BRIDGETEST_ASSETS_VER,
+        settings::BRIDGETEST_ASSETS_URL
+    );
+    let resp = reqwest::get(settings::BRIDGETEST_ASSETS_URL).await.unwrap_or_else(|_| {
+        error!("Failed to get bridgetest_assets. Check network conenction?");
         std::process::exit(1)
     });
     let archive_data = Cursor::new(resp.bytes().await.unwrap());
@@ -445,15 +416,18 @@ async fn fetch_source(settings: &Config, state_dir: &PathBuf, source: MediaSourc
     let archive = zip::ZipArchive::new(archive_data);
     archive
         .expect("Could not decompress media, file not a valid zip archive?")
-        .extract_unwrapped_root_dir(&source.dest, root_dir_common_filter)
+        .extract_unwrapped_root_dir(&assets_dir, root_dir_common_filter)
         .expect("Could not decompress media!");
-    debug!("Creating {}.url marker", source.id);
-    fs::write(&url_file, url).unwrap();
 
-    let found = get_texture_iterator_recursive(source.dest, 2, source.model_mode);
+    let found_models = get_texture_iterator_recursive(asset_model_root(), 2, true);
+    let found_textures = get_texture_iterator_recursive(
+        asset_texture_root(),
+        settings::TEXTURE_MAX_RECURSION,
+        false,
+    );
     info!(
-        "{} downloaded! ({} files available in total)",
-        source.label,
-        found.len()
+        "bridgetest_assets downloaded! ({} models, {} textures available)",
+        found_models.len(),
+        found_textures.len()
     );
 }

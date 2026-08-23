@@ -18,7 +18,7 @@ You should follow the instructions below to install and configure the proxy.
 
 ## Installation Instructions
 
-This program needs the minecraft textures.  
+This program needs the minecraft textures (of the correct version).  
 I won't bundle these due to copyright reasons, but you can get them:  
 
 * From the Minecraft client:  
@@ -26,7 +26,7 @@ I won't bundle these due to copyright reasons, but you can get them:
   * Unpack it (jar files are glorified zip archives)  
   * Grab the folders in `assets/minecraft/textures/`  
 * or from the internet:  
-  * Visit mcasset.cloud [(you will need these files)](https://mcasset.cloud/26.1/assets/minecraft/textures)  
+  * Visit mcasset.cloud [(you will need these files)](https://mcasset.cloud/26.2/assets/minecraft/textures)  
   * Click "Download Folder"  
   * You'll need to unpack that zip file, it contains your textures.  
 * or from a unusually complete texture pack:  
@@ -79,7 +79,6 @@ If you don't use a microsoft account, the server you connect to has to be in off
 
 ## Things that are still missing from a usable version
 
-* Crafting (Containers work sometimes, the UI is broken)  
 * Rotated Blocks  
 * Swimming  
 
@@ -87,11 +86,7 @@ If you don't use a microsoft account, the server you connect to has to be in off
 
 * Climbable Blocks (ladders, vines etc) don't do anything  
 * Particles aren't implemented  
-* Jittery Movement: The client physics are slightly different, so  
-  server/client will drift out of sync for up to 0.75 blocks,  
-  at which point the proxy teleports the client (as smooth as it sounds).  
-* Textures: The texture system is on its third rewrite and still doesn't do what  
-  it should half the time (the half you rarely see, luckily).  
+* Interaction with entities
 
 ## Even more limitations (ones that don't affect gameplay)
 

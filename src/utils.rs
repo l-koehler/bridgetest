@@ -23,7 +23,6 @@ use rand::RngExt;
 use s2c::media::LuantiTexture;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::LazyLock;
 
 use glam::Vec3 as v3f;
@@ -371,21 +370,6 @@ pub fn get_random_username() -> String {
     format!("{}{:0>3}", hs_name, rand::rng().random_range(0..1000))
 }
 
-pub fn find_suffix_match(dir: &PathBuf, suffix: &str) -> Option<PathBuf> {
-    for entry in std::fs::read_dir(dir).ok()? {
-        let entry = entry.ok()?;
-        let path = entry.path();
-        if path.is_file() {
-            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                if name.ends_with(suffix) {
-                    return Some(path);
-                }
-            }
-        }
-    }
-    None
-}
-
 pub fn mc_packet_name(command: &Event) -> String {
     return String::from(match command {
         Event::Init => "Init",
@@ -497,12 +481,4 @@ pub fn get_body_phase(entity: EntityKind) -> f32 {
 pub fn get_entity_model(entity: EntityKind) -> (String, Vec<String>) {
     let info = entity_info(entity);
     return (info.model.clone(), info.textures.clone());
-}
-
-pub fn sanitize_model_name(mut name: String) -> String {
-    let prefixes = ["mobs_mc_", "extra_mobs_", "mcl_boats_"];
-    for prefix in prefixes {
-        name.remove_matches(prefix);
-    }
-    return name;
 }

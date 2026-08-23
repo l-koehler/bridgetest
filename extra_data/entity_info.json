@@ -1,14 +1,35 @@
 {
   "_default": {
-    "model": "model-shulker.b3d",
+    "head_swivel": {
+      "axis": "Y",
+      "bone": "head"
+    },
+    "model": "shulker.b3d",
     "textures": [
-      "entity-mobs_mc_shulker_red.png"
+      "shulker_red.png"
     ]
   },
   "minecraft:acacia_boat": {
-    "model": "model-boat.b3d",
+    "model": "boat.b3d",
     "textures": [
-      "entity-mcl_boats_texture_acacia_boat.png"
+      "acacia_boat.png",
+      "entity-chest-normal.png^[opacity:0"
+    ]
+  },
+  "minecraft:allay": {
+    "model": "allay.b3d",
+    "textures": [
+      "allay.png"
+    ]
+  },
+  "minecraft:armadillo": {
+    "head_swivel": {
+      "axis": "Y",
+      "bone": "head"
+    },
+    "model": "armadillo.b3d",
+    "textures": [
+      "armadillo.png"
     ]
   },
   "minecraft:axolotl": {
@@ -16,27 +37,39 @@
       "axis": "Z",
       "bone": "head.control"
     },
-    "model": "model-axolotl.b3d",
+    "model": "axolotl.b3d",
     "textures": [
-      "entity-mobs_mc_axolotl_brown.png"
+      "axolotl_brown.png"
     ]
   },
   "minecraft:bamboo_raft": {
-    "model": "model-raft.b3d",
+    "model": "raft.b3d",
     "textures": [
-      "entity-mcl_boats_texture_bamboo_boat.png"
+      "bamboo_boat.png",
+      "entity-chest-normal.png^[opacity:0"
     ]
   },
   "minecraft:bat": {
-    "model": "model-bat.b3d",
+    "head_swivel": {
+      "axis": "Y",
+      "bone": "head"
+    },
+    "model": "bat.b3d",
     "textures": [
-      "entity-mobs_mc_bat.png"
+      "bat.png"
+    ]
+  },
+  "minecraft:bee": {
+    "model": "bee.b3d",
+    "textures": [
+      "bee.png"
     ]
   },
   "minecraft:birch_boat": {
-    "model": "model-boat.b3d",
+    "model": "boat.b3d",
     "textures": [
-      "entity-mcl_boats_texture_birch_boat.png"
+      "birch_boat.png",
+      "entity-chest-normal.png^[opacity:0"
     ]
   },
   "minecraft:blaze": {
@@ -44,9 +77,25 @@
       "axis": "Y",
       "bone": "head.control"
     },
-    "model": "model-blaze.b3d",
+    "model": "blaze.b3d",
     "textures": [
-      "entity-mobs_mc_blaze.png"
+      "blaze.png"
+    ]
+  },
+  "minecraft:breeze": {
+    "head_swivel": {
+      "axis": "Y",
+      "bone": "head"
+    },
+    "model": "breeze.b3d",
+    "textures": [
+      "breeze.png"
+    ]
+  },
+  "minecraft:camel": {
+    "model": "camel.b3d",
+    "textures": [
+      "camel.png"
     ]
   },
   "minecraft:cat": {
@@ -54,9 +103,9 @@
       "axis": "Z",
       "bone": "head.control"
     },
-    "model": "model-cat.b3d",
+    "model": "cat.b3d",
     "textures": [
-      "entity-mobs_mc_cat_red.png"
+      "cat_red.png"
     ]
   },
   "minecraft:cave_spider": {
@@ -64,20 +113,23 @@
       "axis": "Z",
       "bone": "Head_Control"
     },
-    "model": "model-spider.b3d",
+    "model": "spider.b3d",
     "textures": [
-      "entity-mobs_mc_cave_spider.png"
+      "cave_spider.png"
     ]
   },
   "minecraft:cherry_boat": {
-    "model": "model-boat.b3d",
-    "textures": []
+    "model": "boat.b3d",
+    "textures": [
+      "cherry_blossom_boat.png",
+      "entity-chest-normal.png^[opacity:0"
+    ]
   },
   "minecraft:chest_minecart": {
-    "model": "model-minecart_chest.b3d",
-    "note": "minecraft adds the chest texture, there is no separate minecart texture",
+    "model": "minecart_chest.b3d",
     "textures": [
-      "entity-minecart.png"
+      "minecart.png",
+      "entity-chest-normal.png"
     ]
   },
   "minecraft:chicken": {
@@ -85,21 +137,21 @@
       "axis": "Z",
       "bone": "head.control"
     },
-    "model": "model-chicken.b3d",
+    "model": "chicken.b3d",
     "textures": [
-      "entity-mobs_mc_chicken.png"
+      "chicken.png"
     ]
   },
   "minecraft:cod": {
-    "model": "model-cod.b3d",
+    "model": "cod.b3d",
     "textures": [
-      "entity-extra_mobs_cod.png"
+      "cod.png"
     ]
   },
   "minecraft:command_block_minecart": {
-    "model": "model-minecart_block.b3d",
+    "model": "minecart_block.b3d",
     "textures": [
-      "entity-minecart.png",
+      "minecart.png",
       "block-command_block_side.png"
     ]
   },
@@ -108,11 +160,16 @@
       "axis": "Z",
       "bone": "head.control"
     },
-    "model": "model-cow.b3d",
-    "note": "transparent",
+    "model": "cow.b3d",
     "textures": [
-      "entity-mobs_mc_cow.png",
+      "cow.png",
       "block-red_mushroom.png^[opacity:0"
+    ]
+  },
+  "minecraft:creaking": {
+    "model": "creaking.b3d",
+    "textures": [
+      "creaking.png"
     ]
   },
   "minecraft:creeper": {
@@ -120,27 +177,32 @@
       "axis": "Y",
       "bone": "Head_Control"
     },
-    "model": "model-creeper.b3d",
+    "model": "creeper.b3d",
     "textures": [
-      "entity-mobs_mc_creeper.png"
+      "creeper.png"
     ]
   },
   "minecraft:dark_oak_boat": {
-    "model": "model-boat.b3d",
+    "model": "boat.b3d",
     "textures": [
-      "entity-mcl_boats_texture_dark_oak_boat.png"
+      "dark_oak_boat.png",
+      "entity-chest-normal.png^[opacity:0"
     ]
   },
   "minecraft:dolphin": {
-    "model": "model-dolphin.b3d",
+    "model": "dolphin.b3d",
     "textures": [
-      "entity-extra_mobs_dolphin.png"
+      "dolphin.png"
     ]
   },
   "minecraft:donkey": {
-    "model": "model-horse.b3d",
+    "head_swivel": {
+      "axis": "Y",
+      "bone": "head"
+    },
+    "model": "horse.b3d",
     "textures": [
-      "entity-mobs_mc_horse_brown.png"
+      "horse_brown.png"
     ]
   },
   "minecraft:drowned": {
@@ -148,40 +210,57 @@
       "axis": "Y",
       "bone": "head"
     },
-    "model": "model-drowned.b3d",
+    "model": "drowned.b3d",
     "textures": [
-      "entity-mobs_mc_drowned.png",
-      "entity-mobs_mc_drowned_overlay.png"
+      "drowned.png",
+      "drowned_overlay.png"
+    ]
+  },
+  "minecraft:drowned+baby": {
+    "head_swivel": {
+      "axis": "Y",
+      "bone": "head"
+    },
+    "model": "drowned__baby.b3d",
+    "textures": [
+      "drowned.png",
+      "drowned_overlay.png"
     ]
   },
   "minecraft:elder_guardian": {
-    "model": "model-guardian.b3d",
+    "model": "guardian.b3d",
     "textures": [
-      "entity-mobs_mc_guardian_elder.png"
-    ]
-  },
-  "minecraft:end_crystal": {
-    "model": "model-end_crystal.b3d",
-    "textures": [
-      "entity-end_crystal-end_crystal.png"
+      "guardian_elder.png"
     ]
   },
   "minecraft:ender_dragon": {
-    "model": "model-dragon.b3d",
+    "head_swivel": {
+      "axis": "Z",
+      "bone": "head"
+    },
+    "model": "dragon.b3d",
     "textures": [
-      "entity-mobs_mc_dragon.png"
+      "dragon.png"
     ]
   },
   "minecraft:enderman": {
-    "model": "model-enderman.b3d",
+    "head_swivel": {
+      "axis": "Y",
+      "bone": "head.low"
+    },
+    "model": "enderman.b3d",
     "textures": [
-      "entity-mobs_mc_enderman.png"
+      "enderman.png"
     ]
   },
   "minecraft:endermite": {
-    "model": "model-endermite.b3d",
+    "head_swivel": {
+      "axis": "Z",
+      "bone": "head"
+    },
+    "model": "endermite.b3d",
     "textures": [
-      "entity-mobs_mc_endermite.png"
+      "endermite.png"
     ]
   },
   "minecraft:evoker": {
@@ -189,72 +268,103 @@
       "axis": "Y",
       "bone": "head.control"
     },
-    "model": "model-evoker.b3d",
+    "model": "evoker.b3d",
     "textures": [
-      "entity-mobs_mc_evoker.png"
+      "evoker.png"
+    ]
+  },
+  "minecraft:evoker_fangs": {
+    "model": "evoker_fangs.b3d",
+    "textures": [
+      "evoker_fangs.png"
     ]
   },
   "minecraft:fox": {
-    "head_swivel": {
-      "axis": "Z",
-      "bone": "head.control"
-    },
-    "model": "model-cat.b3d",
+    "model": "fox.b3d",
     "textures": [
-      "entity-mobs_mc_cat_red.png"
+      "fox.png"
+    ]
+  },
+  "minecraft:frog": {
+    "model": "frog.b3d",
+    "textures": [
+      "frog_warm.png"
     ]
   },
   "minecraft:furnace_minecart": {
-    "model": "model-minecart_block.b3d",
+    "model": "minecart_block.b3d",
     "textures": [
-      "entity-minecart.png",
+      "minecart.png",
       "block-furnace_side.png"
     ]
   },
   "minecraft:ghast": {
-    "model": "model-ghast.b3d",
+    "head_swivel": {
+      "axis": "Y",
+      "bone": "head2"
+    },
+    "model": "ghast.b3d",
     "textures": [
-      "entity-mobs_mc_ghast.png"
+      "ghast.png"
     ]
   },
   "minecraft:glow_squid": {
-    "model": "model-glow_squid.b3d",
+    "head_swivel": {
+      "axis": "Y",
+      "bone": "head"
+    },
+    "model": "glow_squid.b3d",
     "textures": [
-      "entity-extra_mobs_glow_squid.png"
+      "glow_squid.png"
     ]
   },
   "minecraft:goat": {
-    "head_swivel": {
-      "axis": "Z",
-      "bone": "head.control"
-    },
-    "model": "model-sheepfur.b3d",
+    "model": "goat.b3d",
     "textures": [
-      "entity-mobs_mc_sheep.png"
+      "goat.png"
     ]
   },
   "minecraft:guardian": {
-    "model": "model-guardian.b3d",
+    "model": "guardian.b3d",
     "textures": [
-      "entity-mobs_mc_guardian.png"
+      "guardian.png"
     ]
   },
   "minecraft:hoglin": {
-    "model": "model-hoglin.b3d",
+    "head_swivel": {
+      "axis": "Z",
+      "bone": "head"
+    },
+    "model": "hoglin.b3d",
     "textures": [
-      "entity-extra_mobs_hoglin.png"
+      "hoglin.png"
+    ]
+  },
+  "minecraft:hoglin+baby": {
+    "head_swivel": {
+      "axis": "Z",
+      "bone": "head"
+    },
+    "model": "hoglin__baby.b3d",
+    "textures": [
+      "hoglin.png"
     ]
   },
   "minecraft:hopper_minecart": {
-    "model": "model-minecart_hopper.b3d",
+    "model": "minecart_hopper.b3d",
     "textures": [
-      "entity-minecart.png"
+      "minecart.png",
+      "block-hopper_outside.png"
     ]
   },
   "minecraft:horse": {
-    "model": "model-horse.b3d",
+    "head_swivel": {
+      "axis": "Y",
+      "bone": "head"
+    },
+    "model": "horse.b3d",
     "textures": [
-      "entity-mobs_mc_horse_brown.png"
+      "horse_brown.png"
     ]
   },
   "minecraft:husk": {
@@ -262,9 +372,9 @@
       "axis": "Y",
       "bone": "head.control"
     },
-    "model": "model-zombie.b3d",
+    "model": "zombie.b3d",
     "textures": [
-      "entity-mobs_mc_husk.png"
+      "husk.png"
     ]
   },
   "minecraft:illusioner": {
@@ -272,9 +382,19 @@
       "axis": "Y",
       "bone": "head.control"
     },
-    "model": "model-illusioner.b3d",
+    "model": "illusioner.b3d",
     "textures": [
-      "entity-mobs_mc_illusionist.png"
+      "illusionist.png"
+    ]
+  },
+  "minecraft:illusioner+with_decoys": {
+    "head_swivel": {
+      "axis": "Y",
+      "bone": "head.control"
+    },
+    "model": "illusioner__with_decoys.b3d",
+    "textures": [
+      "illusionist.png"
     ]
   },
   "minecraft:iron_golem": {
@@ -282,15 +402,16 @@
       "axis": "Y",
       "bone": "head.control"
     },
-    "model": "model-iron_golem.b3d",
+    "model": "iron_golem.b3d",
     "textures": [
-      "entity-mobs_mc_iron_golem.png"
+      "iron_golem.png"
     ]
   },
   "minecraft:jungle_boat": {
-    "model": "model-boat.b3d",
+    "model": "boat.b3d",
     "textures": [
-      "entity-mcl_boats_texture_jungle_boat.png"
+      "jungle_boat.png",
+      "entity-chest-normal.png^[opacity:0"
     ]
   },
   "minecraft:llama": {
@@ -298,27 +419,34 @@
       "axis": "Z",
       "bone": "head.control"
     },
-    "model": "model-llama.b3d",
+    "model": "llama.b3d",
     "textures": [
-      "entity-mobs_mc_llama_creamy.png"
+      "llama_creamy.png"
+    ]
+  },
+  "minecraft:llama+preview": {
+    "model": "llama__preview.b3d",
+    "textures": [
+      "llama_creamy.png"
     ]
   },
   "minecraft:magma_cube": {
-    "model": "model-magmacube.b3d",
+    "model": "magmacube.b3d",
     "textures": [
-      "entity-mobs_mc_magmacube.png"
+      "magmacube.png"
     ]
   },
   "minecraft:mangrove_boat": {
-    "model": "model-boat.b3d",
+    "model": "boat.b3d",
     "textures": [
-      "entity-mcl_boats_texture_mangrove_boat.png"
+      "mangrove_boat.png",
+      "entity-chest-normal.png^[opacity:0"
     ]
   },
   "minecraft:minecart": {
-    "model": "model-minecart.b3d",
+    "model": "minecart.b3d",
     "textures": [
-      "entity-minecart.png"
+      "minecart.png"
     ]
   },
   "minecraft:mooshroom": {
@@ -326,22 +454,38 @@
       "axis": "Z",
       "bone": "head.control"
     },
-    "model": "model-cow.b3d",
+    "model": "cow.b3d",
     "textures": [
-      "entity-mobs_mc_mooshroom.png",
+      "mooshroom.png",
       "block-red_mushroom.png"
     ]
   },
-  "minecraft:mule": {
-    "model": "model-horse.b3d",
+  "minecraft:mooshroom+brown": {
+    "head_swivel": {
+      "axis": "Z",
+      "bone": "head.control"
+    },
+    "model": "cow.b3d",
     "textures": [
-      "entity-mobs_mc_mule.png"
+      "mooshroom.png",
+      "block-brown_mushroom.png"
+    ]
+  },
+  "minecraft:mule": {
+    "head_swivel": {
+      "axis": "Y",
+      "bone": "head"
+    },
+    "model": "horse.b3d",
+    "textures": [
+      "mule.png"
     ]
   },
   "minecraft:oak_boat": {
-    "model": "model-boat.b3d",
+    "model": "boat.b3d",
     "textures": [
-      "entity-mcl_boats_texture_oak_boat.png"
+      "oak_boat.png",
+      "entity-chest-normal.png^[opacity:0"
     ]
   },
   "minecraft:ocelot": {
@@ -349,15 +493,22 @@
       "axis": "Z",
       "bone": "head.control"
     },
-    "model": "model-cat.b3d",
+    "model": "cat.b3d",
     "textures": [
-      "entity-mobs_mc_cat_ocelot.png"
+      "cat_ocelot.png"
     ]
   },
   "minecraft:pale_oak_boat": {
-    "model": "model-boat.b3d",
+    "model": "boat.b3d",
     "textures": [
-      "entity-mcl_boats_texture_pale_oak_boat.png"
+      "pale_oak_boat.png",
+      "entity-chest-normal.png^[opacity:0"
+    ]
+  },
+  "minecraft:panda": {
+    "model": "panda.b3d",
+    "textures": [
+      "panda.png"
     ]
   },
   "minecraft:parrot": {
@@ -365,9 +516,15 @@
       "axis": "Y",
       "bone": "head.control"
     },
-    "model": "model-parrot.b3d",
+    "model": "parrot.b3d",
     "textures": [
-      "entity-mobs_mc_parrot_red_blue.png"
+      "parrot_red_blue.png"
+    ]
+  },
+  "minecraft:phantom": {
+    "model": "phantom.b3d",
+    "textures": [
+      "phantom.png"
     ]
   },
   "minecraft:pig": {
@@ -375,9 +532,9 @@
       "axis": "Z",
       "bone": "head.control"
     },
-    "model": "model-pig.b3d",
+    "model": "pig.b3d",
     "textures": [
-      "entity-mobs_mc_pig.png"
+      "pig.png"
     ]
   },
   "minecraft:piglin": {
@@ -385,9 +542,20 @@
       "axis": "Y",
       "bone": "Head"
     },
-    "model": "model-piglin.b3d",
+    "model": "piglin.b3d",
     "textures": [
-      "entity-extra_mobs_piglin.png",
+      "piglin.png",
+      "item-golden_sword.png"
+    ]
+  },
+  "minecraft:piglin+baby": {
+    "head_swivel": {
+      "axis": "Y",
+      "bone": "Head"
+    },
+    "model": "piglin__baby.b3d",
+    "textures": [
+      "piglin.png",
       "item-golden_sword.png"
     ]
   },
@@ -396,27 +564,21 @@
       "axis": "Y",
       "bone": "Head"
     },
-    "model": "model-piglin.b3d",
+    "model": "piglin.b3d",
     "textures": [
-      "entity-extra_mobs_piglin_brute.png",
+      "piglin_brute.png",
       "item-golden_axe.png"
     ]
   },
   "minecraft:pillager": {
-    "model": "model-pillager.b3d",
-    "textures": [
-      "entity-mobs_mc_pillager.png",
-      "item-crossbow_arrow.png"
-    ]
-  },
-  "minecraft:player": {
     "head_swivel": {
       "axis": "Y",
-      "bone": "Head_Control"
+      "bone": "head.control"
     },
-    "model": "model-armor_character.b3d",
+    "model": "pillager.b3d",
     "textures": [
-      "entity-player-wide-steve.png"
+      "pillager.png",
+      "item-crossbow_arrow.png"
     ]
   },
   "minecraft:polar_bear": {
@@ -424,9 +586,27 @@
       "axis": "Z",
       "bone": "head.control"
     },
-    "model": "model-polarbear.b3d",
+    "model": "polarbear.b3d",
     "textures": [
-      "entity-mobs_mc_polarbear.png"
+      "polarbear.png"
+    ]
+  },
+  "minecraft:pufferfish": {
+    "model": "pufferfish.b3d",
+    "textures": [
+      "pufferfish.png"
+    ]
+  },
+  "minecraft:pufferfish+big": {
+    "model": "pufferfish__big.b3d",
+    "textures": [
+      "pufferfish.png"
+    ]
+  },
+  "minecraft:pufferfish+medium": {
+    "model": "pufferfish__medium.b3d",
+    "textures": [
+      "pufferfish.png"
     ]
   },
   "minecraft:rabbit": {
@@ -434,25 +614,29 @@
       "axis": "Z",
       "bone": "head.control"
     },
-    "model": "model-rabbit.b3d",
+    "model": "rabbit.b3d",
     "textures": [
-      "entity-mobs_mc_rabbit_brown.png"
+      "rabbit_brown.png"
     ]
   },
   "minecraft:ravager": {
     "head_swivel": {
       "axis": "Z",
-      "bone": "head.control"
+      "bone": "head"
     },
-    "model": "model-ravager.b3d",
+    "model": "ravager.b3d",
     "textures": [
-      "entity-mobs_mc_ravager.png"
+      "ravager.png"
     ]
   },
   "minecraft:salmon": {
-    "model": "model-salmon.b3d",
+    "head_swivel": {
+      "axis": "Y",
+      "bone": "salmon_head"
+    },
+    "model": "salmon.b3d",
     "textures": [
-      "entity-extra_mobs_salmon.png"
+      "salmon.png"
     ]
   },
   "minecraft:sheep": {
@@ -460,22 +644,34 @@
       "axis": "Z",
       "bone": "head.control"
     },
-    "model": "model-sheepfur.b3d",
+    "model": "sheepfur.b3d",
     "textures": [
-      "entity-mobs_mc_sheep_fur.png",
-      "entity-mobs_mc_sheep.png"
+      "sheep_fur.png",
+      "sheep.png"
     ]
   },
   "minecraft:shulker": {
-    "model": "model-shulker.b3d",
+    "head_swivel": {
+      "axis": "Y",
+      "bone": "head"
+    },
+    "model": "shulker.b3d",
     "textures": [
-      "entity-mobs_mc_shulker_purple.png"
+      "shulker_purple.png"
     ]
   },
+  "minecraft:shulkerbullet": {
+    "model": "shulkerbullet.b3d",
+    "textures": []
+  },
   "minecraft:silverfish": {
-    "model": "model-silverfish.b3d",
+    "head_swivel": {
+      "axis": "Z",
+      "bone": "head"
+    },
+    "model": "silverfish.b3d",
     "textures": [
-      "entity-mobs_mc_silverfish.png"
+      "silverfish.png"
     ]
   },
   "minecraft:skeleton": {
@@ -483,28 +679,38 @@
       "axis": "Y",
       "bone": "Head_Control"
     },
-    "model": "model-skeleton.b3d",
+    "model": "skeleton.b3d",
     "textures": [
-      "entity-mobs_mc_skeleton.png",
+      "skeleton.png",
       "bow_pulling_2.png"
     ]
   },
   "minecraft:slime": {
-    "model": "model-slime.b3d",
+    "model": "slime.b3d",
     "textures": [
-      "entity-mobs_mc_slime.png"
+      "slime.png"
+    ]
+  },
+  "minecraft:sniffer": {
+    "model": "sniffer.b3d",
+    "textures": [
+      "sniffer.png"
     ]
   },
   "minecraft:snow_golem": {
-    "model": "model-snowman.b3d",
+    "head_swivel": {
+      "axis": "Y",
+      "bone": "head"
+    },
+    "model": "snowman.b3d",
     "textures": [
-      "entity-mobs_mc_snowman.png"
+      "snowman.png"
     ]
   },
   "minecraft:spawner_minecart": {
-    "model": "model-minecart_block.b3d",
+    "model": "minecart_block.b3d",
     "textures": [
-      "entity-minecart.png",
+      "minecart.png",
       "block-spawner.png"
     ]
   },
@@ -513,40 +719,59 @@
       "axis": "Z",
       "bone": "Head_Control"
     },
-    "model": "model-spider.b3d",
+    "model": "spider.b3d",
     "textures": [
-      "entity-mobs_mc_spider.png"
+      "spider.png"
     ]
   },
   "minecraft:spruce_boat": {
-    "model": "model-boat.b3d",
+    "model": "boat.b3d",
     "textures": [
-      "entity-mcl_boats_texture_spruce_boat.png"
+      "spruce_boat.png",
+      "entity-chest-normal.png^[opacity:0"
     ]
   },
   "minecraft:squid": {
-    "model": "model-squid.b3d",
+    "head_swivel": {
+      "axis": "Y",
+      "bone": "head"
+    },
+    "model": "squid.b3d",
     "textures": [
-      "entity-mobs_mc_squid.png"
+      "squid.png"
     ]
   },
   "minecraft:stray": {
-    "model": "model-stray.b3d",
+    "head_swivel": {
+      "axis": "Y",
+      "bone": "head"
+    },
+    "model": "stray.b3d",
     "textures": [
-      "entity-mobs_mc_stray.png",
-      "entity-mobs_mc_stray_overlay.png"
+      "stray.png",
+      "stray_overlay.png"
     ]
   },
   "minecraft:strider": {
-    "model": "model-strider.b3d",
+    "head_swivel": {
+      "axis": "Y",
+      "bone": "strider.head"
+    },
+    "model": "strider.b3d",
     "textures": [
-      "entity-extra_mobs_strider.png"
+      "strider.png"
+    ]
+  },
+  "minecraft:tadpole": {
+    "model": "tadpole.b3d",
+    "textures": [
+      "tadpole.png"
     ]
   },
   "minecraft:tnt_minecart": {
-    "model": "model-minecart_block.b3d",
+    "model": "minecart_block.b3d",
     "textures": [
-      "entity-minecart.png",
+      "minecart.png",
       "block-tnt_side.png"
     ]
   },
@@ -555,16 +780,27 @@
       "axis": "Z",
       "bone": "head.control"
     },
-    "model": "model-llama.b3d",
+    "model": "llama.b3d",
     "textures": [
-      "entity-mobs_mc_llama_brown.png"
+      "llama_brown.png"
     ]
   },
   "minecraft:tropical_fish": {
-    "model": "model-tropical_fish_a.b3d",
-    "note": "a/b textures with patterns",
+    "model": "tropical_fish.b3d",
     "textures": [
-      "entity-extra_mobs_tropical_fish_a.png"
+      "tropical_fish_a.png"
+    ]
+  },
+  "minecraft:tropical_fish+alternate": {
+    "model": "tropical_fish__alternate.b3d",
+    "textures": [
+      "tropical_fish_b.png"
+    ]
+  },
+  "minecraft:turtle": {
+    "model": "turtle.b3d",
+    "textures": [
+      "sea_turtle_big.png"
     ]
   },
   "minecraft:vex": {
@@ -572,9 +808,9 @@
       "axis": "Y",
       "bone": "head"
     },
-    "model": "model-vex.b3d",
+    "model": "vex.b3d",
     "textures": [
-      "entity-mobs_mc_vex.png"
+      "vex.png"
     ]
   },
   "minecraft:villager": {
@@ -582,9 +818,9 @@
       "axis": "Y",
       "bone": "Head_Control"
     },
-    "model": "model-villager.b3d",
+    "model": "villager.b3d",
     "textures": [
-      "entity-mobs_mc_villager.png"
+      "villager.png"
     ]
   },
   "minecraft:vindicator": {
@@ -592,9 +828,9 @@
       "axis": "Y",
       "bone": "head.control"
     },
-    "model": "model-vindicator.b3d",
+    "model": "vindicator.b3d",
     "textures": [
-      "entity-mobs_mc_vindicator.png",
+      "vindicator.png",
       "item-iron_axe.png"
     ]
   },
@@ -603,21 +839,25 @@
       "axis": "Y",
       "bone": "Head_Control"
     },
-    "model": "model-villager.b3d",
+    "model": "villager.b3d",
     "textures": [
-      "entity-mobs_mc_villager.png"
+      "villager.png"
     ]
   },
   "minecraft:warden": {
-    "model": "model-iron_golem.b3d",
+    "model": "warden.b3d",
     "textures": [
-      "entity-mobs_mc_iron_golem.png"
+      "warden.png"
     ]
   },
   "minecraft:witch": {
-    "model": "model-witch.b3d",
+    "head_swivel": {
+      "axis": "Y",
+      "bone": "head"
+    },
+    "model": "witch.b3d",
     "textures": [
-      "entity-mobs_mc_witch.png"
+      "witch.png"
     ]
   },
   "minecraft:wither": {
@@ -625,9 +865,9 @@
       "axis": "Y",
       "bone": "head"
     },
-    "model": "model-wither.b3d",
+    "model": "wither.b3d",
     "textures": [
-      "entity-mobs_mc_wither.png"
+      "wither.png"
     ]
   },
   "minecraft:wither_skeleton": {
@@ -635,9 +875,9 @@
       "axis": "Y",
       "bone": "head.control"
     },
-    "model": "model-witherskeleton.b3d",
+    "model": "witherskeleton.b3d",
     "textures": [
-      "entity-mobs_mc_wither_skeleton.png"
+      "wither_skeleton.png"
     ]
   },
   "minecraft:wolf": {
@@ -645,15 +885,29 @@
       "axis": "Z",
       "bone": "head.control"
     },
-    "model": "model-wolf.b3d",
+    "model": "wolf.b3d",
     "textures": [
-      "entity-mobs_mc_wolf.png"
+      "wolf.png"
+    ]
+  },
+  "minecraft:wolf+baby": {
+    "head_swivel": {
+      "axis": "Z",
+      "bone": "head.control"
+    },
+    "model": "wolf__baby.b3d",
+    "textures": [
+      "wolf.png"
     ]
   },
   "minecraft:zoglin": {
-    "model": "model-hoglin.b3d",
+    "head_swivel": {
+      "axis": "Z",
+      "bone": "head"
+    },
+    "model": "hoglin.b3d",
     "textures": [
-      "entity-extra_mobs_zoglin.png"
+      "zoglin.png"
     ]
   },
   "minecraft:zombie": {
@@ -661,15 +915,19 @@
       "axis": "Y",
       "bone": "head.control"
     },
-    "model": "model-zombie.b3d",
+    "model": "zombie.b3d",
     "textures": [
-      "entity-mobs_mc_zombie.png"
+      "zombie.png"
     ]
   },
   "minecraft:zombie_horse": {
-    "model": "model-horse.b3d",
+    "head_swivel": {
+      "axis": "Y",
+      "bone": "head"
+    },
+    "model": "horse.b3d",
     "textures": [
-      "entity-mobs_mc_horse_zombie.png"
+      "horse_zombie.png"
     ]
   },
   "minecraft:zombie_villager": {
@@ -677,9 +935,9 @@
       "axis": "Y",
       "bone": "head.control"
     },
-    "model": "model-villager_zombie.b3d",
+    "model": "villager_zombie.b3d",
     "textures": [
-      "entity-mobs_mc_zombie_villager.png"
+      "zombie_villager.png"
     ]
   },
   "minecraft:zombified_piglin": {
@@ -687,9 +945,9 @@
       "axis": "Y",
       "bone": "Head"
     },
-    "model": "model-piglin.b3d",
+    "model": "piglin.b3d",
     "textures": [
-      "entity-extra_mobs_zombified_piglin.png",
+      "zombified_piglin.png",
       "item-golden_sword.png"
     ]
   }

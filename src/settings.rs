@@ -29,14 +29,6 @@ online_mode = false
 microsoft_email = \"\"
 
 [media]
-# url to a zip file containing the mineclonia models
-model_url = \"https://codeberg.org/mineclonia/mineclonia/archive/main:mods/ENTITIES/mobs_mc/models.zip\"
-# url to a zip file containing the textures for those models
-entity_texture_url = \"https://codeberg.org/mineclonia/mineclonia/archive/main:mods/ENTITIES/mobs_mc/textures.zip\"
-# url to a zip file containing the mineclonia boat/raft models
-boat_model_url = \"https://codeberg.org/mineclonia/mineclonia/archive/main:mods/ENTITIES/mcl_boats/models.zip\"
-# url to a zip file containing the textures for those boats/rafts
-boat_texture_url = \"https://codeberg.org/mineclonia/mineclonia/archive/main:mods/ENTITIES/mcl_boats/textures.zip\"
 # resolution of installed textures
 # should be 16 unless you changed them
 texture_pack_res = 16
@@ -80,3 +72,9 @@ pub const HS_NAMES: [&str; 26] = [
 
 // How many layers deep we recurse into the assets when building the announcement
 pub const TEXTURE_MAX_RECURSION: u8 = 6;
+
+// used for determining upgrade need
+pub const BRIDGETEST_ASSETS_VER: i32 = 1;
+
+// base URL for the bridgetest_assets repo
+pub const BRIDGETEST_ASSETS_URL: &str = "https://codeberg.org/l-koehler/bridgetest_assets/archive/v1.zip";

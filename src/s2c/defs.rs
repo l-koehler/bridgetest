@@ -256,9 +256,9 @@ pub fn get_sky_stuff() -> [ToClientCommand; 7] {
         ToClientCommand::SetSun(Box::new(server_to_client::SetSunSpec {
             sun: types::SunParams {
                 visible: true,
-                texture: String::from("environment-sun.png"),
+                texture: String::from("environment-celestial-sun.png"),
                 tonemap: String::from(""),
-                sunrise: String::from("air.png"),
+                sunrise: String::from(""),
                 sunrise_visible: true,
                 scale: 1.0,
             },
@@ -266,7 +266,7 @@ pub fn get_sky_stuff() -> [ToClientCommand; 7] {
         ToClientCommand::SetMoon(Box::new(server_to_client::SetMoonSpec {
             moon: types::MoonParams {
                 visible: true,
-                texture: String::from("environment-moon_phases.png^[sheet:4x2:2,1"),
+                texture: String::from("environment-celestial-moon-full_moon.png"),
                 tonemap: String::from(""),
                 scale: 3.75,
             },
