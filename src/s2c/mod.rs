@@ -2,6 +2,7 @@ pub mod chat;
 pub mod commands;
 pub mod defs;
 pub mod entities;
+pub mod entity_variants;
 pub mod inventory;
 pub mod media;
 pub mod player;

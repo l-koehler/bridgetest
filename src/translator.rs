@@ -69,6 +69,7 @@ pub async fn client_handler(
         &mut luanti_conn,
         &mut proxy_state.entities,
         &mc_client,
+        &proxy_state.media,
     )
     .await;
     // set dimension before parsing chunks

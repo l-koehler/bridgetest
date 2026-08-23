@@ -1,4 +1,5 @@
 use crate::s2c;
+use crate::s2c::entity_variants;
 use crate::state;
 use crate::utils;
 use azalea::Client;
@@ -158,6 +159,54 @@ pub async fn tick(
         }
     }
     drop(ecs);
+
+    // re-check the model/texture of every entity whose metadata changed this tick
+    proxy_state.entities.appearance_update_scheduled.dedup();
+    for entity_id in proxy_state.entities.appearance_update_scheduled.clone() {
+        let Some(&clientside_id) = proxy_state.entities.entity_id_map.get_by_left(&entity_id)
+        else {
+            continue;
+        };
+        let Ok(Some(entity)) = mc_client.entity_by_minecraft_id(entity_id) else {
+            continue;
+        };
+        let Some(entity_kind) = mc_client
+            .get_entity_component::<EntityKindComponent>(entity.id())
+            .map(|c| c.0)
+        else {
+            continue;
+        };
+        let extra =
+            entity_variants::extract(mc_client, entity.id(), entity_kind, &proxy_state.media);
+        let (visual, mesh, textures, size) = entity_variants::get_entity_model(entity_kind, extra);
+        let unchanged = proxy_state
+            .entities
+            .entity_appearance
+            .get(&entity_id)
+            .is_some_and(|(cached_mesh, cached_textures, cached_size)| {
+                *cached_mesh == mesh && *cached_textures == textures && *cached_size == size
+            });
+        if unchanged {
+            continue;
+        }
+        proxy_state
+            .entities
+            .entity_appearance
+            .insert(entity_id, (mesh.clone(), textures.clone(), size));
+        aom_vector.push(s2c::entities::appearance_update_message(
+            clientside_id,
+            visual,
+            mesh,
+            textures,
+            size,
+        ));
+        if aom_vector.len() >= 20 {
+            chunks.push(aom_vector);
+            aom_vector = Vec::new();
+        }
+    }
+    proxy_state.entities.appearance_update_scheduled.clear();
+
     if !aom_vector.is_empty() {
         chunks.push(aom_vector);
     };

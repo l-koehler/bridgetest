@@ -157,6 +157,11 @@ pub fn free_id(serverside_id: u32, entity_state: &mut state::EntityState) {
         }
         None => (),
     }
+    // drop any leftover appearance bookkeeping for the freed entity
+    entity_state
+        .appearance_update_scheduled
+        .retain(|x| *x != serverside_id.into());
+    entity_state.entity_appearance.remove(&serverside_id.into());
 }
 
 fn defrag_ranges(entity_state: &mut state::EntityState) {
@@ -448,18 +453,53 @@ pub struct SwivelInfo {
     pub phase: f32,
 }
 
+// what an entity visual is made of
+// required on all the entries in entity_info
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum VisualKind {
+    /// a plain texture
+    Texture,
+    /// 6 textures in a cube
+    Block,
+    /// a .b3d model with texture slots
+    Model,
+}
+
+// all optional here, as variants compose on the base
+// does mean that invalid base entries need to be caught, but still cool to use one type
+//
+// Textures are a list of texture slots, with each slot defining a base texture and any number of overlays
+// (or an empty base texture, to just compose overlays onto the real base (for variants (hey cool i love nesting parens)))
 #[derive(Debug, Deserialize)]
-struct RawEntityInfo {
-    model: String,
-    textures: Vec<String>,
+pub(crate) struct RawEntityInfo {
+    #[serde(rename = "type")]
+    pub(crate) visual: Option<VisualKind>,
+    pub(crate) model: Option<String>,
+    pub(crate) textures: Option<Vec<Vec<String>>>,
+    pub(crate) size: Option<[f32; 3]>,
     head_swivel: Option<SwivelInfo>,
     #[serde(default = "default_body_phase")]
     body_phase: f32,
 }
 
+// split in two files purely for readability
+// entity_info holds basic info per entity kind, entity_variants has variants (surprisingly)
 static ENTITY_INFO: LazyLock<HashMap<String, RawEntityInfo>> = LazyLock::new(|| {
-    let data = include_str!("../extra_data/entity_info.json");
-    serde_json::from_str(data).expect("extra_data/entity_info.json is invalid")
+    let base_data = include_str!("../extra_data/entity_info.json");
+    let variants_data = include_str!("../extra_data/entity_variants.json");
+    let mut info: HashMap<String, RawEntityInfo> =
+        serde_json::from_str(base_data).expect("extra_data/entity_info.json is invalid");
+    let variants: HashMap<String, RawEntityInfo> =
+        serde_json::from_str(variants_data).expect("extra_data/entity_variants.json is invalid");
+    let (base_len, variants_len) = (info.len(), variants.len());
+    info.extend(variants);
+    assert_eq!(
+        info.len(),
+        base_len + variants_len,
+        "extra_data/entity_info.json and entity_variants.json have overlapping keys"
+    );
+    info
 });
 
 fn entity_info(entity: EntityKind) -> &'static RawEntityInfo {
@@ -470,15 +510,16 @@ fn entity_info(entity: EntityKind) -> &'static RawEntityInfo {
     })
 }
 
+// raw lookup by literal key (bare or "kind+variant")
+// shouldn't be used to do anything but implement the fallback-having lookup
+pub(crate) fn entity_info_by_key(key: &str) -> Option<&'static RawEntityInfo> {
+    ENTITY_INFO.get(key)
+}
+
 pub fn get_head_swivel(entity: EntityKind) -> Option<SwivelInfo> {
     entity_info(entity).head_swivel.clone()
 }
 
 pub fn get_body_phase(entity: EntityKind) -> f32 {
     entity_info(entity).body_phase
-}
-
-pub fn get_entity_model(entity: EntityKind) -> (String, Vec<String>) {
-    let info = entity_info(entity);
-    return (info.model.clone(), info.textures.clone());
 }

@@ -1,6 +1,7 @@
 use azalea::core::entity_id::MinecraftEntityId;
 use bevy_ecs::component::Component;
 use bimap::BiMap;
+use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct EntityState {
@@ -15,6 +16,12 @@ pub struct EntityState {
     // used to prevent flooding the client with thousands of packets
     // side effect: we only iterate the ECS once
     pub entities_update_scheduled: Vec<MinecraftEntityId>,
+    // entities whose MC metadata changed and may need a model/texture re-check
+    // (e.g. a variant becoming known, or a baby growing up), processed next tick
+    pub appearance_update_scheduled: Vec<MinecraftEntityId>,
+    // (mesh, textures, size) last actually sent to the client, so the tick
+    // loop only resends AOCSetProperties when the resolved appearance actually changed
+    pub entity_appearance: HashMap<MinecraftEntityId, (String, Vec<String>, [f32; 3])>,
 }
 
 impl Default for EntityState {
@@ -23,6 +30,8 @@ impl Default for EntityState {
             entity_id_map: BiMap::new(),
             c_alloc_id_ranges: vec![(2, u16::MAX)], // 0 reserved for player, 1 causes issues
             entities_update_scheduled: Vec::new(),
+            appearance_update_scheduled: Vec::new(),
+            entity_appearance: HashMap::new(),
         }
     }
 }

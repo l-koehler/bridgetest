@@ -1,0 +1,597 @@
+{
+  "minecraft:armadillo+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:axolotl+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:axolotl+blue": {
+    "textures": [
+      [
+        "axolotl_purple.png"
+      ]
+    ]
+  },
+  "minecraft:axolotl+cyan": {
+    "textures": [
+      [
+        "axolotl_white.png"
+      ]
+    ]
+  },
+  "minecraft:axolotl+gold": {
+    "textures": [
+      [
+        "axolotl_yellow.png"
+      ]
+    ]
+  },
+  "minecraft:axolotl+lucy": {
+    "textures": [
+      [
+        "axolotl_pink.png"
+      ]
+    ]
+  },
+  "minecraft:bee+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:camel+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:cat+all_black": {
+    "textures": [
+      [
+        "cat_all_black.png"
+      ]
+    ]
+  },
+  "minecraft:cat+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:cat+black": {
+    "textures": [
+      [
+        "cat_black.png"
+      ]
+    ]
+  },
+  "minecraft:cat+british_shorthair": {
+    "textures": [
+      [
+        "cat_british_shorthair.png"
+      ]
+    ]
+  },
+  "minecraft:cat+calico": {
+    "textures": [
+      [
+        "cat_calico.png"
+      ]
+    ]
+  },
+  "minecraft:cat+jellie": {
+    "textures": [
+      [
+        "cat_jellie.png"
+      ]
+    ]
+  },
+  "minecraft:cat+persian": {
+    "textures": [
+      [
+        "cat_persian.png"
+      ]
+    ]
+  },
+  "minecraft:cat+ragdoll": {
+    "textures": [
+      [
+        "cat_ragdoll.png"
+      ]
+    ]
+  },
+  "minecraft:cat+siamese": {
+    "textures": [
+      [
+        "cat_siamese.png"
+      ]
+    ]
+  },
+  "minecraft:cat+tabby": {
+    "textures": [
+      [
+        "cat_tabby.png"
+      ]
+    ]
+  },
+  "minecraft:cat+white": {
+    "textures": [
+      [
+        "cat_white.png"
+      ]
+    ]
+  },
+  "minecraft:chicken+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:chicken+cold": {},
+  "minecraft:chicken+temperate": {},
+  "minecraft:chicken+warm": {},
+  "minecraft:cow+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:cow+cold": {},
+  "minecraft:cow+temperate": {},
+  "minecraft:cow+warm": {},
+  "minecraft:donkey+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:drowned+baby": {
+    "model": "drowned__baby.b3d"
+  },
+  "minecraft:frog+cold": {
+    "textures": [
+      [
+        "frog_cold.png"
+      ]
+    ]
+  },
+  "minecraft:frog+temperate": {
+    "textures": [
+      [
+        "frog_temperate.png"
+      ]
+    ]
+  },
+  "minecraft:goat+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:happy_ghast+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:hoglin+baby": {
+    "model": "hoglin__baby.b3d"
+  },
+  "minecraft:horse+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:horse+black": {
+    "textures": [
+      [
+        "horse_black.png"
+      ]
+    ]
+  },
+  "minecraft:horse+chestnut": {
+    "textures": [
+      [
+        "horse_chestnut.png"
+      ]
+    ]
+  },
+  "minecraft:horse+creamy": {
+    "textures": [
+      [
+        "horse_creamy.png"
+      ]
+    ]
+  },
+  "minecraft:horse+dark_brown": {
+    "textures": [
+      [
+        "horse_darkbrown.png"
+      ]
+    ]
+  },
+  "minecraft:horse+gray": {
+    "textures": [
+      [
+        "horse_gray.png"
+      ]
+    ]
+  },
+  "minecraft:horse+white": {
+    "textures": [
+      [
+        "horse_white.png"
+      ]
+    ]
+  },
+  "minecraft:husk+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:illusioner+with_decoys": {
+    "model": "illusioner__with_decoys.b3d"
+  },
+  "minecraft:llama+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:llama+brown": {
+    "textures": [
+      [
+        "llama_brown.png"
+      ]
+    ]
+  },
+  "minecraft:llama+gray": {
+    "textures": [
+      [
+        "llama_gray.png"
+      ]
+    ]
+  },
+  "minecraft:llama+preview": {
+    "model": "llama__preview.b3d"
+  },
+  "minecraft:llama+white": {
+    "textures": [
+      [
+        "llama_white.png"
+      ]
+    ]
+  },
+  "minecraft:mooshroom+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:mooshroom+brown": {
+    "textures": [
+      [],
+      [
+        "block-brown_mushroom.png"
+      ]
+    ]
+  },
+  "minecraft:mule+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:ocelot+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:panda+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:parrot+blue": {
+    "textures": [
+      [
+        "parrot_blue.png"
+      ]
+    ]
+  },
+  "minecraft:parrot+green": {
+    "textures": [
+      [
+        "parrot_green.png"
+      ]
+    ]
+  },
+  "minecraft:parrot+grey": {
+    "textures": [
+      [
+        "parrot_grey.png"
+      ]
+    ]
+  },
+  "minecraft:parrot+yellow_blue": {
+    "textures": [
+      [
+        "parrot_yellow_blue.png"
+      ]
+    ]
+  },
+  "minecraft:pig+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:pig+cold": {},
+  "minecraft:pig+temperate": {},
+  "minecraft:pig+warm": {},
+  "minecraft:piglin+baby": {
+    "model": "piglin__baby.b3d"
+  },
+  "minecraft:polar_bear+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:pufferfish+big": {
+    "model": "pufferfish__big.b3d"
+  },
+  "minecraft:pufferfish+medium": {
+    "model": "pufferfish__medium.b3d"
+  },
+  "minecraft:rabbit+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:rabbit+black": {
+    "textures": [
+      [
+        "rabbit_black.png"
+      ]
+    ]
+  },
+  "minecraft:rabbit+caerbannog": {
+    "textures": [
+      [
+        "rabbit_caerbannog.png"
+      ]
+    ]
+  },
+  "minecraft:rabbit+gold": {
+    "textures": [
+      [
+        "rabbit_gold.png"
+      ]
+    ]
+  },
+  "minecraft:rabbit+salt": {
+    "textures": [
+      [
+        "rabbit_salt.png"
+      ]
+    ]
+  },
+  "minecraft:rabbit+white": {
+    "textures": [
+      [
+        "rabbit_white.png"
+      ]
+    ]
+  },
+  "minecraft:rabbit+white_splotched": {
+    "textures": [
+      [
+        "rabbit_white_splotched.png"
+      ]
+    ]
+  },
+  "minecraft:sheep+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:skeleton_horse+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:sniffer+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:strider+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:trader_llama+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:trader_llama+creamy": {
+    "textures": [
+      [
+        "llama_creamy.png"
+      ]
+    ]
+  },
+  "minecraft:trader_llama+gray": {
+    "textures": [
+      [
+        "llama_gray.png"
+      ]
+    ]
+  },
+  "minecraft:trader_llama+white": {
+    "textures": [
+      [
+        "llama_white.png"
+      ]
+    ]
+  },
+  "minecraft:tropical_fish+alternate": {
+    "model": "tropical_fish__alternate.b3d",
+    "textures": [
+      [
+        "tropical_fish_b.png"
+      ]
+    ]
+  },
+  "minecraft:turtle+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:villager+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:wolf+ashen": {
+    "textures": [
+      [
+        "wolf_ashen.png"
+      ]
+    ]
+  },
+  "minecraft:wolf+baby": {
+    "model": "wolf__baby.b3d"
+  },
+  "minecraft:wolf+black": {
+    "textures": [
+      [
+        "wolf_black.png"
+      ]
+    ]
+  },
+  "minecraft:wolf+chestnut": {
+    "textures": [
+      [
+        "wolf_chestnut.png"
+      ]
+    ]
+  },
+  "minecraft:wolf+rusty": {
+    "textures": [
+      [
+        "wolf_rusty.png"
+      ]
+    ]
+  },
+  "minecraft:wolf+snowy": {
+    "textures": [
+      [
+        "wolf_snowy.png"
+      ]
+    ]
+  },
+  "minecraft:wolf+spotted": {
+    "textures": [
+      [
+        "wolf_spotted.png"
+      ]
+    ]
+  },
+  "minecraft:wolf+striped": {
+    "textures": [
+      [
+        "wolf_striped.png"
+      ]
+    ]
+  },
+  "minecraft:wolf+woods": {
+    "textures": [
+      [
+        "wolf_woods.png"
+      ]
+    ]
+  },
+  "minecraft:zoglin+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:zombie+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:zombie_horse+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:zombie_villager+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  },
+  "minecraft:zombified_piglin+baby": {
+    "size": [
+      0.5,
+      0.5,
+      0.5
+    ]
+  }
+}

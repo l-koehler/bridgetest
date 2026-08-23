@@ -1,5 +1,4 @@
 use azalea::core::entity_id::MinecraftEntityId;
-use azalea::entity::{EntityDataItem, EntityDataValue};
 use log::*;
 use luanti_protocol::types::ObjectProperties;
 use std::time::Duration;
@@ -30,6 +29,7 @@ use azalea::protocol::packets::game::{
 use std::time::Instant;
 
 use crate::s2c;
+use crate::s2c::entity_variants;
 use crate::state;
 use crate::utils::{self, get_head_swivel};
 
@@ -38,12 +38,107 @@ pub enum EAddType {
     Player(String),
 }
 
-// if no packet is passed, add the player using data from the server state
+// shared by the initial spawn (add_entity) and later updates (new metadata)
+fn build_object_properties(
+    visual: String,
+    mesh: String,
+    textures: Vec<String>,
+    size: [f32; 3],
+) -> ObjectProperties {
+    ObjectProperties {
+        version: 4,
+        hp_max: 100,
+        // luanti physics are inaccurate,
+        // but at least prevent mobs from sinking in the ground
+        physical: true,
+        _unused: 0,
+        // player hitbox
+        // entity hits are calculated by the proxy anyways
+        collision_box: aabb3f {
+            min_edge: v3f {
+                x: -0.3,
+                y: 0.0,
+                z: -0.3,
+            },
+            max_edge: v3f {
+                x: 0.3,
+                y: 1.8,
+                z: 0.3,
+            },
+        },
+        selection_box: aabb3f {
+            min_edge: v3f {
+                x: -0.3,
+                y: 0.0,
+                z: -0.3,
+            },
+            max_edge: v3f {
+                x: 0.3,
+                y: 1.8,
+                z: 0.3,
+            },
+        },
+        pointable: false,
+        visual,
+        visual_size: v3f {
+            x: size[0],
+            y: size[1],
+            z: size[2],
+        },
+        textures,
+        spritediv: v2i16 { x: 1, y: 1 },
+        initial_sprite_basepos: v2i16 { x: 0, y: 0 },
+        is_visible: true,
+        makes_footstep_sound: true,
+        automatic_rotate: 0.0,
+        mesh,
+        colors: vec![SColor::new(255, 255, 255, 255)],
+        collide_with_objects: true,
+        stepheight: 0.0,
+        automatic_face_movement_dir: false,
+        automatic_face_movement_dir_offset: 0.0,
+        backface_culling: true,
+        nametag: String::from(""),
+        nametag_color: SColor::new(255, 255, 255, 255),
+        automatic_face_movement_max_rotation_per_sec: 360.0,
+        infotext: String::from(""),
+        wield_item: String::from(""),
+        glow: 0,
+        breath_max: 0,
+        eye_height: 1.625,
+        zoom_fov: 0.0,
+        use_texture_alpha: false,
+        damage_texture_modifier: Some(String::from("^[brighten")),
+        shaded: Some(true),
+        show_on_minimap: Some(false),
+        nametag_bgcolor: None,
+        rotate_selectionbox: Some(false),
+    }
+}
+
+// resend the full set of properties with a new visual/mesh/textures/size
+pub fn appearance_update_message(
+    client_id: u16,
+    visual: String,
+    mesh: String,
+    textures: Vec<String>,
+    size: [f32; 3],
+) -> server_to_client::ActiveObjectMessage {
+    server_to_client::ActiveObjectMessage {
+        id: client_id,
+        data: ActiveObjectCommand::SetProperties(luanti_protocol::types::AOCSetProperties {
+            newprops: build_object_properties(visual, mesh, textures, size),
+        }),
+    }
+}
+
+// if no ClientboundAddEntity is given, add the player
 pub async fn add_entity(
     optional_packet: EAddType,
     conn: &mut LuantiConnection,
     entity_state: &mut state::EntityState,
     mc_client: &Client,
+    media_state: &state::MediaState,
 ) {
     let is_player: bool;
     let name: String;
@@ -51,8 +146,9 @@ pub async fn add_entity(
     let position: v3f;
     let rotation: v3f;
     let mesh: String;
-    let textures: Vec<String>;
+    let mut textures: Vec<String>;
     let visual: String;
+    let size: [f32; 3];
     match optional_packet {
         EAddType::Entity(packet_data) => {
             // use a network packet
@@ -64,6 +160,7 @@ pub async fn add_entity(
                 x_rot,
                 y_rot,
                 y_head_rot,
+                data,
                 ..
             } = packet_data;
             is_player = false;
@@ -96,15 +193,19 @@ pub async fn add_entity(
                 };
             }
 
-            if entity_type.clone() == EntityKind::Item {
-                visual = String::from("sprite");
-                mesh = String::new();
-                // what item it is can't be known at this time, leave empty so
-                // a "texture modifier" sent later will just set the texture
-                textures = vec![String::from("")];
-            } else {
-                visual = String::from("mesh");
-                (mesh, textures) = utils::get_entity_model(entity_type);
+            // per-instance metadata (variant/baby/...) hasn't arrived yet,
+            // start with the default variant info.
+            (visual, mesh, textures, size) = entity_variants::get_entity_model(
+                entity_type,
+                entity_variants::ExtraData::default(),
+            );
+
+            // falling blocks carry their block state in the spawn packet
+            if entity_type == EntityKind::FallingBlock
+                && let Some(real_textures) =
+                    entity_variants::falling_block_textures(data, media_state)
+            {
+                textures = real_textures.to_vec();
             }
         }
         EAddType::Player(p_name) => {
@@ -114,8 +215,9 @@ pub async fn add_entity(
             c_id = 0;
             position = v3f::ZERO; // player will be moved somewhere else later
             rotation = v3f::ZERO;
-            mesh = String::from("model-villager.b3d"); // TODO
-            textures = vec![String::from("entity-player-slim-steve.png")];
+            mesh = String::from("villager.b3d"); // TODO we have no model
+            textures = vec![String::from("villager.png")];
+            size = [1.0, 1.0, 1.0];
         }
     };
 
@@ -132,75 +234,7 @@ pub async fn add_entity(
             hp: 100, // entity deaths handled by server
             messages: vec![
                 ActiveObjectCommand::SetProperties(luanti_protocol::types::AOCSetProperties {
-                    newprops: ObjectProperties {
-                        version: 4,
-                        hp_max: 100,
-                        // luanti physics are inaccurate,
-                        // but at least prevent mobs from sinking in the ground
-                        physical: true,
-                        _unused: 0,
-                        // player hitbox
-                        // entity hits are calculated by the proxy anyways
-                        collision_box: aabb3f {
-                            min_edge: v3f {
-                                x: -0.3,
-                                y: 0.0,
-                                z: -0.3,
-                            },
-                            max_edge: v3f {
-                                x: 0.3,
-                                y: 1.8,
-                                z: 0.3,
-                            },
-                        },
-                        selection_box: aabb3f {
-                            min_edge: v3f {
-                                x: -0.3,
-                                y: 0.0,
-                                z: -0.3,
-                            },
-                            max_edge: v3f {
-                                x: 0.3,
-                                y: 1.8,
-                                z: 0.3,
-                            },
-                        },
-                        pointable: false,
-                        visual,
-                        visual_size: v3f {
-                            x: 1.0,
-                            y: 1.0,
-                            z: 1.0,
-                        },
-                        textures,
-                        spritediv: v2i16 { x: 1, y: 1 },
-                        initial_sprite_basepos: v2i16 { x: 0, y: 0 },
-                        is_visible: true,
-                        makes_footstep_sound: true,
-                        automatic_rotate: 0.0,
-                        mesh: String::from(mesh),
-                        colors: vec![SColor::new(255, 255, 255, 255)],
-                        collide_with_objects: true,
-                        stepheight: 0.0,
-                        automatic_face_movement_dir: false,
-                        automatic_face_movement_dir_offset: 0.0,
-                        backface_culling: true,
-                        nametag: String::from(""), // type_str,
-                        nametag_color: SColor::new(255, 255, 255, 255),
-                        automatic_face_movement_max_rotation_per_sec: 360.0,
-                        infotext: String::from(""),
-                        wield_item: String::from(""),
-                        glow: 0,
-                        breath_max: 0,
-                        eye_height: 1.625,
-                        zoom_fov: 0.0,
-                        use_texture_alpha: false,
-                        damage_texture_modifier: Some(String::from("^[brighten")),
-                        shaded: Some(true),
-                        show_on_minimap: Some(false),
-                        nametag_bgcolor: None,
-                        rotate_selectionbox: Some(false),
-                    },
+                    newprops: build_object_properties(visual, mesh, textures, size),
                 }),
                 ActiveObjectCommand::SetTextureMod(luanti_protocol::types::AOCSetTextureMod {
                     modifier: String::from(""),
@@ -357,6 +391,14 @@ pub fn entity_sync(
     entity_state.entities_update_scheduled.push(*id);
 }
 
+pub async fn set_entity_data(
+    packet_data: &ClientboundSetEntityData,
+    entity_state: &mut state::EntityState,
+) {
+    let ClientboundSetEntityData { id, .. } = packet_data;
+    entity_state.appearance_update_scheduled.push(*id);
+}
+
 pub async fn entity_event(
     packet_data: &ClientboundEntityEvent,
     _conn: &mut LuantiConnection,
@@ -437,78 +479,6 @@ pub async fn entity_event(
             event_id, entity_id
         ),
     }
-}
-
-pub async fn set_entity_data(
-    packet_data: &ClientboundSetEntityData,
-    conn: &mut LuantiConnection,
-    entity_state: &state::EntityState,
-    media_state: &state::MediaState,
-    mc_client: &Client,
-) {
-    // Currently, the only data that will actually be used is EntityDataValue::ItemStack in EntityKind::Item
-    // Everything else gets dropped.
-    let ClientboundSetEntityData { id, packed_items } = packet_data;
-
-    let Some(clientside_id) = entity_state.entity_id_map.get_by_left(id) else {
-        warn!("Got S2C SetEntityData for unknown ID, skipping!");
-        return;
-    };
-
-    let Ok(Some(entity)) = mc_client.entity_by_minecraft_id(*id) else {
-        warn!("Got S2C SetEntityData for unknown ID, skipping!");
-        return;
-    };
-    let entity_kind = mc_client
-        .get_entity_component::<azalea::entity::EntityKindComponent>(entity.id())
-        .unwrap()
-        .0;
-
-    let mut metadata_item: &EntityDataItem;
-    for i in 0..packed_items.len() {
-        metadata_item = &packed_items[i];
-        let EntityDataItem { index: _, value } = metadata_item;
-        match value {
-            EntityDataValue::ItemStack(data) => match entity_kind {
-                EntityKind::Item => {
-                    set_entity_texture(
-                        *clientside_id,
-                        utils::texture_from_itemstack(data, media_state),
-                        conn,
-                    )
-                    .await
-                }
-                _ => info!(
-                    "Got S2C SetEntityData with ItemStack, but this is only implemented for dropped items! Dropping this EntityDataItem"
-                ),
-            },
-            _ => trace!(
-                "Got S2C SetEntityData with unsupported EntityDataValue ({:?})! Dropping this EntityDataItem",
-                value
-            ),
-        }
-    }
-}
-
-async fn set_entity_texture(id: u16, texture: String, conn: &LuantiConnection) {
-    /*
-     * Strictly speaking, this does not *set* a texture.
-     * It only works when the previous texture was "".
-     * Currently, it *should* only be called when that's the case,
-     * but that won't stay so forever (or even always hold true
-     * currently, I don't know what MC does). FIXME: (later)
-     */
-    let update_texture_packet = ToClientCommand::ActiveObjectMessages(Box::new(
-        server_to_client::ActiveObjectMessagesCommand {
-            objects: vec![server_to_client::ActiveObjectMessage {
-                id,
-                data: luanti_protocol::types::ActiveObjectCommand::SetTextureMod(
-                    luanti_protocol::types::AOCSetTextureMod { modifier: texture },
-                ),
-            }],
-        },
-    ));
-    conn.send(update_texture_packet).unwrap();
 }
 
 pub async fn update_mob_effect(

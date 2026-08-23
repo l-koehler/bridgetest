@@ -256,6 +256,19 @@ impl BlockMapping {
         let ret: [TileDef; 6] = ret_vec.as_array().unwrap().clone();
         return ret;
     }
+    // the 6 face textures in the same order get_tiledefs uses,
+    // used for active objects with "cube" visual
+    pub fn to_entity_textures(&self) -> [String; 6] {
+        [
+            Direction::Up,
+            Direction::Down,
+            Direction::North,
+            Direction::South,
+            Direction::East,
+            Direction::West,
+        ]
+        .map(|d| self.textures.get(&d).unwrap().to_luanti_safe())
+    }
     pub fn to_safe_cube(&self) -> String {
         return format!(
             "[inventorycube{{{}{{{}{{{}",
@@ -431,3 +444,4 @@ pub async fn fetch_media() {
         found_textures.len()
     );
 }
+

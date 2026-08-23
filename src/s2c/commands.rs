@@ -64,6 +64,7 @@ pub async fn process(
                     luanti_conn,
                     &mut proxy_state.entities,
                     mc_client,
+                    &proxy_state.media,
                 )
                 .await
             }
@@ -112,14 +113,7 @@ pub async fn process(
                 s2c::entities::entity_event(&event_packet, luanti_conn, mc_client).await
             }
             ClientboundGamePacket::SetEntityData(data_packet) => {
-                s2c::entities::set_entity_data(
-                    &data_packet,
-                    luanti_conn,
-                    &proxy_state.entities,
-                    &proxy_state.media,
-                    mc_client,
-                )
-                .await
+                s2c::entities::set_entity_data(&data_packet, &mut proxy_state.entities).await
             }
 
             ClientboundGamePacket::OpenScreen(screen_packet) => {

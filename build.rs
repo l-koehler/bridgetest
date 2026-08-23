@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 fn main() {
     println!("cargo:rerun-if-changed=extra_data/entity_info.json");
+    println!("cargo:rerun-if-changed=extra_data/entity_variants.json");
 
     // warn about entities not mapped to a model/texture
     // defaults helpfully to a red shulker
