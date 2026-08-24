@@ -1,6 +1,6 @@
 use super::world::Dimensions;
 use azalea::{
-    entity::{MobEffectData, PlayerAbilities},
+    entity::MobEffectData,
     registry::builtin::MobEffect,
 };
 use std::time::Instant;

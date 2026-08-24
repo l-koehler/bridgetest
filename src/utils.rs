@@ -188,7 +188,7 @@ fn defrag_ranges(entity_state: &mut state::EntityState) {
 
 pub fn texture_from_itemstack(item: &ItemStack, media_state: &state::MediaState) -> String {
     match item {
-        ItemStack::Empty => String::from("air.png"),
+        ItemStack::Empty => String::from("blank.png"),
         ItemStack::Present(slot_data) => {
             let item_name = slot_data.kind.to_string();
             let inventory_image: String;
@@ -200,36 +200,66 @@ pub fn texture_from_itemstack(item: &ItemStack, media_state: &state::MediaState)
                     .clone()
                     .to_luanti_safe();
             } else {
-                inventory_image = media_state
-                    .block_texture_map
-                    .get(&item_name)
-                    .unwrap()
-                    .clone()
-                    .to_safe_cube();
+                inventory_image =
+                    s2c::media::lookup_block_mapping(&media_state.block_texture_map, &item_name, "")
+                        .unwrap()
+                        .clone()
+                        .to_safe_cube();
             }
             return inventory_image;
         }
     }
 }
 
-pub fn state_to_node(state: BlockState, cave_air_glow: bool) -> MapNode {
-    let mut param0: u16;
-    let param1: u8;
-    let param2: u8 = 0;
-    param0 = BlockKind::try_from(state).unwrap().to_u32() as u16 + 128;
+// Builds the "prop1=val1,prop2=val2" (alphabetic)
+// used in scripts/texture_maps.py to key extra_data/block_texture_map.json
+pub fn variant_key_from_state(state: BlockState) -> String {
+    let mut properties: Vec<(&str, &str)> = state.to_trait().property_map().into_iter().collect();
+    properties.sort_unstable();
+    properties
+        .into_iter()
+        .map(|(k, v)| format!("{k}={v}"))
+        .collect::<Vec<_>>()
+        .join(",")
+}
 
-    // param1 (CPT_LIGHT): lower nibble = day/sky light, upper nibble = block light
+pub fn state_to_node(
+    state: BlockState,
+    cave_air_glow: bool,
+    media_state: &state::MediaState,
+) -> MapNode {
+    let param0: u16;
+    let param1: u8 = 0xEE;
+    let mut param2: u8 = 0;
+
+    // no light context available here yet
     if state.is_air() {
         param0 = 126;
-        param1 = 0xEE;
     } else if (BlockKind::try_from(state).unwrap() == BlockKind::CaveAir) && cave_air_glow {
         param0 = 120; // custom node: glowing_air, used in nether
-        param1 = 0xEE;
     } else {
-        // no light context available on this code path; assume full sky light so the
-        // client's sky ray-march (and lighting) works. blockupdate/section_block_update
-        // could refine this later.
-        param1 = 0xEE;
+        param0 = *media_state
+            .state_content_ids
+            .get(state.id() as usize)
+            .unwrap_or(&125); // 125 is engine reserved for unknown
+
+        // Water/lava: all flowing (non-source) states share one content id
+        // surface height uses param2 low 3 bits (CPT2_FLOWINGLIQUID)
+        // MC's level 0 is the source (no param2)
+        // 1-15 is flowing, where the param2 low 3 bits are the height
+        // bit 3 marks a falling column
+        let kind = BlockKind::try_from(state).unwrap();
+        if kind == BlockKind::Water || kind == BlockKind::Lava {
+            let raw_level: u8 = state
+                .to_trait()
+                .get_property("level")
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0);
+            if raw_level != 0 {
+                let base = raw_level & 0x07;
+                param2 = 7u8.saturating_sub(base);
+            }
+        }
     }
 
     MapNode {

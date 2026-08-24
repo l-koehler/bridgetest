@@ -28,6 +28,7 @@ pub async fn client_handler(
     proxy_state.media.nodebox_lookup = s2c::media::load_nodeboxes();
     proxy_state.media.block_texture_map =
         s2c::media::load_block_mappings(&proxy_state.media.nodebox_lookup);
+    proxy_state.media.block_info = s2c::media::load_block_info();
 
     /*
      * The first few packets (handshake) are outside the main loop, because

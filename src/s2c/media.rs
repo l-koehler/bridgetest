@@ -226,6 +226,33 @@ pub struct BlockMapping {
     textures: HashMap<Direction, LuantiTexture>,
     pub drawtype: DrawType,
     pub nodebox: NodeBox,
+    // true if any face texture has alpha transparency
+    pub cutout: bool,
+}
+
+// gets the variant whose keys "prop=val" pairs are all satisfied by the state_key pairs
+// (a stored key may omit properties Mojang's own blockstate JSON never mentions)
+// prefer the matching key with the most pairs (-> specific). Falls back to the protpertyless variant
+pub fn lookup_block_mapping<'a>(
+    block_texture_map: &'a HashMap<String, HashMap<String, BlockMapping>>,
+    block_name: &str,
+    state_key: &str,
+) -> Option<&'a BlockMapping> {
+    let variants = block_texture_map.get(block_name)?;
+    let state_pairs: Vec<&str> = state_key.split(',').filter(|s| !s.is_empty()).collect();
+    variants
+        .iter()
+        .filter_map(|(key, mapping)| {
+            let pairs: Vec<&str> = key.split(',').filter(|s| !s.is_empty()).collect();
+            pairs
+                .iter()
+                .all(|pair| state_pairs.contains(pair))
+                .then_some((pairs.len(), mapping))
+        })
+        .max_by_key(|(specificity, _)| *specificity)
+        .map(|(_, mapping)| mapping)
+        .or_else(|| variants.get(""))
+        .or_else(|| variants.values().next())
 }
 
 impl BlockMapping {
@@ -245,7 +272,9 @@ impl BlockMapping {
             ret_vec.push(TileDef {
                 name: texture.to_luanti_safe(),
                 animation: animation.clone(),
-                backface_culling: true,
+                // PlantLike can't have backface culling or it'll cull itself
+                // (not entirely, but it's an X shape and one plane culls the other)
+                backface_culling: self.drawtype != DrawType::PlantLike,
                 tileable_horizontal: false,
                 tileable_vertical: false,
                 color_rgb: utils::get_colormap(texture),
@@ -286,43 +315,108 @@ impl BlockMapping {
 }
 
 #[derive(Debug, Deserialize)]
-struct RawBlockMapping {
-    textures: HashMap<Direction, String>,
-    drawtype: String,
+#[serde(untagged)]
+enum RawTextures {
+    // Uniform is just a shorter version for having all Faces be identical
+    Uniform(String),
+    PerFace(HashMap<Direction, String>),
 }
 
+impl RawTextures {
+    fn into_map(self) -> HashMap<Direction, String> {
+        match self {
+            RawTextures::PerFace(map) => map,
+            RawTextures::Uniform(tex) => [
+                Direction::Up,
+                Direction::Down,
+                Direction::North,
+                Direction::South,
+                Direction::East,
+                Direction::West,
+            ]
+            .into_iter()
+            .map(|dir| (dir, tex.clone()))
+            .collect(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct RawBlockMapping {
+    textures: RawTextures,
+    drawtype: String,
+    #[serde(default)]
+    cutout: bool,
+}
+
+// Every BlockState of a block gets its own entry, keyed by
+// "prop1=val1,prop2=val2" like in Minecraft blockstate JSON (alphabetic)
+// See utils::variant_key_from_state where the key is built
 pub fn load_block_mappings(
     nodebox_mapping: &HashMap<String, NodeBox>,
-) -> HashMap<String, BlockMapping> {
+) -> HashMap<String, HashMap<String, BlockMapping>> {
     let data = include_bytes!("../../extra_data/block_texture_map.json");
-    let raw_map: HashMap<String, RawBlockMapping> = serde_json::from_slice(data).unwrap();
-    let parsed_map = raw_map
+    let raw_map: HashMap<String, HashMap<String, RawBlockMapping>> =
+        serde_json::from_slice(data).unwrap();
+    raw_map
         .into_iter()
-        .map(|(k, v)| {
-            let textures = v
-                .textures
+        .map(|(block_name, variants)| {
+            let compiled_variants = variants
                 .into_iter()
-                .map(|(dir, tex)| (dir, LuantiTexture::from_string(&tex)))
+                .map(|(state_key, v)| {
+                    let textures = v
+                        .textures
+                        .into_map()
+                        .into_iter()
+                        .map(|(dir, tex)| (dir, LuantiTexture::from_string(&tex)))
+                        .collect();
+                    let drawtype = match v.drawtype.as_str() {
+                        "full" => RawDrawType::Full,
+                        "air" => RawDrawType::Air,
+                        "flower" => RawDrawType::Flower,
+                        "fire" => RawDrawType::Fire,
+                        "liquid" => RawDrawType::Liquid,
+                        _ if v.drawtype.starts_with("NB_") => RawDrawType::NodeBox(v.drawtype),
+                        _ => unreachable!(),
+                    };
+                    let (drawtype, nodebox) = drawtype.compile(nodebox_mapping);
+                    let mapped = BlockMapping {
+                        textures,
+                        drawtype,
+                        nodebox,
+                        cutout: v.cutout,
+                    };
+                    (state_key, mapped)
+                })
                 .collect();
-            let drawtype = match v.drawtype.as_str() {
-                "full" => RawDrawType::Full,
-                "air" => RawDrawType::Air,
-                "flower" => RawDrawType::Flower,
-                "fire" => RawDrawType::Fire,
-                "liquid" => RawDrawType::Liquid,
-                _ if v.drawtype.starts_with("NB_") => RawDrawType::NodeBox(v.drawtype),
-                _ => unreachable!(),
-            };
-            let (drawtype, nodebox) = drawtype.compile(nodebox_mapping);
-            let mapped = BlockMapping {
-                textures,
-                drawtype,
-                nodebox,
-            };
-            (k, mapped)
+            (block_name, compiled_variants)
         })
-        .collect();
-    return parsed_map;
+        .collect()
+}
+
+// See extra_data/block_info.json
+// Edge cases that cant easily be read from the minecraft client jar
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct BlockInfo {
+    #[serde(default)]
+    pub light_source: u8,
+    // used when the state has the "lit" property true
+    pub lit_light_source: Option<u8>,
+    #[serde(default)]
+    pub waving: bool,
+    #[serde(default)]
+    pub climbable: bool,
+    // full-cube block with seethrough (also slime and some other)
+    #[serde(default)]
+    pub glasslike: bool,
+    // full-cube block with alpha
+    #[serde(default)]
+    pub cutout: bool,
+}
+
+pub fn load_block_info() -> HashMap<String, BlockInfo> {
+    let data = include_bytes!("../../extra_data/block_info.json");
+    serde_json::from_slice(data).expect("extra_data/block_info.json is invalid")
 }
 
 pub fn load_item_mappings() -> HashMap<String, LuantiTexture> {

@@ -1,6 +1,8 @@
 use super::super::state::MediaState;
 use crate::s2c;
+use crate::s2c::media::lookup_block_mapping;
 use crate::utils;
+use azalea::block::BlockState;
 use azalea::registry::builtin::BlockKind;
 use config::Config;
 use log::*;
@@ -19,9 +21,13 @@ use luanti_protocol::types::{
     TileAnimationParams, TileDef,
 };
 use minecraft_data_rs::{Api, models};
+use std::collections::HashMap;
 
 use glam::Vec2 as v2f;
 use glam::Vec3 as v3f;
+
+// Luanti IDs below this are reserved (Unknown/Air/Ignored) or used by hacks (glowing air).
+pub const CONTENT_ID_OFFSET: u16 = 128;
 
 #[derive(Clone)]
 pub enum HeartDisplay {
@@ -607,9 +613,7 @@ pub async fn get_item_def_command(media_state: &MediaState) -> ToClientCommand {
                 .clone()
                 .to_luanti_safe();
         } else {
-            inventory_image = media_state
-                .block_texture_map
-                .get(&mc_name)
+            inventory_image = lookup_block_mapping(&media_state.block_texture_map, &mc_name, "")
                 .expect("block_texture_map invalid, mapping messed up!")
                 .clone()
                 .to_safe_cube();
@@ -704,28 +708,79 @@ pub fn generate_itemdef(
 }
 
 // node def stuff
-pub async fn get_node_def_command(settings: &Config, media_state: &MediaState) -> ToClientCommand {
-    let mut content_features: Vec<(u16, ContentFeatures)> = Vec::new();
-    let mut content_feature: ContentFeatures;
+//
+// Luanti node definitions are per content-id, not block-kind, so every BlockState
+// gets resolved to its own shape in scripts/texture_maps.py, then deduplicated here.
+// the resulting table is stored on MediaState for utils::state_to_node to use
+pub async fn get_node_def_command(
+    settings: &Config,
+    media_state: &mut MediaState,
+) -> ToClientCommand {
     let texture_pack_res: u16 = settings.get_int("media.texture_pack_res").unwrap() as u16;
 
-    // Azalea provides no nicer way to iterate over blocks, as far as I know.
-    for mc_id in 0..std::mem::variant_count::<BlockKind>() {
-        if !BlockKind::is_valid_id(mc_id as u32) {
-            unreachable!();
+    let mut content_features: Vec<(u16, ContentFeatures)> = Vec::new();
+    // dedup key -> content id
+    let mut signature_to_id: HashMap<String, u16> = HashMap::new();
+    // non default variants get "name_1" etc to have unique names
+    let mut name_variant_counts: HashMap<String, u32> = HashMap::new();
+    let mut state_content_ids: Vec<u16> = vec![0u16; BlockState::MAX_STATE as usize + 1];
+    let mut next_id: u32 = CONTENT_ID_OFFSET as u32;
+
+    for raw_id in 0..=BlockState::MAX_STATE {
+        let state = BlockState::try_from(raw_id).expect("id in MAX_STATE range is always valid");
+        if state.is_air() {
+            continue;
         }
-        // SAFETY: We checked that with is_valid_id above
-        // As we are essentially indexing the enum here, `variant_count::<Block>()-1` should be valid.
-        let block = unsafe { BlockKind::from_u32_unchecked(mc_id as u32) };
-        let mt_id = mc_id as u16 + 128;
-        content_feature = generate_contentfeature(block, texture_pack_res, media_state);
-        content_features.push((mt_id, content_feature));
+        let kind = BlockKind::try_from(state).unwrap();
+
+        let (announce_name, mut feature) = if kind == BlockKind::Water || kind == BlockKind::Lava {
+            generate_liquid_feature(kind, state, texture_pack_res)
+        } else {
+            let block_name = kind.to_str();
+            let variant_key = utils::variant_key_from_state(state);
+            let feature =
+                generate_contentfeature(state, kind, block_name, &variant_key, texture_pack_res, media_state);
+            (block_name.to_string(), feature)
+        };
+
+        let mut signature_source = feature.clone();
+        signature_source.name = String::new();
+        let signature = format!("{signature_source:?}");
+
+        let content_id = if let Some(&id) = signature_to_id.get(&signature) {
+            id
+        } else {
+            let id = next_id as u16;
+            next_id += 1;
+            let count = name_variant_counts.entry(announce_name.clone()).or_insert(0);
+            feature.name = if *count == 0 {
+                announce_name
+            } else {
+                format!("{announce_name}_{count}")
+            };
+            *count += 1;
+            signature_to_id.insert(signature, id);
+            content_features.push((id, feature));
+            id
+        };
+        state_content_ids[raw_id as usize] = content_id;
     }
+    assert!(
+        next_id <= u16::MAX as u32,
+        "ran out of Luanti content ids ({next_id} needed, {} available)",
+        u16::MAX as u32 - CONTENT_ID_OFFSET as u32
+    );
+    debug!(
+        "Resolved {} block states into {} distinct Luanti node definitions",
+        BlockState::MAX_STATE as u32 + 1,
+        content_features.len()
+    );
+    media_state.state_content_ids = state_content_ids;
 
     // add a special block without MC equivalent: bridgetest:glowing_air. this block will replace cave_air in the nether.
     // because the minetest engine has no concept of dimensions, it is impossible to tell it to make air glow in the nether.
     let tiledef = TileDef {
-        name: String::from("air.png"),
+        name: String::from("blank.png"),
         animation: TileAnimationParams::None,
         backface_culling: true,
         tileable_horizontal: false,
@@ -815,34 +870,16 @@ pub async fn get_node_def_command(settings: &Config, media_state: &MediaState) -
 }
 
 pub fn generate_contentfeature(
+    state: BlockState,
     block: BlockKind,
+    mc_name: &str,
+    variant_key: &str,
     texture_pack_res: u16,
     media_state: &MediaState,
 ) -> ContentFeatures {
-    // If *every* possible state is solid, then walkable=true
-    // for light stuff, use the "brightest" state
-    // for everything else, do other stuff idk look at the code
-    let mc_name = block.to_string();
-
-    let mut liquid_range = 0;
-    let mut liquid_viscosity = 0;
-    let mut liquid_renewable = true;
     let mut animation = TileAnimationParams::None;
-
-    // liquid stuff
-    if block == BlockKind::Water {
-        liquid_renewable = true;
-        liquid_viscosity = 0; // determines how much the liquid slows the player down
-        liquid_range = 7;
-    } else if block == BlockKind::Lava {
-        liquid_renewable = false;
-        liquid_viscosity = 1;
-        liquid_range = 4;
-    }
     // animated textures
     if [
-        BlockKind::Water,
-        BlockKind::Lava,
         BlockKind::Seagrass,
         BlockKind::TallSeagrass,
         BlockKind::NetherPortal,
@@ -860,73 +897,40 @@ pub fn generate_contentfeature(
 
     let rightclickable = INTERACTIVE_BLOCKS.contains(&block);
 
-    let light_source = match block {
-        BlockKind::Beacon
-        | BlockKind::Conduit
-        | BlockKind::EndGateway
-        | BlockKind::EndPortal
-        | BlockKind::Fire
-        | BlockKind::SeaPickle
-        | BlockKind::OchreFroglight
-        | BlockKind::VerdantFroglight
-        | BlockKind::PearlescentFroglight
-        | BlockKind::Glowstone
-        | BlockKind::JackOLantern
-        | BlockKind::Lantern
-        | BlockKind::Lava
-        | BlockKind::LavaCauldron
-        | BlockKind::Campfire
-        | BlockKind::RedstoneLamp
-        | BlockKind::RespawnAnchor
-        | BlockKind::SeaLantern
-        | BlockKind::Shroomlight => 15,
-        BlockKind::EndRod | BlockKind::Torch => 14,
-        BlockKind::BlastFurnace | BlockKind::Furnace | BlockKind::Smoker => 13,
-        BlockKind::Candle => 12,
-        BlockKind::NetherPortal => 11,
-        BlockKind::CryingObsidian
-        | BlockKind::SoulCampfire
-        | BlockKind::SoulFire
-        | BlockKind::SoulLantern
-        | BlockKind::SoulTorch => 10,
-        BlockKind::EnchantingTable | BlockKind::EnderChest | BlockKind::GlowLichen => 7,
-        BlockKind::SculkCatalyst => 6,
-        BlockKind::AmethystCluster => 5,
-        BlockKind::LargeAmethystBud => 4,
-        BlockKind::MagmaBlock => 3,
-        BlockKind::MediumAmethystBud => 2,
-        // TODO level 1 skipped, boring :(
-        _ => 0,
-    };
-    let Some(texture) = media_state.block_texture_map.get(&mc_name) else {
-        error!("Block texture not mapped to path: {}", mc_name);
+    // extra_data/block_info.json
+    let info = media_state.block_info.get(mc_name);
+    let mut light_source = info.map(|i| i.light_source).unwrap_or(0);
+    if let Some(lit_value) = info.and_then(|i| i.lit_light_source) {
+        if state.to_trait().get_property("lit") == Some("true") {
+            light_source = lit_value;
+        }
+    }
+    let climbable = info.is_some_and(|i| i.climbable);
+    let glasslike = info.is_some_and(|i| i.glasslike);
+
+    let Some(texture) = lookup_block_mapping(&media_state.block_texture_map, mc_name, variant_key)
+    else {
+        error!("Block texture not mapped to path: {mc_name} [{variant_key}]");
         std::process::exit(1)
     };
 
-    let sunlight_propagates = match texture.drawtype {
-        DrawType::AirLike
-        | DrawType::PlantLike
-        | DrawType::PlantLikeRooted
-        | DrawType::GlassLike
-        | DrawType::Liquid => true,
-        _ => false,
-    };
+    let cutout = texture.cutout || info.is_some_and(|i| i.cutout);
 
-    let waving: u8 = ([
-        BlockKind::OakLeaves,
-        BlockKind::SpruceLeaves,
-        BlockKind::BirchLeaves,
-        BlockKind::JungleLeaves,
-        BlockKind::AcaciaLeaves,
-        BlockKind::CherryLeaves,
-        BlockKind::DarkOakLeaves,
-        BlockKind::PaleOakLeaves,
-        BlockKind::MangroveLeaves,
-        BlockKind::AzaleaLeaves,
-        BlockKind::FloweringAzaleaLeaves,
-    ]
-    .contains(&block)
-        || texture.drawtype == DrawType::PlantLike) as u8
+    let drawtype = if glasslike {
+        DrawType::GlassLike
+    } else if cutout && texture.drawtype == DrawType::Normal {
+        // fix leaves culling
+        DrawType::AllFacesOptional
+    } else {
+        texture.drawtype.clone()
+    };
+    // scripts/texture_maps.py only puts DrawType::Normal for full cubes
+    // anything else already has some gap for light to pass through
+    // cutout is an exception here.
+    let light_propagates = drawtype != DrawType::Normal || cutout;
+
+    let waving: u8 = (info.is_some_and(|i| i.waving) || texture.drawtype == DrawType::PlantLike)
+        as u8
         * 100;
 
     let sound_placeholder: SoundSpec = SoundSpec {
@@ -936,27 +940,39 @@ pub fn generate_contentfeature(
         fade: 1.0,
     };
 
-    let tiledef_sides: [TileDef; 6] = texture.get_tiledefs(&animation);
+    let mut tiledef_sides: [TileDef; 6] = texture.get_tiledefs(&animation);
+    if block == BlockKind::RedstoneWire {
+        // texture map file is huge as-is, don't add sixteen copies of every redstone orientation
+        // colorize depending on signal level:
+        let power: u32 = state
+            .to_trait()
+            .get_property("power")
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0);
+        let red = 75 + 12 * power; // 75 (unpowered) ..= 255 (power 15)
+        let colorize = format!("^[colorize:#{red:02x}0000:200");
+        tiledef_sides[0].name.push_str(&colorize);
+        tiledef_sides[1].name.push_str(&colorize);
+    }
     let walkable = matches!(
-        texture.drawtype,
-        DrawType::GlassLike | DrawType::NodeBox | DrawType::Normal
+        drawtype,
+        DrawType::GlassLike | DrawType::NodeBox | DrawType::Normal | DrawType::AllFacesOptional
     );
-    let bool_pointable =
-        texture.drawtype != DrawType::AirLike && texture.drawtype != DrawType::Liquid;
+    let bool_pointable = drawtype != DrawType::AirLike && drawtype != DrawType::Liquid;
     let mut pointable = PointabilityType::PointableNot;
     if (bool_pointable) {
         pointable = PointabilityType::Pointable;
     }
     ContentFeatures {
         version: 13, // https://github.com/minetest/minetest/blob/master/src/nodedef.h#L313
-        name: block.to_string(),
+        name: mc_name.to_string(),
         groups: vec![(String::from("handy_dig"), 1)],
         // CPT_LIGHT: tells the client that param1 carries light data (low 4 bit = day/sky,
         // high 4 bit = block). Without this, has_light=false and getLightRaw() returns 0,
         // so blocks ignore our light values entirely and never dim at night.
         param_type: ParamType::Light,
         param_type_2: ParamType2::None,
-        drawtype: texture.drawtype.clone(),
+        drawtype: drawtype.clone(),
         mesh: String::new(),
         visual_scale: match texture.drawtype {
             DrawType::NodeBox => s2c::media::NB_SCALE_FACTOR,
@@ -977,25 +993,25 @@ pub fn generate_contentfeature(
         connects_to_ids: Vec::new(),
         post_effect_color: SColor::new(100, 70, 85, 20),
         leveled: 0,
-        light_propagates: sunlight_propagates,
-        sunlight_propagates,
-        light_source, // TODO test the effect of this
+        light_propagates,
+        sunlight_propagates: light_propagates,
+        light_source,
         is_ground_content: false,
         walkable,
         pointable,
         diggable: block != BlockKind::Bedrock
-            && texture.drawtype != DrawType::Liquid
-            && texture.drawtype != DrawType::AirLike,
-        climbable: false,
+            && drawtype != DrawType::Liquid
+            && drawtype != DrawType::AirLike,
+        climbable,
         buildable_to: bool_pointable && !rightclickable,
         rightclickable,
         damage_per_second: 0, // the 100 DPS dirt block
         liquid_type: LiquidType::None,
         liquid_alternative_flowing: String::new(),
         liquid_alternative_source: String::new(),
-        liquid_viscosity,
-        liquid_renewable,
-        liquid_range,
+        liquid_viscosity: 0,
+        liquid_renewable: false,
+        liquid_range: 0,
         drowning: 0,
         floodable: false,
         node_box: texture.nodebox.clone(),
@@ -1008,13 +1024,159 @@ pub fn generate_contentfeature(
         legacy_wallmounted: false,
         node_dig_prediction: String::new(),
         leveled_max: 0,
-        alpha: match texture.drawtype {
-            DrawType::PlantLike | DrawType::PlantLikeRooted => types::AlphaMode::Blend,
-            DrawType::Liquid | DrawType::FlowingLiquid => types::AlphaMode::LegacyCompat,
-            _ => types::AlphaMode::Opaque,
+        alpha: if glasslike {
+            types::AlphaMode::Blend
+        } else if cutout {
+            types::AlphaMode::Clip
+        } else {
+            match texture.drawtype {
+                DrawType::PlantLike | DrawType::PlantLikeRooted => types::AlphaMode::Blend,
+                _ => types::AlphaMode::Opaque,
+            }
         },
         move_resistance: 0,
-        liquid_move_physics: texture.drawtype == DrawType::Liquid,
+        liquid_move_physics: false,
         post_effect_color_shaded: false,
     }
+}
+
+// Water and lava are the only fluids MC has, neither has a blockstates.json model (the client does special cases yay)
+// this means we also get to do special cases.
+// the actual per-node height comes from param2, set in utils::state_to_node
+fn generate_liquid_feature(
+    kind: BlockKind,
+    state: BlockState,
+    texture_pack_res: u16,
+) -> (String, ContentFeatures) {
+    let is_water = kind == BlockKind::Water;
+    let base = if is_water { "water" } else { "lava" };
+    let raw_level: u8 = state
+        .to_trait()
+        .get_property("level")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0);
+    let is_source = raw_level == 0;
+
+    let source_name = format!("minecraft:{base}");
+    let flowing_name = format!("minecraft:{base}_flowing");
+    let announce_name = if is_source {
+        source_name.clone()
+    } else {
+        flowing_name.clone()
+    };
+
+    let animation = TileAnimationParams::VerticalFrames {
+        aspect_w: texture_pack_res,
+        aspect_h: texture_pack_res,
+        length: 2.0,
+    };
+    let tile = |name: &str| TileDef {
+        name: name.to_string(),
+        animation: animation.clone(),
+        backface_culling: true,
+        tileable_horizontal: true,
+        tileable_vertical: true,
+        color_rgb: None,
+        scale: 0,
+        align_style: AlignStyle::Node,
+    };
+    let still = format!("block-{base}_still.png");
+    let flow = format!("block-{base}_flow.png");
+    let tiledef: [TileDef; 6] = if is_source {
+        std::array::from_fn(|_| tile(&still))
+    } else {
+        [
+            tile(&still),
+            tile(&still),
+            tile(&flow),
+            tile(&flow),
+            tile(&flow),
+            tile(&flow),
+        ]
+    };
+
+    let sound_placeholder: SoundSpec = SoundSpec {
+        name: String::from(""),
+        gain: 1.0,
+        pitch: 1.0,
+        fade: 1.0,
+    };
+
+    // evil
+    let (light_source, viscosity, renewable, range, post_effect, drowning) = if is_water {
+        (0u8, 0u8, true, 7u8, SColor::new(38, 68, 168, 120), 2u8)
+    } else {
+        (15u8, 7u8, false, 4u8, SColor::new(208, 88, 0, 190), 0u8)
+    };
+
+    let feature: ContentFeatures = ContentFeatures {
+        version: 13,
+        name: announce_name.clone(), // overwritten by the caller naming pass
+        groups: vec![(String::new(), 1)],
+        param_type: ParamType::Light,
+        param_type_2: if is_source {
+            ParamType2::None
+        } else {
+            ParamType2::FlowingLiquid
+        },
+        drawtype: if is_source {
+            DrawType::Liquid
+        } else {
+            DrawType::FlowingLiquid
+        },
+        mesh: String::new(),
+        visual_scale: 1.0,
+        unused_six: 6,
+        tiledef: tiledef.clone(),
+        tiledef_overlay: s2c::media::get_empty_tiledefs(),
+        tiledef_special: tiledef.to_vec(),
+        alpha_for_legacy: 160,
+        red: 100,
+        green: 70,
+        blue: 85,
+        palette_name: String::new(),
+        waving: 0,
+        connect_sides: 0,
+        connects_to_ids: Vec::new(),
+        post_effect_color: post_effect,
+        leveled: 0,
+        light_propagates: false,
+        sunlight_propagates: false,
+        light_source,
+        is_ground_content: false,
+        walkable: false,
+        pointable: PointabilityType::PointableNot,
+        diggable: false,
+        climbable: false,
+        buildable_to: true,
+        rightclickable: false,
+        damage_per_second: 0,
+        liquid_type: if is_source {
+            LiquidType::Source
+        } else {
+            LiquidType::Flowing
+        },
+        liquid_alternative_flowing: flowing_name,
+        liquid_alternative_source: source_name,
+        liquid_viscosity: viscosity,
+        liquid_renewable: renewable,
+        liquid_range: range,
+        drowning,
+        floodable: false,
+        node_box: types::NodeBox::Regular,
+        selection_box: types::NodeBox::Regular,
+        collision_box: types::NodeBox::Regular,
+        sound_footstep: sound_placeholder.clone(),
+        sound_dig: sound_placeholder.clone(),
+        sound_dug: sound_placeholder.clone(),
+        legacy_facedir_simple: false,
+        legacy_wallmounted: false,
+        node_dig_prediction: String::new(),
+        leveled_max: 0,
+        alpha: types::AlphaMode::Blend,
+        move_resistance: 0,
+        liquid_move_physics: true,
+        post_effect_color_shaded: false,
+    };
+    (announce_name, feature)
 }

@@ -1,4 +1,3 @@
-#![feature(variant_count)]
 #![feature(slice_pattern)]
 #![feature(string_into_chars)]
 // fuck this warning.

@@ -33,6 +33,39 @@ use azalea::registry::DataRegistry;
 use std::io::Cursor;
 use std::sync::Arc;
 
+pub fn build_node_array(
+    state_arr: [BlockState; 4096],
+    cave_air_glow: bool,
+    sky_levels: Option<&[u8; 4096]>,
+    block_levels: Option<&[u8; 4096]>,
+    media_state: &state::MediaState,
+) -> [MapNode; 4096] {
+    let mut nodes: [MapNode; 4096] = [MapNode {
+        content_id: ContentId::AIR,
+        param1: 0,
+        param2: 0,
+    }; 4096];
+    let mut state: BlockState;
+    for state_arr_i in 0..4096 {
+        state = state_arr[state_arr_i];
+        let mut node = utils::state_to_node(state, cave_air_glow, media_state);
+        // Write chunk light data into every node
+        if let (Some(sky), Some(block)) = (sky_levels, block_levels) {
+            let day = sky[state_arr_i];
+            let bl = block[state_arr_i];
+            node.param1 = (day & 0x0f) | ((bl & 0x0f) << 4);
+        }
+        // minecraft and luanti disagree on x handedness
+        // the node order within each x-row has to be reversed
+        let x = state_arr_i % 16;
+        let y = (state_arr_i / 16) % 16;
+        let z = state_arr_i / 256;
+        let mirrored_i = (15 - x) + y * 16 + z * 256;
+        nodes[mirrored_i] = node
+    }
+    nodes
+}
+
 pub async fn initialize_16node_chunk(
     x_pos: i16,
     y_pos: i16,
@@ -42,6 +75,7 @@ pub async fn initialize_16node_chunk(
     cave_air_glow: bool,
     sky_levels: Option<&[u8; 4096]>,
     block_levels: Option<&[u8; 4096]>,
+    media_state: &state::MediaState,
 ) {
     // Fills a 16^3 area with a vector of map nodes, where param0 is a MC-compatible ID.
     // remember that this is limited to 16 blocks of heigth, while a MC chunk goes from -64 to 320
@@ -63,31 +97,7 @@ pub async fn initialize_16node_chunk(
         x_pos, y_pos, z_pos
     );
 
-    let mut nodes: [MapNode; 4096] = [MapNode {
-        content_id: ContentId::AIR,
-        param1: 0,
-        param2: 0,
-    }; 4096];
-    let mut state: BlockState;
-    for state_arr_i in 0..4096 {
-        state = state_arr[state_arr_i];
-        let mut node = utils::state_to_node(state, cave_air_glow);
-        // Write chunk light data into every node (including air).
-        // lower 4 bit = day/sky light (for luanti sky ray-march), upper 4 bit = block light.
-        // Air nodes must carry sky light in the day bank: the sky-brightness raymarch samples air overhead and looks for a day-light 15 node to set sunlight_seen
-        if let (Some(sky), Some(block)) = (sky_levels, block_levels) {
-            let day = sky[state_arr_i];
-            let bl = block[state_arr_i];
-            node.param1 = (day & 0x0f) | ((bl & 0x0f) << 4);
-        }
-        // minecraft and luanti disagree on x handedness
-        // the node order within each x-row has to be reversed
-        let x = state_arr_i % 16;
-        let y = (state_arr_i / 16) % 16;
-        let z = state_arr_i / 256;
-        let mirrored_i = (15 - x) + y * 16 + z * 256;
-        nodes[mirrored_i] = node
-    }
+    let nodes = build_node_array(state_arr, cave_air_glow, sky_levels, block_levels, media_state);
 
     let addblockcommand = ToClientCommand::Blockdata(Box::new(server_to_client::BlockdataSpec {
         pos: v3i16 {
@@ -113,6 +123,7 @@ pub async fn chunkbatch(
     luanti_conn: &mut LuantiConnection,
     mc_conn: &mut UnboundedReceiver<Event>,
     player_state: &mut state::PlayerState,
+    media_state: &state::MediaState,
 ) {
     debug!("Forwarding S2C ChunkBatch");
     loop {
@@ -125,7 +136,7 @@ pub async fn chunkbatch(
                             match Arc::unwrap_or_clone(packet_value) {
                                 ClientboundGamePacket::LevelChunkWithLight(packet_data) => {
                                     trace!("Forwarding S2C LevelchunkWithLight");
-                                    send_level_chunk(&packet_data, luanti_conn, player_state).await;
+                                    send_level_chunk(&packet_data, luanti_conn, player_state, media_state).await;
                                 },
                                 ClientboundGamePacket::ChunkBatchFinished(_) => {
                                     debug!("Got S2C ChunkBatchFinished");
@@ -146,6 +157,7 @@ pub async fn send_level_chunk(
     packet_data: &ClientboundLevelChunkWithLight,
     luanti_conn: &mut LuantiConnection,
     player_state: &mut state::PlayerState,
+    media_state: &state::MediaState,
 ) {
     let y_bounds = player_state.current_dimension.get_y_bounds();
     let is_nether = matches!(player_state.current_dimension, Dimensions::Nether);
@@ -243,6 +255,7 @@ pub async fn send_level_chunk(
             is_nether,
             Some(&sky_levels[section_index]),
             Some(&block_levels[section_index]),
+            media_state,
         )
         .await;
         chunk_y_pos += 1;
@@ -255,6 +268,7 @@ pub async fn section_block_update(
     conn: &mut LuantiConnection,
     player_state: &state::PlayerState,
     mc_client: &Client,
+    media_state: &state::MediaState,
 ) {
     let ClientboundSectionBlocksUpdate {
         section_pos,
@@ -296,6 +310,7 @@ pub async fn section_block_update(
         player_state.current_dimension == Dimensions::Nether,
         None,
         None,
+        media_state,
     )
     .await;
 }
@@ -343,6 +358,7 @@ pub async fn blockupdate(
     packet_data: &ClientboundBlockUpdate,
     conn: &mut LuantiConnection,
     player_state: &state::PlayerState,
+    media_state: &state::MediaState,
 ) {
     let ClientboundBlockUpdate { pos, block_state } = packet_data;
     let cave_air_glow = player_state.current_dimension == Dimensions::Nether;
@@ -353,7 +369,7 @@ pub async fn blockupdate(
             y: *y as i16,
             z: *z as i16,
         },
-        node: utils::state_to_node(*block_state, cave_air_glow),
+        node: utils::state_to_node(*block_state, cave_air_glow, media_state),
         keep_metadata: false,
     }));
     conn.send(addnodecommand).unwrap();

@@ -32,7 +32,13 @@ pub async fn process(
             ClientboundGamePacket::BundleDelimiter(_) => (),
 
             ClientboundGamePacket::ChunkBatchStart(_) => {
-                s2c::world::chunkbatch(luanti_conn, mc_conn, &mut proxy_state.player).await
+                s2c::world::chunkbatch(
+                    luanti_conn,
+                    mc_conn,
+                    &mut proxy_state.player,
+                    &proxy_state.media,
+                )
+                .await
             }
             ClientboundGamePacket::SystemChat(message) => {
                 s2c::chat::send_sys_message(luanti_conn, &message).await
@@ -122,7 +128,13 @@ pub async fn process(
             }
 
             ClientboundGamePacket::BlockUpdate(blockupdate_packet) => {
-                s2c::world::blockupdate(&blockupdate_packet, luanti_conn, &proxy_state.player).await
+                s2c::world::blockupdate(
+                    &blockupdate_packet,
+                    luanti_conn,
+                    &proxy_state.player,
+                    &proxy_state.media,
+                )
+                .await
             }
 
             ClientboundGamePacket::SectionBlocksUpdate(sectionupdate_packet) => {
@@ -131,6 +143,7 @@ pub async fn process(
                     luanti_conn,
                     &proxy_state.player,
                     mc_client,
+                    &proxy_state.media,
                 )
                 .await
             }

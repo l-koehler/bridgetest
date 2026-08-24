@@ -79,14 +79,13 @@ If you don't use a microsoft account, the server you connect to has to be in off
 
 ## Things that are still missing from a usable version
 
-* Rotated Blocks  
 * Swimming  
 
 ## Other, smaller, broken things
 
-* Climbable Blocks (ladders, vines etc) don't do anything  
 * Particles aren't implemented  
-* Interaction with entities
+* Interaction with entities  
+* Various edge case rendering stuff (waterlogged blocks dont work)
 
 ## Even more limitations (ones that don't affect gameplay)
 

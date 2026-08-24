@@ -14,9 +14,14 @@ use crate::utils;
 /// The data is sent right away though, so we dont have to do that whole thing
 /// (why would you ever expect any amount of consistency what)
 pub fn falling_block_textures(data: i32, media_state: &state::MediaState) -> Option<[String; 6]> {
-    let state = BlockState::try_from(data).ok()?;
-    let kind = BlockKind::from(state);
-    let mapping = media_state.block_texture_map.get(kind.to_str())?;
+    let block_state = BlockState::try_from(data).ok()?;
+    let kind = BlockKind::from(block_state);
+    let variant_key = utils::variant_key_from_state(block_state);
+    let mapping = crate::s2c::media::lookup_block_mapping(
+        &media_state.block_texture_map,
+        kind.to_str(),
+        &variant_key,
+    )?;
     Some(mapping.to_entity_textures())
 }
 
