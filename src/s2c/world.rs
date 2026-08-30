@@ -26,6 +26,7 @@ use azalea::block::BlockState;
 use azalea::protocol::packets::game::{
     c_block_update::ClientboundBlockUpdate,
     c_level_chunk_with_light::{ClientboundLevelChunkPacketData, ClientboundLevelChunkWithLight},
+    c_light_update::{ClientboundLightUpdate, ClientboundLightUpdatePacketData},
     c_set_time::ClientboundSetTime,
 };
 use azalea::registry::DataRegistry;
@@ -36,8 +37,8 @@ use std::sync::Arc;
 pub fn build_node_array(
     state_arr: [BlockState; 4096],
     cave_air_glow: bool,
-    sky_levels: Option<&[u8; 4096]>,
-    block_levels: Option<&[u8; 4096]>,
+    sky_levels: &[u8; 4096],
+    block_levels: &[u8; 4096],
     media_state: &state::MediaState,
 ) -> [MapNode; 4096] {
     let mut nodes: [MapNode; 4096] = [MapNode {
@@ -48,13 +49,8 @@ pub fn build_node_array(
     let mut state: BlockState;
     for state_arr_i in 0..4096 {
         state = state_arr[state_arr_i];
-        let mut node = utils::state_to_node(state, cave_air_glow, media_state);
-        // Write chunk light data into every node
-        if let (Some(sky), Some(block)) = (sky_levels, block_levels) {
-            let day = sky[state_arr_i];
-            let bl = block[state_arr_i];
-            node.param1 = (day & 0x0f) | ((bl & 0x0f) << 4);
-        }
+        let light = (sky_levels[state_arr_i], block_levels[state_arr_i]);
+        let node = utils::state_to_node(state, cave_air_glow, light, media_state);
         // minecraft and luanti disagree on x handedness
         // the node order within each x-row has to be reversed
         let x = state_arr_i % 16;
@@ -75,6 +71,7 @@ pub async fn initialize_16node_chunk(
     cave_air_glow: bool,
     sky_levels: Option<&[u8; 4096]>,
     block_levels: Option<&[u8; 4096]>,
+    light_cache: &mut state::LightCache,
     media_state: &state::MediaState,
 ) {
     // Fills a 16^3 area with a vector of map nodes, where param0 is a MC-compatible ID.
@@ -97,7 +94,16 @@ pub async fn initialize_16node_chunk(
         x_pos, y_pos, z_pos
     );
 
-    let nodes = build_node_array(state_arr, cave_air_glow, sky_levels, block_levels, media_state);
+    // light data gets cached for later block updates
+    let (sky, block) = match (sky_levels, block_levels) {
+        (Some(sky), Some(block)) => {
+            light_cache.store(x_pos, y_pos, z_pos, *sky, *block);
+            (*sky, *block)
+        }
+        _ => light_cache.get_section(x_pos, y_pos, z_pos),
+    };
+
+    let nodes = build_node_array(state_arr, cave_air_glow, &sky, &block, media_state);
 
     let addblockcommand = ToClientCommand::Blockdata(Box::new(server_to_client::BlockdataSpec {
         pos: v3i16 {
@@ -123,6 +129,7 @@ pub async fn chunkbatch(
     luanti_conn: &mut LuantiConnection,
     mc_conn: &mut UnboundedReceiver<Event>,
     player_state: &mut state::PlayerState,
+    light_cache: &mut state::LightCache,
     media_state: &state::MediaState,
 ) {
     debug!("Forwarding S2C ChunkBatch");
@@ -136,7 +143,7 @@ pub async fn chunkbatch(
                             match Arc::unwrap_or_clone(packet_value) {
                                 ClientboundGamePacket::LevelChunkWithLight(packet_data) => {
                                     trace!("Forwarding S2C LevelchunkWithLight");
-                                    send_level_chunk(&packet_data, luanti_conn, player_state, media_state).await;
+                                    send_level_chunk(&packet_data, luanti_conn, player_state, light_cache, media_state).await;
                                 },
                                 ClientboundGamePacket::ChunkBatchFinished(_) => {
                                     debug!("Got S2C ChunkBatchFinished");
@@ -153,10 +160,51 @@ pub async fn chunkbatch(
     }
 }
 
+struct SectionLight {
+    sky: Vec<[u8; 4096]>,
+    sky_touched: Vec<bool>,
+    block: Vec<[u8; 4096]>,
+    block_touched: Vec<bool>,
+    // chunk_y_pos of the lowest section
+    base_chunk_y: i16,
+}
+
+fn decode_section_light(y_bounds: (i16, i16), light_data: &ClientboundLightUpdatePacketData) -> SectionLight {
+    let min_y = y_bounds.0 as i32;
+    let max_y = y_bounds.1 as i32 + 1; // exclusive
+    let num_sections = (((max_y - min_y) / 16) as usize).max(1);
+
+    let (sky, sky_touched) = utils::decode_light_layers(
+        &light_data.sky_updates,
+        &light_data.sky_y_mask,
+        &light_data.empty_sky_y_mask,
+        num_sections,
+    );
+    let (block, block_touched) = utils::decode_light_layers(
+        &light_data.block_updates,
+        &light_data.block_y_mask,
+        &light_data.empty_block_y_mask,
+        num_sections,
+    );
+
+    // all luanti light data is relative to the aligned origin (min_y floored to a multiple if 16)
+    let base_section = -((-min_y) / 16) * 16;
+    let base_chunk_y = (base_section / 16) as i16;
+
+    SectionLight {
+        sky,
+        sky_touched,
+        block,
+        block_touched,
+        base_chunk_y,
+    }
+}
+
 pub async fn send_level_chunk(
     packet_data: &ClientboundLevelChunkWithLight,
     luanti_conn: &mut LuantiConnection,
     player_state: &mut state::PlayerState,
+    light_cache: &mut state::LightCache,
     media_state: &state::MediaState,
 ) {
     let y_bounds = player_state.current_dimension.get_y_bounds();
@@ -203,29 +251,8 @@ pub async fn send_level_chunk(
     // Decode Minecraft light data into per-section day/block light levels.
     // Sky light goes in Luanti's day bank, block light in the night bank so that
     // darkness at night and in caves works via Luantis getLightBlend()
-    let min_y = y_bounds.0 as i32;
-    let max_y = y_bounds.1 as i32 + 1; // exclusive
-    let num_sections = (((max_y - min_y) / 16) as usize).max(1);
-
-    let sky_levels = utils::decode_light_layers(
-        &light_data.sky_updates,
-        &light_data.sky_y_mask,
-        min_y,
-        max_y,
-        num_sections,
-    );
-    let block_levels = utils::decode_light_layers(
-        &light_data.block_updates,
-        &light_data.block_y_mask,
-        min_y,
-        max_y,
-        num_sections,
-    );
-
-    // Luanti chunk y positions are relative to the aligned origin (min_y rounded down
-    // to a multiple of 16). the light arrays above are indexed from tje same origin.
-    let base_section = -((-min_y) / 16) * 16; // min_y floored to a multiple of 16
-    let mut chunk_y_pos: i16 = (base_section / 16) as i16;
+    let section_light = decode_section_light(y_bounds, light_data);
+    let mut chunk_y_pos: i16 = section_light.base_chunk_y;
     let mut section_index = 0usize;
     for section in sections {
         // foreach possible section height (-4 .. 20)
@@ -253,8 +280,9 @@ pub async fn send_level_chunk(
             luanti_conn,
             nodearr,
             is_nether,
-            Some(&sky_levels[section_index]),
-            Some(&block_levels[section_index]),
+            Some(&section_light.sky[section_index]),
+            Some(&section_light.block[section_index]),
+            light_cache,
             media_state,
         )
         .await;
@@ -268,6 +296,7 @@ pub async fn section_block_update(
     conn: &mut LuantiConnection,
     player_state: &state::PlayerState,
     mc_client: &Client,
+    light_cache: &mut state::LightCache,
     media_state: &state::MediaState,
 ) {
     let ClientboundSectionBlocksUpdate {
@@ -301,6 +330,7 @@ pub async fn section_block_update(
             }
         }
     }
+    // this packet has no light data, so send cached values
     initialize_16node_chunk(
         section_pos.x as i16,
         section_pos.y as i16,
@@ -310,6 +340,7 @@ pub async fn section_block_update(
         player_state.current_dimension == Dimensions::Nether,
         None,
         None,
+        light_cache,
         media_state,
     )
     .await;
@@ -358,19 +389,101 @@ pub async fn blockupdate(
     packet_data: &ClientboundBlockUpdate,
     conn: &mut LuantiConnection,
     player_state: &state::PlayerState,
+    light_cache: &state::LightCache,
     media_state: &state::MediaState,
 ) {
     let ClientboundBlockUpdate { pos, block_state } = packet_data;
     let cave_air_glow = player_state.current_dimension == Dimensions::Nether;
     let BlockPos { x, y, z } = pos;
+    // like section_block_update, reuse cached
+    let light = light_cache.get_node(*x, *y, *z);
     let addnodecommand = ToClientCommand::Addnode(Box::new(server_to_client::AddnodeSpec {
         pos: v3i16 {
             x: utils::mirror_block_pos(*x) as i16,
             y: *y as i16,
             z: *z as i16,
         },
-        node: utils::state_to_node(*block_state, cave_air_glow, media_state),
+        node: utils::state_to_node(*block_state, cave_air_glow, light, media_state),
         keep_metadata: false,
     }));
     conn.send(addnodecommand).unwrap();
+}
+
+pub async fn light_update(
+    packet: &ClientboundLightUpdate,
+    conn: &mut LuantiConnection,
+    player_state: &state::PlayerState,
+    mc_client: &Client,
+    light_cache: &mut state::LightCache,
+    media_state: &state::MediaState,
+) {
+    let ClientboundLightUpdate {
+        x: chunk_x_pos,
+        z: chunk_z_pos,
+        light_data,
+    } = packet;
+    let y_bounds = player_state.current_dimension.get_y_bounds();
+    let is_nether = player_state.current_dimension == Dimensions::Nether;
+
+    let section_light = decode_section_light(y_bounds, light_data);
+    let num_sections = section_light.sky.len();
+
+    // ignore/keep sections missing in both masks
+    let mut resolved: Vec<Option<([u8; 4096], [u8; 4096])>> = Vec::with_capacity(num_sections);
+    for i in 0..num_sections {
+        let touched = section_light.sky_touched[i] || section_light.block_touched[i];
+        if !touched {
+            resolved.push(None);
+            continue;
+        }
+        let cached = light_cache.get_section(*chunk_x_pos as i16, section_light.base_chunk_y + i as i16, *chunk_z_pos as i16);
+        let sky = if section_light.sky_touched[i] { section_light.sky[i] } else { cached.0 };
+        let block = if section_light.block_touched[i] { section_light.block[i] } else { cached.1 };
+        resolved.push(Some((sky, block)));
+    }
+
+    // collect block states
+    let mut section_nodes: Vec<(usize, [BlockState; 4096])> = Vec::new();
+    {
+        let world_lock = mc_client.world().unwrap();
+        let world = world_lock.read();
+        for (section_index, r) in resolved.iter().enumerate() {
+            if r.is_none() {
+                continue;
+            }
+            let section_base_y = (section_light.base_chunk_y as i32 + section_index as i32) * 16;
+            let mut nodearr: [BlockState; 4096] = [BlockState::AIR; 4096];
+            for z in 0..16 {
+                for y in 0..16 {
+                    for x in 0..16 {
+                        let block_pos = BlockPos {
+                            x: (*chunk_x_pos * 16) + x as i32,
+                            y: section_base_y + y as i32,
+                            z: (*chunk_z_pos * 16) + z as i32,
+                        };
+                        nodearr[x + (y * 16) + (z * 256)] =
+                            world.get_block_state(block_pos).unwrap_or_default();
+                    }
+                }
+            }
+            section_nodes.push((section_index, nodearr));
+        }
+    }
+
+    for (section_index, nodearr) in section_nodes {
+        let (sky, block) = resolved[section_index].as_ref().unwrap();
+        initialize_16node_chunk(
+            *chunk_x_pos as i16,
+            section_light.base_chunk_y + section_index as i16,
+            *chunk_z_pos as i16,
+            conn,
+            nodearr,
+            is_nether,
+            Some(sky),
+            Some(block),
+            light_cache,
+            media_state,
+        )
+        .await;
+    }
 }

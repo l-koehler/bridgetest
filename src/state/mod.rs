@@ -21,4 +21,5 @@ pub struct ProxyState {
     pub media: MediaState,
     pub player: PlayerState,
     pub time: TimeState,
+    pub light: LightCache,
 }

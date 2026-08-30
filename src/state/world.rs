@@ -35,3 +35,41 @@ impl Dimensions {
         }
     }
 }
+
+// default for sections we never got light data for
+const UNKNOWN_LIGHT: u8 = 14;
+
+
+#[derive(Clone, Default)]
+pub struct LightCache {
+    sections: std::collections::HashMap<(i16, i16, i16), ([u8; 4096], [u8; 4096])>,
+}
+
+impl LightCache {
+    pub fn store(&mut self, x_pos: i16, y_pos: i16, z_pos: i16, sky: [u8; 4096], block: [u8; 4096]) {
+        self.sections.insert((x_pos, y_pos, z_pos), (sky, block));
+    }
+
+    // same indexing as state_array, minecraft X-handedness
+    pub fn get_section(&self, x_pos: i16, y_pos: i16, z_pos: i16) -> ([u8; 4096], [u8; 4096]) {
+        self.sections
+            .get(&(x_pos, y_pos, z_pos))
+            .copied()
+            .unwrap_or(([UNKNOWN_LIGHT; 4096], [UNKNOWN_LIGHT; 4096]))
+    }
+
+    pub fn get_node(&self, x: i32, y: i32, z: i32) -> (u8, u8) {
+        let section = (
+            x.div_euclid(16) as i16,
+            y.div_euclid(16) as i16,
+            z.div_euclid(16) as i16,
+        );
+        let idx = x.rem_euclid(16) as usize
+            + (y.rem_euclid(16) as usize) * 16
+            + (z.rem_euclid(16) as usize) * 256;
+        match self.sections.get(&section) {
+            Some((sky, block)) => (sky[idx], block[idx]),
+            None => (UNKNOWN_LIGHT, UNKNOWN_LIGHT),
+        }
+    }
+}

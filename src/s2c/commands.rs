@@ -36,6 +36,18 @@ pub async fn process(
                     luanti_conn,
                     mc_conn,
                     &mut proxy_state.player,
+                    &mut proxy_state.light,
+                    &proxy_state.media,
+                )
+                .await
+            }
+            ClientboundGamePacket::LightUpdate(lightupdate_packet) => {
+                s2c::world::light_update(
+                    &lightupdate_packet,
+                    luanti_conn,
+                    &proxy_state.player,
+                    mc_client,
+                    &mut proxy_state.light,
                     &proxy_state.media,
                 )
                 .await
@@ -132,6 +144,7 @@ pub async fn process(
                     &blockupdate_packet,
                     luanti_conn,
                     &proxy_state.player,
+                    &proxy_state.light,
                     &proxy_state.media,
                 )
                 .await
@@ -143,6 +156,7 @@ pub async fn process(
                     luanti_conn,
                     &proxy_state.player,
                     mc_client,
+                    &mut proxy_state.light,
                     &proxy_state.media,
                 )
                 .await
