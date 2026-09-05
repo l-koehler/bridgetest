@@ -738,8 +738,14 @@ pub async fn get_node_def_command(
         } else {
             let block_name = kind.to_str();
             let variant_key = utils::variant_key_from_state(state);
-            let feature =
-                generate_contentfeature(state, kind, block_name, &variant_key, texture_pack_res, media_state);
+            let feature = generate_contentfeature(
+                state,
+                kind,
+                block_name,
+                &variant_key,
+                texture_pack_res,
+                media_state,
+            );
             (block_name.to_string(), feature)
         };
 
@@ -752,7 +758,9 @@ pub async fn get_node_def_command(
         } else {
             let id = next_id as u16;
             next_id += 1;
-            let count = name_variant_counts.entry(announce_name.clone()).or_insert(0);
+            let count = name_variant_counts
+                .entry(announce_name.clone())
+                .or_insert(0);
             feature.name = if *count == 0 {
                 announce_name
             } else {
@@ -929,9 +937,8 @@ pub fn generate_contentfeature(
     // cutout is an exception here.
     let light_propagates = drawtype != DrawType::Normal || cutout;
 
-    let waving: u8 = (info.is_some_and(|i| i.waving) || texture.drawtype == DrawType::PlantLike)
-        as u8
-        * 100;
+    let waving: u8 =
+        (info.is_some_and(|i| i.waving) || texture.drawtype == DrawType::PlantLike) as u8 * 100;
 
     let sound_placeholder: SoundSpec = SoundSpec {
         name: String::from(""),

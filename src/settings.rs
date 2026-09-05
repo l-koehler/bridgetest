@@ -77,4 +77,5 @@ pub const TEXTURE_MAX_RECURSION: u8 = 6;
 pub const BRIDGETEST_ASSETS_VER: i32 = 1;
 
 // base URL for the bridgetest_assets repo
-pub const BRIDGETEST_ASSETS_URL: &str = "https://codeberg.org/l-koehler/bridgetest_assets/archive/v1.zip";
+pub const BRIDGETEST_ASSETS_URL: &str =
+    "https://codeberg.org/l-koehler/bridgetest_assets/archive/v1.zip";

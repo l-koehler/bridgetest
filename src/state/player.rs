@@ -1,8 +1,5 @@
 use super::world::Dimensions;
-use azalea::{
-    entity::MobEffectData,
-    registry::builtin::MobEffect,
-};
+use azalea::{entity::MobEffectData, registry::builtin::MobEffect};
 use std::time::Instant;
 
 #[derive(Clone)]

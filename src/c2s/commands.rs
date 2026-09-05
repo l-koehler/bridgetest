@@ -31,7 +31,13 @@ pub async fn process(
         }
         ToServerCommand::TSChatMessage(specbox) => c2s::chat::send_message(mc_client, specbox),
         ToServerCommand::Interact(specbox) => {
-            c2s::player::interact(mc_client, specbox, &mut proxy_state.player).await
+            c2s::player::interact(
+                mc_client,
+                specbox,
+                &mut proxy_state.player,
+                &proxy_state.entities,
+            )
+            .await
         }
         ToServerCommand::PlayerItem(specbox) => c2s::inventory::set_mainhand(mc_client, specbox),
         ToServerCommand::InventoryAction(specbox) => {

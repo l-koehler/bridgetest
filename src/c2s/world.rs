@@ -1,4 +1,6 @@
 use azalea::Client;
+use azalea::protocol::packets::game::ServerboundUseItem;
+use azalea::protocol::packets::game::s_interact::InteractionHand;
 use log::*;
 
 use crate::s2c;
@@ -64,6 +66,17 @@ pub async fn node_rightclick(
     if s2c::defs::INTERACTIVE_BLOCKS.contains(&block_type) {
         mc_client.block_interact(under)
     } else {
-        mc_client.block_interact(above)
+        mc_client.block_interact(above);
+        // Most items do nothing when used on a block
+        // The vanilla client sends a plain item use in the same tick for those, so you can throw eggs at blocks
+        // (which is the plain egg use (obviously (i mean what else do you need eggs for)))
+        // We can't tell if thats needed, so always do it (and azalea cant queue two interacts at once, so write_packet)
+        let look_direction = mc_client.direction().unwrap();
+        mc_client.write_packet(ServerboundUseItem {
+            hand: InteractionHand::MainHand,
+            seq: 0,
+            x_rot: look_direction.x_rot(),
+            y_rot: look_direction.y_rot(),
+        });
     }
 }

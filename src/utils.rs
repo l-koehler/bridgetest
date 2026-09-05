@@ -200,11 +200,14 @@ pub fn texture_from_itemstack(item: &ItemStack, media_state: &state::MediaState)
                     .clone()
                     .to_luanti_safe();
             } else {
-                inventory_image =
-                    s2c::media::lookup_block_mapping(&media_state.block_texture_map, &item_name, "")
-                        .unwrap()
-                        .clone()
-                        .to_safe_cube();
+                inventory_image = s2c::media::lookup_block_mapping(
+                    &media_state.block_texture_map,
+                    &item_name,
+                    "",
+                )
+                .unwrap()
+                .clone()
+                .to_safe_cube();
             }
             return inventory_image;
         }
@@ -456,7 +459,6 @@ pub fn compatible_data_api() -> Api {
     }
     return Api::new(closest_match.expect("Found no version possibly matching azalea!"));
 }
-
 
 // Helpers for extra_data/entity_info.json
 #[derive(Debug, Clone, Deserialize)]

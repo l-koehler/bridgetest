@@ -189,7 +189,7 @@ pub async fn add_entity(
                 rotation = v3f {
                     x: x_rot as f32 * (360.0 / 256.0),
                     y: utils::mirror_yaw(y_rot as f32 * (360.0 / 256.0)),
-                    z: 0.0
+                    z: 0.0,
                 };
             }
 
@@ -367,7 +367,10 @@ fn insert_y_head_rot(entity_id: &MinecraftEntityId, y_head_rot: &i8, mc_client: 
                 entity_mut.insert(state::HeadYaw(*y_head_rot as f32 * (360.0 / 256.0)));
             }
         }
-        _ => warn!("Got head rotation for unknown entity {:?}, ignoring it", entity_id),
+        _ => warn!(
+            "Got head rotation for unknown entity {:?}, ignoring it",
+            entity_id
+        ),
     }
 }
 

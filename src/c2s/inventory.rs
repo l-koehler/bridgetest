@@ -47,7 +47,6 @@ pub fn close_open_container(mc_client: &mut Client, inventory_state: &mut state:
     inventory_state.inventory_handle = None;
 }
 
-
 // inventory actions and crafting
 pub async fn inventory_action(
     mc_client: &mut Client,

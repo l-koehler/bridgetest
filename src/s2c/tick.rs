@@ -58,8 +58,7 @@ pub async fn tick(
         Option<&state::HeadYaw>,
     ), With<metadata::AbstractEntity>>();
     // check each entity in the ECS
-    for (&entity_id, position, look_direction, physics, entity_kind, head_yaw) in query.iter(&ecs)
-    {
+    for (&entity_id, position, look_direction, physics, entity_kind, head_yaw) in query.iter(&ecs) {
         if proxy_state
             .entities
             .entities_update_scheduled

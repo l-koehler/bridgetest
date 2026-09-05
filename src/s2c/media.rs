@@ -93,8 +93,7 @@ pub fn get_announcement() -> ToClientCommand {
     let mut announcement_vec: Vec<MediaAnnouncement> = Vec::new();
     // add textures
     for root in [texture_root(), asset_texture_root()] {
-        for texture in
-            get_texture_iterator_recursive(root, settings::TEXTURE_MAX_RECURSION, false)
+        for texture in get_texture_iterator_recursive(root, settings::TEXTURE_MAX_RECURSION, false)
         {
             announcement_vec.push(MediaAnnouncement {
                 name: String::from(texture.to_luanti_safe()),
@@ -514,10 +513,12 @@ pub async fn fetch_media() {
         settings::BRIDGETEST_ASSETS_VER,
         settings::BRIDGETEST_ASSETS_URL
     );
-    let resp = reqwest::get(settings::BRIDGETEST_ASSETS_URL).await.unwrap_or_else(|_| {
-        error!("Failed to get bridgetest_assets. Check network conenction?");
-        std::process::exit(1)
-    });
+    let resp = reqwest::get(settings::BRIDGETEST_ASSETS_URL)
+        .await
+        .unwrap_or_else(|_| {
+            error!("Failed to get bridgetest_assets. Check network conenction?");
+            std::process::exit(1)
+        });
     let archive_data = Cursor::new(resp.bytes().await.unwrap());
     debug!("Extracting downloaded zip file...");
     let archive = zip::ZipArchive::new(archive_data);
@@ -538,4 +539,3 @@ pub async fn fetch_media() {
         found_textures.len()
     );
 }
-

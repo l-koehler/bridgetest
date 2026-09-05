@@ -8,7 +8,7 @@ use crate::c2s;
 use crate::state;
 use crate::utils;
 use luanti_protocol::commands::client_to_server::{InteractSpec, PlayerPosCommand};
-use luanti_protocol::types::{PlayerPos, PointedThing};
+use luanti_protocol::types::{InteractAction, PlayerPos, PointedThing};
 
 use std::f32::consts::PI;
 
@@ -159,6 +159,7 @@ pub async fn interact(
     mc_client: &mut Client,
     specbox: Box<InteractSpec>,
     player_state: &mut state::PlayerState,
+    entity_state: &state::EntityState,
 ) {
     let InteractSpec {
         action,
@@ -167,7 +168,11 @@ pub async fn interact(
         player_pos: _,
     } = *specbox;
     match pointed_thing {
-        PointedThing::Nothing => (), // TODO might still be relevant in some cases (eating), check that
+        PointedThing::Nothing => {
+            if action == InteractAction::Activate {
+                mc_client.start_use_item();
+            }
+        }
         PointedThing::Node {
             under_surface,
             above_surface,
@@ -181,6 +186,31 @@ pub async fn interact(
             )
             .await
         }
-        _ => warn!("Client tried to interact with object, this is not yet supported!",),
+        PointedThing::Object { object_id } => {
+            object_interact(mc_client, action, object_id, entity_state)
+        }
+    }
+}
+
+fn object_interact(
+    mc_client: &mut Client,
+    action: InteractAction,
+    object_id: u16,
+    entity_state: &state::EntityState,
+) {
+    if action != InteractAction::Place {
+        warn!("Client sent unsupported object interaction: {:?}", action);
+        return;
+    }
+    let Some(&mc_id) = entity_state.entity_id_map.get_by_right(&object_id) else {
+        warn!("Client tried to interact with unknown object id {}", object_id);
+        return;
+    };
+    match mc_client.entity_id_by_minecraft_id(mc_id) {
+        Ok(Some(entity)) => mc_client.entity_interact(entity),
+        _ => warn!(
+            "Client tried to interact with object id {}, didn't find matching MC entity",
+            object_id
+        ),
     }
 }

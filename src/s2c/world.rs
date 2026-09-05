@@ -169,7 +169,10 @@ struct SectionLight {
     base_chunk_y: i16,
 }
 
-fn decode_section_light(y_bounds: (i16, i16), light_data: &ClientboundLightUpdatePacketData) -> SectionLight {
+fn decode_section_light(
+    y_bounds: (i16, i16),
+    light_data: &ClientboundLightUpdatePacketData,
+) -> SectionLight {
     let min_y = y_bounds.0 as i32;
     let max_y = y_bounds.1 as i32 + 1; // exclusive
     let num_sections = (((max_y - min_y) / 16) as usize).max(1);
@@ -436,9 +439,21 @@ pub async fn light_update(
             resolved.push(None);
             continue;
         }
-        let cached = light_cache.get_section(*chunk_x_pos as i16, section_light.base_chunk_y + i as i16, *chunk_z_pos as i16);
-        let sky = if section_light.sky_touched[i] { section_light.sky[i] } else { cached.0 };
-        let block = if section_light.block_touched[i] { section_light.block[i] } else { cached.1 };
+        let cached = light_cache.get_section(
+            *chunk_x_pos as i16,
+            section_light.base_chunk_y + i as i16,
+            *chunk_z_pos as i16,
+        );
+        let sky = if section_light.sky_touched[i] {
+            section_light.sky[i]
+        } else {
+            cached.0
+        };
+        let block = if section_light.block_touched[i] {
+            section_light.block[i]
+        } else {
+            cached.1
+        };
         resolved.push(Some((sky, block)));
     }
 
