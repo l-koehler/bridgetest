@@ -108,7 +108,7 @@ fn build_object_properties(
         eye_height: 1.625,
         zoom_fov: 0.0,
         use_texture_alpha: false,
-        damage_texture_modifier: Some(String::from("^[brighten")),
+        damage_texture_modifier: Some(String::from("^[colorize:#FF2244:128")),
         shaded: Some(true),
         show_on_minimap: Some(false),
         nametag_bgcolor: None,
@@ -245,11 +245,6 @@ pub async fn add_entity(
                     blend: 0.0,
                     no_loop: false,
                 }),
-                ActiveObjectCommand::UpdateArmorGroups(
-                    luanti_protocol::types::AOCUpdateArmorGroups {
-                        ratings: vec![(String::from("immortal"), 1)],
-                    },
-                ),
                 ActiveObjectCommand::AttachTo(luanti_protocol::types::AOCAttachTo {
                     parent_id: 0,
                     bone: String::from(""),
@@ -402,6 +397,29 @@ pub async fn set_entity_data(
     entity_state.appearance_update_scheduled.push(*id);
 }
 
+// trigger damage flash, prevent actually client-side killing the entity by healing it in the same command
+// duration (luanti content_cao.cpp): 50ms + 50ms per hp lost, max 1s
+pub async fn damage_flash(
+    entity_id: &MinecraftEntityId,
+    entity_state: &state::EntityState,
+    conn: &mut LuantiConnection,
+) {
+    let Some(&clientside_id) = entity_state.entity_id_map.get_by_left(entity_id) else {
+        warn!("Got damage event for unknown entity {:?}, skipping!", entity_id);
+        return;
+    };
+    let sethealth_punch = |hp| server_to_client::ActiveObjectMessage {
+        id: clientside_id,
+        data: ActiveObjectCommand::Punched(luanti_protocol::types::AOCPunched { hp }),
+    };
+    let clientbound_punched = ToClientCommand::ActiveObjectMessages(Box::new(
+        server_to_client::ActiveObjectMessagesCommand {
+            objects: vec![sethealth_punch(95), sethealth_punch(100)],
+        },
+    ));
+    conn.send(clientbound_punched).unwrap();
+}
+
 pub async fn entity_event(
     packet_data: &ClientboundEntityEvent,
     _conn: &mut LuantiConnection,
@@ -427,6 +445,8 @@ pub async fn entity_event(
     // https://wiki.vg/Entity_statuses
     match event_id {
         0 => (), // Tipped Arrow particles
+        // obsolete since 1.19.4, replaced by ClientboundDamageEvent
+        //2 => damage_flash(entity_id, entity_state, conn).await,
         1 => {
             match entity_kind {
                 EntityKind::Rabbit => (),          // Rabbit Jump animation

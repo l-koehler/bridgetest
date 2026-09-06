@@ -130,6 +130,10 @@ pub async fn process(
             ClientboundGamePacket::EntityEvent(event_packet) => {
                 s2c::entities::entity_event(&event_packet, luanti_conn, mc_client).await
             }
+            ClientboundGamePacket::DamageEvent(damage_packet) => {
+                s2c::entities::damage_flash(&damage_packet.entity_id, &proxy_state.entities, luanti_conn)
+                    .await
+            }
             ClientboundGamePacket::SetEntityData(data_packet) => {
                 s2c::entities::set_entity_data(&data_packet, &mut proxy_state.entities).await
             }
