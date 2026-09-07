@@ -131,8 +131,12 @@ pub async fn process(
                 s2c::entities::entity_event(&event_packet, luanti_conn, mc_client).await
             }
             ClientboundGamePacket::DamageEvent(damage_packet) => {
-                s2c::entities::damage_flash(&damage_packet.entity_id, &proxy_state.entities, luanti_conn)
-                    .await
+                s2c::entities::damage_flash(
+                    &damage_packet.entity_id,
+                    &proxy_state.entities,
+                    luanti_conn,
+                )
+                .await
             }
             ClientboundGamePacket::SetEntityData(data_packet) => {
                 s2c::entities::set_entity_data(&data_packet, &mut proxy_state.entities).await
@@ -202,6 +206,19 @@ pub async fn process(
                     &close_packet,
                     luanti_conn,
                     &mut proxy_state.inventory,
+                )
+                .await
+            }
+            ClientboundGamePacket::LevelParticles(particle_packet) => {
+                s2c::particles::level_particles(&particle_packet, luanti_conn).await
+            }
+            ClientboundGamePacket::LevelEvent(levelevent_packet) => {
+                s2c::particles::level_event(
+                    &levelevent_packet,
+                    luanti_conn,
+                    &proxy_state.player,
+                    &proxy_state.light,
+                    &proxy_state.media,
                 )
                 .await
             }

@@ -405,7 +405,10 @@ pub async fn damage_flash(
     conn: &mut LuantiConnection,
 ) {
     let Some(&clientside_id) = entity_state.entity_id_map.get_by_left(entity_id) else {
-        warn!("Got damage event for unknown entity {:?}, skipping!", entity_id);
+        warn!(
+            "Got damage event for unknown entity {:?}, skipping!",
+            entity_id
+        );
         return;
     };
     let sethealth_punch = |hp| server_to_client::ActiveObjectMessage {

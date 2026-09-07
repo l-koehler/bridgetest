@@ -203,7 +203,10 @@ fn object_interact(
         return;
     }
     let Some(&mc_id) = entity_state.entity_id_map.get_by_right(&object_id) else {
-        warn!("Client tried to interact with unknown object id {}", object_id);
+        warn!(
+            "Client tried to interact with unknown object id {}",
+            object_id
+        );
         return;
     };
     match mc_client.entity_id_by_minecraft_id(mc_id) {

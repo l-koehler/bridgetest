@@ -5,6 +5,7 @@ pub mod entities;
 pub mod entity_variants;
 pub mod inventory;
 pub mod media;
+pub mod particles;
 pub mod player;
 pub mod tick;
 pub mod world;

@@ -131,5 +131,6 @@ pub async fn handshake(
             ),
         }
     }
+
     return (client, mc_conn, init_command.user_name);
 }
