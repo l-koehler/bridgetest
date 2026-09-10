@@ -20,9 +20,7 @@ use luanti_protocol::types::{MapNodesBulk, NodeMetadataList, TransferrableMapBlo
 
 use azalea::Client;
 
-use azalea::events::Event;
-use azalea::protocol::packets::game::{ClientboundGamePacket, c_section_blocks_update::*};
-use tokio::sync::mpsc::UnboundedReceiver;
+use azalea::protocol::packets::game::c_section_blocks_update::*;
 
 use azalea::block::BlockState;
 use azalea::protocol::packets::game::{
@@ -34,7 +32,6 @@ use azalea::protocol::packets::game::{
 use azalea::registry::DataRegistry;
 
 use std::io::Cursor;
-use std::sync::Arc;
 
 pub fn build_node_array(
     state_arr: [BlockState; 4096],
@@ -142,40 +139,20 @@ pub async fn initialize_16node_chunk(
     }
 }
 
-pub async fn chunkbatch(
-    luanti_conn: &mut LuantiConnection,
-    mc_conn: &mut UnboundedReceiver<Event>,
-    player_state: &mut state::PlayerState,
-    light_cache: &mut state::LightCache,
-    media_state: &state::MediaState,
-    particle_spawners: &mut state::ParticleSpawnerState,
-) {
-    debug!("Forwarding S2C ChunkBatch");
-    loop {
-        tokio::select! {
-            t = mc_conn.recv() => {
-                match t {
-                    Some(_) => {
-                        let mc_command = t.expect("[Minecraft] Failed to unwrap non-empty packet from Server!");
-                        if let Event::Packet(packet_value) = mc_command {
-                            match Arc::unwrap_or_clone(packet_value) {
-                                ClientboundGamePacket::LevelChunkWithLight(packet_data) => {
-                                    trace!("Forwarding S2C LevelchunkWithLight");
-                                    send_level_chunk(&packet_data, luanti_conn, player_state, light_cache, media_state, particle_spawners).await;
-                                },
-                                ClientboundGamePacket::ChunkBatchFinished(_) => {
-                                    debug!("Got S2C ChunkBatchFinished");
-                                    return; // Done
-                                },
-                                _ => warn!("Got unexpected S2C packet during ChunkBatch"),
-                            }
-                        }
-                    },
-                    None => trace!("Received empty packet, skipping: {:#?}", t),
-                }
-            }
-        }
+pub fn chunk_batch_start(batch_state: &mut state::ChunkBatchState) {
+    if batch_state.active {
+        warn!("Got S2C ChunkBatchStart while already inside a chunk batch");
     }
+    debug!("Started S2C ChunkBatch");
+    batch_state.active = true;
+}
+
+pub fn chunk_batch_finished(batch_state: &mut state::ChunkBatchState) {
+    if !batch_state.active {
+        warn!("Got S2C ChunkBatchFinished without a matching ChunkBatchStart");
+    }
+    debug!("Got S2C ChunkBatchFinished");
+    batch_state.active = false;
 }
 
 struct SectionLight {
@@ -433,7 +410,13 @@ pub async fn blockupdate(
         keep_metadata: false,
     }));
     conn.send(addnodecommand).unwrap();
-    s2c::particles::sync_block_spawner(*pos, BlockKind::from(*block_state), conn, particle_spawners).await;
+    s2c::particles::sync_block_spawner(
+        *pos,
+        BlockKind::from(*block_state),
+        conn,
+        particle_spawners,
+    )
+    .await;
 }
 
 pub async fn light_update(

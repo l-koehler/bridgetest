@@ -36,6 +36,12 @@ impl Dimensions {
     }
 }
 
+// tracks whether we're between a ChunkBatchStart and its ChunkBatchFinished
+#[derive(Clone, Copy, Default)]
+pub struct ChunkBatchState {
+    pub active: bool,
+}
+
 // default for sections we never got light data for
 const UNKNOWN_LIGHT: u8 = 14;
 

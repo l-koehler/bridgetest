@@ -8,17 +8,14 @@ use log::*;
 
 use azalea::events::Event;
 use azalea::protocol::packets::game::ClientboundGamePacket;
-use tokio::sync::mpsc::UnboundedReceiver;
+use std::sync::Arc;
 
 pub async fn process(
     command: Event,
     luanti_conn: &mut LuantiConnection,
     mc_client: &mut azalea::Client,
     proxy_state: &mut state::ProxyState,
-    mc_conn: &mut UnboundedReceiver<Event>,
 ) {
-    let cloned_command = command.clone();
-    let command_name = utils::mc_packet_name(&cloned_command);
     match command {
         Event::AddPlayer(player_data) => {
             s2c::player::add_player(player_data, luanti_conn, &mut proxy_state.player).await
@@ -28,13 +25,19 @@ pub async fn process(
         Event::Death(_) => {
             s2c::player::death(luanti_conn, &mut proxy_state.player, &mc_client).await
         }
-        Event::Packet(packet_value) => match (*packet_value).clone() {
+        Event::Packet(packet_value) => match Arc::unwrap_or_clone(packet_value) {
             ClientboundGamePacket::BundleDelimiter(_) => (),
 
             ClientboundGamePacket::ChunkBatchStart(_) => {
-                s2c::world::chunkbatch(
+                s2c::world::chunk_batch_start(&mut proxy_state.chunk_batch)
+            }
+            ClientboundGamePacket::ChunkBatchFinished(_) => {
+                s2c::world::chunk_batch_finished(&mut proxy_state.chunk_batch)
+            }
+            ClientboundGamePacket::LevelChunkWithLight(chunk_packet) => {
+                s2c::world::send_level_chunk(
+                    &chunk_packet,
                     luanti_conn,
-                    mc_conn,
                     &mut proxy_state.player,
                     &mut proxy_state.light,
                     &proxy_state.media,
@@ -226,11 +229,14 @@ pub async fn process(
                 )
                 .await
             }
-            _ => warn!(
+            other => warn!(
                 "Got unimplemented S2C ClientboundGamePacket, dropping {}",
-                command_name
+                utils::mc_game_packet_name(&other)
             ),
         },
-        _ => warn!("Got unimplemented S2C command, dropping {}", command_name),
+        other => warn!(
+            "Got unimplemented S2C command, dropping {}",
+            utils::mc_packet_name(&other)
+        ),
     };
 }

@@ -25,4 +25,5 @@ pub struct ProxyState {
     pub player: PlayerState,
     pub time: TimeState,
     pub light: LightCache,
+    pub chunk_batch: ChunkBatchState,
 }

@@ -120,7 +120,7 @@ pub async fn client_handler(
                 c2s::process(t.unwrap(), &mut luanti_conn, &mut mc_client, &mut proxy_state).await;
             },
             t = mc_conn.recv() => {
-                s2c::process(t.unwrap(), &mut luanti_conn, &mut mc_client, &mut proxy_state, &mut mc_conn).await;
+                s2c::process(t.unwrap(), &mut luanti_conn, &mut mc_client, &mut proxy_state).await;
             },
             _ = stream.next() => {
                 s2c::tick(&mut luanti_conn, &mut mc_client, &mut proxy_state).await;

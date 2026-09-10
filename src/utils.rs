@@ -12,7 +12,7 @@ use azalea::block::BlockState;
 use azalea::core::{aabb::Aabb, bitset::BitSet, position::Vec3};
 use azalea::events::Event;
 use azalea::inventory::ItemStack;
-use azalea::registry::Registry;
+use azalea::protocol::packets::game::ClientboundGamePacket;
 use azalea::registry::builtin::{BlockKind, EntityKind};
 use log::*;
 use luanti_core::ContentId;
@@ -414,17 +414,7 @@ pub fn mc_packet_name(command: &Event) -> String {
         Event::Spawn => "Spawn",
         Event::Chat(_) => "Chat",
         Event::Tick => "Tick",
-        // There are 117 possible cases here
-        // pattern matching would get really boring
-        Event::Packet(packet) => {
-            let s = format!("{:?}", **packet);
-            return s
-                .split('(')
-                .next() // for data variants
-                .or_else(|| s.split_whitespace().next()) // for unit variants
-                .unwrap()
-                .to_owned();
-        }
+        Event::Packet(packet) => return mc_game_packet_name(packet),
         Event::AddPlayer(_) => "AddPlayer",
         Event::RemovePlayer(_) => "RemovePlayer",
         Event::UpdatePlayer(_) => "UpdatePlayer",
@@ -433,6 +423,17 @@ pub fn mc_packet_name(command: &Event) -> String {
         Event::Disconnect(_) => "Disconnect",
         _ => "Unknown", // should be exhaustive idk what the compiler wants here
     });
+}
+
+pub fn mc_game_packet_name(packet: &ClientboundGamePacket) -> String {
+    // There are 117 possible cases here
+    // pattern matching would get really boring
+    let s = format!("{:?}", packet);
+    s.split('(')
+        .next() // data variants
+        .or_else(|| s.split_whitespace().next()) // unit variants
+        .unwrap()
+        .to_owned()
 }
 
 // select data API (from https://github.com/PrismarineJS/minecraft-data) based on azalea version

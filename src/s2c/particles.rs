@@ -200,7 +200,6 @@ pub async fn level_particles(packet_data: &ClientboundLevelParticles, conn: &mut
     conn.send(particle_command).unwrap();
 }
 
-
 const LEVEL_EVENT_BLOCK_BREAK: u32 = 2001;
 pub async fn level_event(
     packet_data: &ClientboundLevelEvent,
@@ -547,7 +546,9 @@ const SPAWNER_DEFS: &[BlockSpawnerDef] = &[
 ];
 
 fn spawner_def_for_block(kind: BlockKind) -> Option<usize> {
-    SPAWNER_DEFS.iter().position(|def| def.kinds.contains(&kind))
+    SPAWNER_DEFS
+        .iter()
+        .position(|def| def.kinds.contains(&kind))
 }
 
 // set the per-block particle spawners for a block
@@ -560,7 +561,10 @@ pub async fn sync_block_spawner(
 ) {
     let current = particle_spawners.get(&pos);
     let wanted = spawner_def_for_block(kind);
-    if current.as_ref().is_some_and(|(cur_idx, _)| Some(*cur_idx) == wanted) {
+    if current
+        .as_ref()
+        .is_some_and(|(cur_idx, _)| Some(*cur_idx) == wanted)
+    {
         return;
     }
     if current.is_none() && wanted.is_none() {
@@ -601,7 +605,11 @@ fn fixed_f32(v: f32) -> TweenedParameter<RangedParameter<f32>> {
 }
 
 fn ranged_vec3(min: v3f, max: v3f) -> TweenedParameter<RangedParameter<v3f>> {
-    let ranged = RangedParameter { min, max, bias: 0.0 };
+    let ranged = RangedParameter {
+        min,
+        max,
+        bias: 0.0,
+    };
     TweenedParameter {
         style: TweenStyle::Fwd,
         reps: 1,
@@ -612,7 +620,11 @@ fn ranged_vec3(min: v3f, max: v3f) -> TweenedParameter<RangedParameter<v3f>> {
 }
 
 fn ranged_f32(min: f32, max: f32) -> TweenedParameter<RangedParameter<f32>> {
-    let ranged = RangedParameter { min, max, bias: 0.0 };
+    let ranged = RangedParameter {
+        min,
+        max,
+        bias: 0.0,
+    };
     TweenedParameter {
         style: TweenStyle::Fwd,
         reps: 1,
