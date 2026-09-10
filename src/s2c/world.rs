@@ -139,6 +139,52 @@ pub async fn initialize_16node_chunk(
     }
 }
 
+// for switching dimensions
+pub async fn reset_world(
+    conn: &LuantiConnection,
+    light_cache: &mut state::LightCache,
+    particle_spawners: &mut state::ParticleSpawnerState,
+) {
+    let positions = light_cache.take_positions();
+    debug!(
+        "Unloading {} mapblocks for dimension change",
+        positions.len()
+    );
+    let ignore_nodes = [MapNode {
+        content_id: ContentId::IGNORE,
+        param1: 0,
+        param2: 0,
+    }; 4096];
+    for (x_pos, y_pos, z_pos) in positions {
+        let unloadcommand = ToClientCommand::Blockdata(Box::new(server_to_client::BlockdataSpec {
+            pos: v3i16 {
+                x: utils::mirror_block_pos(x_pos as i32) as i16,
+                y: y_pos,
+                z: z_pos,
+            },
+            block: TransferrableMapBlock {
+                is_underground: false,
+                day_night_differs: false,
+                generated: false,
+                lighting_complete: Some(u16::MAX),
+                nodes: MapNodesBulk {
+                    nodes: ignore_nodes,
+                },
+                node_metadata: NodeMetadataList { metadata: vec![] },
+            },
+            network_specific_version: 2,
+        }));
+        conn.send(unloadcommand).unwrap();
+    }
+
+    for id in particle_spawners.take_all() {
+        conn.send(ToClientCommand::DeleteParticlespawner(Box::new(
+            server_to_client::DeleteParticlespawnerSpec { server_id: id },
+        )))
+        .unwrap();
+    }
+}
+
 pub fn chunk_batch_start(batch_state: &mut state::ChunkBatchState) {
     if batch_state.active {
         warn!("Got S2C ChunkBatchStart while already inside a chunk batch");

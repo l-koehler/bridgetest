@@ -30,4 +30,8 @@ impl ParticleSpawnerState {
         self.active.insert(pos, (def_index, ids.clone()));
         ids
     }
+
+    pub fn take_all(&mut self) -> Vec<u32> {
+        self.active.drain().flat_map(|(_, (_, ids))| ids).collect()
+    }
 }

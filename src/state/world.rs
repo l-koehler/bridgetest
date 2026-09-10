@@ -84,4 +84,9 @@ impl LightCache {
             None => (UNKNOWN_LIGHT, UNKNOWN_LIGHT),
         }
     }
+
+    // empties the cache, returns positions of every section that was stored
+    pub fn take_positions(&mut self) -> Vec<(i16, i16, i16)> {
+        self.sections.drain().map(|(pos, _)| pos).collect()
+    }
 }

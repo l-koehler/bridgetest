@@ -72,12 +72,19 @@ pub async fn process(
                     .await
             }
             // these two are misleading. SetDefaultSpawnPosition sets the on-death respawn position,
-            // Respawn (re)*SPAWNS* the player in a different dimension and is entirely unrelated to death!
+            // Respawn (re)*SPAWNS* the player in a dimension and is not only sent on death!
             ClientboundGamePacket::SetDefaultSpawnPosition(setspawn_packet) => {
                 s2c::player::set_spawn(&setspawn_packet, &mut proxy_state.player).await
             }
             ClientboundGamePacket::Respawn(respawn_packet) => {
-                s2c::player::update_dimension(&respawn_packet, &mut proxy_state.player).await
+                s2c::player::update_dimension(
+                    &respawn_packet,
+                    &mut proxy_state.player,
+                    luanti_conn,
+                    &mut proxy_state.light,
+                    &mut proxy_state.particles,
+                )
+                .await
             }
 
             ClientboundGamePacket::KeepAlive(_) => trace!("Got S2C KeepAlive packet, ignoring it."),

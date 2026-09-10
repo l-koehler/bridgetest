@@ -38,6 +38,9 @@ use s2c::defs::{FoodDisplay, HeartDisplay};
 pub async fn update_dimension(
     source_packet: &ClientboundRespawn,
     player_state: &mut state::PlayerState,
+    conn: &LuantiConnection,
+    light_cache: &mut state::LightCache,
+    particle_spawners: &mut state::ParticleSpawnerState,
 ) {
     let ClientboundRespawn {
         common: player_spawn_info,
@@ -55,21 +58,26 @@ pub async fn update_dimension(
         last_death_location: _,
         portal_cooldown: _,
     } = player_spawn_info;
-    if dimension.namespace() != "minecraft" {
-        player_state.current_dimension = Dimensions::Custom;
+    let new_dimension = if dimension.namespace() != "minecraft" {
+        Dimensions::Custom
     } else {
-        player_state.current_dimension = match dimension.path() {
+        match dimension.path() {
             "overworld" => Dimensions::Overworld,
             "the_nether" => Dimensions::Nether,
             "the_end" => Dimensions::End,
             _ => Dimensions::Custom,
-        };
+        }
+    };
+    // respawn also for same-dimensio death respawn
+    if new_dimension != player_state.current_dimension {
+        info!(
+            "Client changed dimension: {}:{}",
+            dimension.namespace(),
+            dimension.path()
+        );
+        s2c::world::reset_world(conn, light_cache, particle_spawners).await;
     }
-    info!(
-        "Client changed dimension: {}:{}",
-        dimension.namespace(),
-        dimension.path()
-    )
+    player_state.current_dimension = new_dimension;
 }
 
 pub async fn set_spawn(
