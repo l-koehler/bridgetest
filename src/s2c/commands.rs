@@ -38,6 +38,7 @@ pub async fn process(
                     &mut proxy_state.player,
                     &mut proxy_state.light,
                     &proxy_state.media,
+                    &mut proxy_state.particles,
                 )
                 .await
             }
@@ -49,6 +50,7 @@ pub async fn process(
                     mc_client,
                     &mut proxy_state.light,
                     &proxy_state.media,
+                    &mut proxy_state.particles,
                 )
                 .await
             }
@@ -154,6 +156,7 @@ pub async fn process(
                     &proxy_state.player,
                     &proxy_state.light,
                     &proxy_state.media,
+                    &mut proxy_state.particles,
                 )
                 .await
             }
@@ -166,6 +169,7 @@ pub async fn process(
                     mc_client,
                     &mut proxy_state.light,
                     &proxy_state.media,
+                    &mut proxy_state.particles,
                 )
                 .await
             }

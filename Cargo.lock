@@ -2554,7 +2554,7 @@ checksum = "112b39cec0b298b6c1999fee3e31427f74f676e4cb9879ed1a121b43661a4154"
 [[package]]
 name = "luanti-core"
 version = "0.2.0"
-source = "git+https://github.com/l-koehler/luanti-rs?branch=update-52#5028cb3b80a845d2f67dfc8692da7698826ccca9"
+source = "git+https://github.com/l-koehler/luanti-rs?branch=update-52#127f3900e2ad43396870d4a81b41b2fdc86de2f6"
 dependencies = [
  "glam",
 ]
@@ -2562,7 +2562,7 @@ dependencies = [
 [[package]]
 name = "luanti-protocol"
 version = "0.2.0"
-source = "git+https://github.com/l-koehler/luanti-rs?branch=update-52#5028cb3b80a845d2f67dfc8692da7698826ccca9"
+source = "git+https://github.com/l-koehler/luanti-rs?branch=update-52#127f3900e2ad43396870d4a81b41b2fdc86de2f6"
 dependencies = [
  "anyhow",
  "glam",
@@ -2579,7 +2579,7 @@ dependencies = [
 [[package]]
 name = "luanti-protocol-derive"
 version = "0.2.0"
-source = "git+https://github.com/l-koehler/luanti-rs?branch=update-52#5028cb3b80a845d2f67dfc8692da7698826ccca9"
+source = "git+https://github.com/l-koehler/luanti-rs?branch=update-52#127f3900e2ad43396870d4a81b41b2fdc86de2f6"
 dependencies = [
  "proc-macro2",
  "quote",

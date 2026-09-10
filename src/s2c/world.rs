@@ -1,3 +1,4 @@
+use crate::s2c;
 use crate::state;
 use crate::utils;
 use azalea::world::Chunk;
@@ -5,6 +6,7 @@ use state::world::Dimensions;
 
 use azalea::BlockPos;
 use azalea::core::position::ChunkSectionBlockPos;
+use azalea::registry::builtin::BlockKind;
 use core::slice::SlicePattern;
 use log::*;
 
@@ -73,6 +75,7 @@ pub async fn initialize_16node_chunk(
     block_levels: Option<&[u8; 4096]>,
     light_cache: &mut state::LightCache,
     media_state: &state::MediaState,
+    particle_spawners: &mut state::ParticleSpawnerState,
 ) {
     // Fills a 16^3 area with a vector of map nodes, where param0 is a MC-compatible ID.
     // remember that this is limited to 16 blocks of heigth, while a MC chunk goes from -64 to 320
@@ -123,6 +126,20 @@ pub async fn initialize_16node_chunk(
         network_specific_version: 2, // what does this meeeean qwq
     }));
     conn.send(addblockcommand).unwrap();
+
+    // update spawners
+    for state_arr_i in 0..4096 {
+        let x = state_arr_i % 16;
+        let y = (state_arr_i / 16) % 16;
+        let z = state_arr_i / 256;
+        let block_pos = BlockPos {
+            x: x_pos as i32 * 16 + x as i32,
+            y: y_pos as i32 * 16 + y as i32,
+            z: z_pos as i32 * 16 + z as i32,
+        };
+        let kind = BlockKind::from(state_arr[state_arr_i]);
+        s2c::particles::sync_block_spawner(block_pos, kind, conn, particle_spawners).await;
+    }
 }
 
 pub async fn chunkbatch(
@@ -131,6 +148,7 @@ pub async fn chunkbatch(
     player_state: &mut state::PlayerState,
     light_cache: &mut state::LightCache,
     media_state: &state::MediaState,
+    particle_spawners: &mut state::ParticleSpawnerState,
 ) {
     debug!("Forwarding S2C ChunkBatch");
     loop {
@@ -143,7 +161,7 @@ pub async fn chunkbatch(
                             match Arc::unwrap_or_clone(packet_value) {
                                 ClientboundGamePacket::LevelChunkWithLight(packet_data) => {
                                     trace!("Forwarding S2C LevelchunkWithLight");
-                                    send_level_chunk(&packet_data, luanti_conn, player_state, light_cache, media_state).await;
+                                    send_level_chunk(&packet_data, luanti_conn, player_state, light_cache, media_state, particle_spawners).await;
                                 },
                                 ClientboundGamePacket::ChunkBatchFinished(_) => {
                                     debug!("Got S2C ChunkBatchFinished");
@@ -209,6 +227,7 @@ pub async fn send_level_chunk(
     player_state: &mut state::PlayerState,
     light_cache: &mut state::LightCache,
     media_state: &state::MediaState,
+    particle_spawners: &mut state::ParticleSpawnerState,
 ) {
     let y_bounds = player_state.current_dimension.get_y_bounds();
     let is_nether = matches!(player_state.current_dimension, Dimensions::Nether);
@@ -287,6 +306,7 @@ pub async fn send_level_chunk(
             Some(&section_light.block[section_index]),
             light_cache,
             media_state,
+            particle_spawners,
         )
         .await;
         chunk_y_pos += 1;
@@ -301,6 +321,7 @@ pub async fn section_block_update(
     mc_client: &Client,
     light_cache: &mut state::LightCache,
     media_state: &state::MediaState,
+    particle_spawners: &mut state::ParticleSpawnerState,
 ) {
     let ClientboundSectionBlocksUpdate {
         section_pos,
@@ -345,6 +366,7 @@ pub async fn section_block_update(
         None,
         light_cache,
         media_state,
+        particle_spawners,
     )
     .await;
 }
@@ -394,6 +416,7 @@ pub async fn blockupdate(
     player_state: &state::PlayerState,
     light_cache: &state::LightCache,
     media_state: &state::MediaState,
+    particle_spawners: &mut state::ParticleSpawnerState,
 ) {
     let ClientboundBlockUpdate { pos, block_state } = packet_data;
     let cave_air_glow = player_state.current_dimension == Dimensions::Nether;
@@ -410,6 +433,7 @@ pub async fn blockupdate(
         keep_metadata: false,
     }));
     conn.send(addnodecommand).unwrap();
+    s2c::particles::sync_block_spawner(*pos, BlockKind::from(*block_state), conn, particle_spawners).await;
 }
 
 pub async fn light_update(
@@ -419,6 +443,7 @@ pub async fn light_update(
     mc_client: &Client,
     light_cache: &mut state::LightCache,
     media_state: &state::MediaState,
+    particle_spawners: &mut state::ParticleSpawnerState,
 ) {
     let ClientboundLightUpdate {
         x: chunk_x_pos,
@@ -498,6 +523,7 @@ pub async fn light_update(
             Some(block),
             light_cache,
             media_state,
+            particle_spawners,
         )
         .await;
     }

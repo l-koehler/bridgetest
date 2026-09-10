@@ -39,3 +39,4 @@ zip = { version = "^8.6.0", default-features = false, features = ["deflate", "de
 [build-dependencies]
 azalea-registry = { git = "https://github.com/azalea-rs/azalea.git", rev = "6249c295d353b9b3ef68f665b311cba39211fd19" }
 serde_json = "^1.0.151"
+
