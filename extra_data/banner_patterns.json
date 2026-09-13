@@ -1,0 +1,68 @@
+{
+  "no_item_required": [
+    "minecraft:square_bottom_left",
+    "minecraft:square_bottom_right",
+    "minecraft:square_top_left",
+    "minecraft:square_top_right",
+    "minecraft:stripe_bottom",
+    "minecraft:stripe_top",
+    "minecraft:stripe_left",
+    "minecraft:stripe_right",
+    "minecraft:stripe_center",
+    "minecraft:stripe_middle",
+    "minecraft:stripe_downright",
+    "minecraft:stripe_downleft",
+    "minecraft:small_stripes",
+    "minecraft:cross",
+    "minecraft:straight_cross",
+    "minecraft:triangle_bottom",
+    "minecraft:triangle_top",
+    "minecraft:triangles_bottom",
+    "minecraft:triangles_top",
+    "minecraft:diagonal_left",
+    "minecraft:diagonal_up_right",
+    "minecraft:diagonal_up_left",
+    "minecraft:diagonal_right",
+    "minecraft:circle",
+    "minecraft:rhombus",
+    "minecraft:half_vertical",
+    "minecraft:half_horizontal",
+    "minecraft:half_vertical_right",
+    "minecraft:half_horizontal_bottom",
+    "minecraft:border",
+    "minecraft:gradient",
+    "minecraft:gradient_up"
+  ],
+  "pattern_items": {
+    "minecraft:bordure_indented_banner_pattern": [
+      "minecraft:curly_border"
+    ],
+    "minecraft:creeper_banner_pattern": [
+      "minecraft:creeper"
+    ],
+    "minecraft:field_masoned_banner_pattern": [
+      "minecraft:bricks"
+    ],
+    "minecraft:flow_banner_pattern": [
+      "minecraft:flow"
+    ],
+    "minecraft:flower_banner_pattern": [
+      "minecraft:flower"
+    ],
+    "minecraft:globe_banner_pattern": [
+      "minecraft:globe"
+    ],
+    "minecraft:guster_banner_pattern": [
+      "minecraft:guster"
+    ],
+    "minecraft:mojang_banner_pattern": [
+      "minecraft:mojang"
+    ],
+    "minecraft:piglin_banner_pattern": [
+      "minecraft:piglin"
+    ],
+    "minecraft:skull_banner_pattern": [
+      "minecraft:skull"
+    ]
+  }
+}

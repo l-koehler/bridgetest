@@ -12,7 +12,6 @@ pub use inventory::*;
 pub use media::*;
 pub use particles::*;
 pub use player::*;
-// world state is partially used (TimeState, Dimensions)
 pub use world::*;
 
 #[derive(Clone, Default)]
@@ -20,6 +19,7 @@ pub struct ProxyState {
     pub chat: ChatState,
     pub entities: EntityState,
     pub inventory: InventoryState,
+    pub container: Option<ContainerState>, // None if no container open
     pub media: MediaState,
     pub particles: ParticleSpawnerState,
     pub player: PlayerState,

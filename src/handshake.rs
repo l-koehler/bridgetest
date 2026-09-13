@@ -2,6 +2,8 @@ use crate::utils;
 use azalea::Client;
 use azalea::account::Account;
 use azalea::events::Event;
+use azalea::protocol::packets::game::ClientboundGamePacket;
+use azalea::protocol::packets::game::c_update_recipes::ClientboundUpdateRecipes;
 use config::Config;
 use glam::Vec3 as v3f;
 use log::*;
@@ -16,7 +18,12 @@ use tokio::sync::mpsc::UnboundedReceiver;
 pub async fn handshake(
     luanti_conn: &mut LuantiConnection,
     settings: &Config,
-) -> (azalea::Client, UnboundedReceiver<azalea::Event>, String) {
+) -> (
+    azalea::Client,
+    UnboundedReceiver<azalea::Event>,
+    String,
+    Vec<ClientboundUpdateRecipes>,
+) {
     let mut command;
     loop {
         let t = luanti_conn.recv().await;
@@ -119,12 +126,25 @@ pub async fn handshake(
         .expect("Failed to log in!");
 
     debug!("Awaiting S2C Login confirmation...");
+    // race condition: azalea sends Event::Login from a different system than the packet events
+    // so we need to be ready to capture this as early as possible (right after Client::join)
+    let mut early_recipes = Vec::new();
     loop {
         let t = mc_conn.recv().await;
         let command = t.expect("Minecraft Server sent disconnect while awaiting login");
         match command {
             // Recieved login packet from minecraft server
             Event::Login => break,
+            Event::Packet(ref packet) => {
+                if let ClientboundGamePacket::UpdateRecipes(recipes) = &**packet {
+                    early_recipes.push(recipes.clone());
+                } else {
+                    warn!(
+                        "Dropping unexpected S2C packet! Got clientbound \"{}\", expected \"Init\"",
+                        utils::mc_packet_name(&command)
+                    )
+                }
+            }
             _ => warn!(
                 "Dropping unexpected S2C packet! Got clientbound \"{}\", expected \"Init\"",
                 utils::mc_packet_name(&command)
@@ -132,5 +152,5 @@ pub async fn handshake(
         }
     }
 
-    return (client, mc_conn, init_command.user_name);
+    return (client, mc_conn, init_command.user_name, early_recipes);
 }

@@ -9,48 +9,12 @@ use luanti_protocol::types::ItemStackMetadata;
 use luanti_protocol::types::{InventoryEntry, InventoryList, ItemStack, ItemStackUpdate};
 
 use azalea::Client;
+use azalea::entity::inventory::Inventory as InventoryComponent;
 use azalea::inventory;
 use azalea::registry::builtin::MenuKind;
 
-use azalea::protocol::packets::game::c_container_close::ClientboundContainerClose;
-use azalea::protocol::packets::game::c_open_screen::ClientboundOpenScreen;
-
-pub fn get_container_formspec(container: &MenuKind, title: &str) -> String {
-    // TODO: Sanitize the title, currently someone could name a chest "hi]list[...]" to break a lot of stuff.
-    match container {
-        MenuKind::Generic9x3 | MenuKind::ShulkerBox => format!(
-            "formspec_version[7]\
-size[11.5,11]\
-background[0,0;17.5,17.5;gui-container-shulker_box.png]\
-style_type[list;spacing=0.135,0.135;size=1.09,1.09;border=false]\
-listcolors[#0000;#0002]\
-list[current_player;container;0.55,1.3;9,3]\
-list[current_player;main;0.55,9.7;9,1]\
-list[current_player;main;0.55,5.75;9,3;9]\
-label[0.55,0.5;{}]\
-",
-            title
-        ),
-        MenuKind::Crafting => format!(
-            "formspec_version[7]\
-size[11.5,11]\
-background[0,0;17.5,17.5;gui-container-crafting_table.png]\
-style_type[list;spacing=0.135,0.135;size=1.09,1.09;border=false]\
-listcolors[#0000;#0002]\
-list[current_player;container;8.45,2.4;1,1]\
-list[current_player;container;2.05,1.17;3,3;1]\
-list[current_player;main;0.55,9.7;9,1]\
-list[current_player;main;0.55,5.75;9,3;9]\
-label[0.55,0.5;{}]\
-",
-            title
-        ),
-        _ => format!(
-            "size[5,1]label[0,0;Error!\nAs-of-now unsupported MenuKind,\nUI cannot be shown!\nMenu Title: {}]",
-            title
-        ),
-    }
-}
+use azalea::protocol::packets::game::c_container_set_content::ClientboundContainerSetContent;
+use azalea::protocol::packets::game::c_set_cursor_item::ClientboundSetCursorItem;
 
 pub async fn update_inventory(
     conn: &mut LuantiConnection,
@@ -100,49 +64,31 @@ pub async fn update_inventory(
     conn.send(update_inventory_packet).unwrap();
 }
 
-pub async fn open_screen(
-    packet_data: &ClientboundOpenScreen,
-    conn: &mut LuantiConnection,
-    inventory_state: &mut state::InventoryState,
-) {
-    let ClientboundOpenScreen {
-        container_id,
-        menu_type,
-        title,
-    } = packet_data;
-    inventory_state.container_id = Some(*container_id);
-    // a real container can't be open at the same time as the 2x2 grid, drop it to be safe
-    inventory_state.inventory_handle = None;
-    let form_spec = get_container_formspec(menu_type, &title.to_string());
-    debug!("Sending S2C ShowFormspec for opened container");
-    let formspec_command =
-        ToClientCommand::ShowFormspec(Box::new(server_to_client::ShowFormspecSpec {
-            form_spec,
-            form_name: String::from("current-container-form"),
-        }));
-    conn.send(formspec_command).unwrap();
+fn with_inventory(mc_client: &Client, f: impl FnOnce(&mut InventoryComponent)) {
+    let mut ecs = (*mc_client.ecs).write();
+    let mut query = ecs.query::<&mut InventoryComponent>();
+    let Ok(mut inventory) = query.get_mut(&mut ecs, mc_client.entity) else {
+        return;
+    };
+    f(&mut inventory);
 }
 
-// minecraft server can close containers on its own
-// (e.g got pushed away from it and out of range)
-pub async fn server_closed_container(
-    packet: &ClientboundContainerClose,
-    conn: &mut LuantiConnection,
-    inventory_state: &mut state::InventoryState,
-) {
-    if inventory_state.container_id != Some(packet.container_id) {
-        // stale/already-known-closed or not a container we opened for luanti
-        return;
-    }
-    inventory_state.container_id = None;
-    debug!("MC server closed our container, dismissing the luanti formspec for it");
-    // empty formspec closes whatever is currently shown under that name
-    let close_command =
-        ToClientCommand::ShowFormspec(Box::new(server_to_client::ShowFormspecSpec {
-            form_spec: String::new(),
-            form_name: String::from("current-container-form"),
-        }));
-    conn.send(close_command).unwrap();
+// azalea applies ContainerSetContent slots but drops the state_id
+// once the server does a resync all further clicks would look stale to it
+pub fn sync_container_state(mc_client: &Client, packet: &ClientboundContainerSetContent) {
+    with_inventory(mc_client, |inventory| {
+        if packet.container_id == inventory.id {
+            inventory.state_id = packet.state_id;
+            inventory.carried = packet.carried_item.clone();
+        }
+    });
+}
+
+// azalea drops SetCursorItem, leaving stack stale. similar to above
+pub fn sync_cursor_item(mc_client: &Client, packet: &ClientboundSetCursorItem) {
+    with_inventory(mc_client, |inventory| {
+        inventory.carried = packet.contents.clone()
+    });
 }
 
 // see https://minecraft.wiki/w/Java_Edition_protocol/Inventory#Crafting
@@ -150,208 +96,71 @@ pub async fn refresh_inv(
     mc_client: &Client,
     luanti_conn: &mut LuantiConnection,
     inventory_state: &mut state::InventoryState,
+    container: &mut Option<state::ContainerState>,
     force_full: bool,
 ) {
-    let mut to_update: Vec<(String, Vec<inventory::ItemStack>)> = vec![];
-    match mc_client.menu().unwrap() {
-        inventory::Menu::Player(serverside_inventory) => {
-            // fields of the inventory needing a update
-            to_update.push((
-                "craftpreview".to_string(),
-                vec![serverside_inventory.craft_result.clone()],
-            ));
-            to_update.push(("craft".to_string(), serverside_inventory.craft.to_vec()));
-            to_update.push(("armor".to_string(), serverside_inventory.armor.to_vec()));
-            to_update.push(("main".to_string(), serverside_inventory.inventory.to_vec()));
-            to_update.push((
-                "offhand".to_string(),
-                vec![serverside_inventory.offhand.clone()],
-            ));
+    let menu = mc_client.menu().unwrap();
+    // option lists derive from stonecutter_input/loom_patterns, reshow the formspec when relevant slots change
+    let mut slots = s2c::containers::container_slot_lists(&menu).unwrap_or_else(|| {
+        // fields of the player's own inventory needing a update
+        let serverside_inventory = menu.as_player();
+        s2c::containers::ContainerSlots {
+            lists: vec![
+                (
+                    "craftpreview".to_string(),
+                    vec![serverside_inventory.craft_result.clone()],
+                ),
+                ("craft".to_string(), serverside_inventory.craft.to_vec()),
+                ("armor".to_string(), serverside_inventory.armor.to_vec()),
+                ("main".to_string(), serverside_inventory.inventory.to_vec()),
+                (
+                    "offhand".to_string(),
+                    vec![serverside_inventory.offhand.clone()],
+                ),
+            ],
+            ..Default::default()
         }
-        // contents: SlotList<n>
-        // different n per menu type, incompatible types
-        // always updates all here
-        inventory::Menu::Generic9x1 { contents, player } => {
-            to_update.push(("container".to_string(), contents.to_vec()));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-        inventory::Menu::Generic9x2 { contents, player } => {
-            to_update.push(("container".to_string(), contents.to_vec()));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-        inventory::Menu::Generic9x3 { contents, player } => {
-            to_update.push(("container".to_string(), contents.to_vec()));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-        inventory::Menu::Generic9x4 { contents, player } => {
-            to_update.push(("container".to_string(), contents.to_vec()));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-        inventory::Menu::Generic9x5 { contents, player } => {
-            to_update.push(("container".to_string(), contents.to_vec()));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-        inventory::Menu::Generic9x6 { contents, player } => {
-            to_update.push(("container".to_string(), contents.to_vec()));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-        inventory::Menu::Generic3x3 { contents, player } => {
-            to_update.push(("container".to_string(), contents.to_vec()));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-        inventory::Menu::Crafter3x3 { contents, player } => {
-            to_update.push(("container".to_string(), contents.to_vec()));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-        inventory::Menu::Anvil {
-            first,
-            second,
-            result,
-            player,
-        } => {
-            to_update.push(("container".to_string(), vec![first, second, result]));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-        inventory::Menu::Beacon { payment, player } => {
-            to_update.push(("container".to_string(), vec![payment]));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-        inventory::Menu::BlastFurnace {
-            ingredient,
-            fuel,
-            result,
-            player,
-        } => {
-            to_update.push(("container".to_string(), vec![ingredient, fuel, result]));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-        inventory::Menu::BrewingStand {
-            bottles,
-            ingredient,
-            fuel,
-            player,
-        } => {
-            let item_vec = [bottles.to_vec(), vec![ingredient, fuel]].concat();
-            to_update.push(("container".to_string(), item_vec));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-        inventory::Menu::Crafting {
-            result,
-            grid,
-            player,
-        } => {
-            let item_vec = [vec![result], grid.to_vec()].concat();
-            to_update.push(("container".to_string(), item_vec));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-        inventory::Menu::Enchantment {
-            item,
-            lapis,
-            player,
-        } => {
-            to_update.push(("container".to_string(), vec![item, lapis]));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-        inventory::Menu::Grindstone {
-            input,
-            additional,
-            result,
-            player,
-        } => {
-            to_update.push(("container".to_string(), vec![input, additional, result]));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-        inventory::Menu::Hopper { contents, player } => {
-            to_update.push(("container".to_string(), contents.to_vec()));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-        inventory::Menu::Lectern { book, player } => {
-            to_update.push(("container".to_string(), vec![book]));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-        inventory::Menu::Loom {
-            banner,
-            dye,
-            pattern,
-            result,
-            player,
-        } => {
-            to_update.push(("container".to_string(), vec![banner, dye, pattern, result]));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-        inventory::Menu::Merchant {
-            payments,
-            result,
-            player,
-        } => {
-            let item_vec = [payments.to_vec(), vec![result]].concat();
-            to_update.push(("container".to_string(), item_vec));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-        inventory::Menu::ShulkerBox { contents, player } => {
-            to_update.push(("container".to_string(), contents.to_vec()));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-        inventory::Menu::Smithing {
-            template,
-            base,
-            additional,
-            result,
-            player,
-        } => {
-            to_update.push((
-                "container".to_string(),
-                vec![template, base, additional, result],
-            ));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-        inventory::Menu::Smoker {
-            ingredient,
-            fuel,
-            result,
-            player,
-        } => {
-            to_update.push(("container".to_string(), vec![ingredient, fuel, result]));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-        inventory::Menu::CartographyTable {
-            map,
-            additional,
-            result,
-            player,
-        } => {
-            to_update.push(("container".to_string(), vec![map, additional, result]));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-        inventory::Menu::Stonecutter {
-            input,
-            result,
-            player,
-        } => {
-            to_update.push(("container".to_string(), vec![input, result]));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-        inventory::Menu::Furnace {
-            ingredient,
-            fuel,
-            result,
-            player,
-        } => {
-            to_update.push(("container".to_string(), vec![ingredient, fuel, result]));
-            to_update.push(("main".to_string(), player.to_vec()))
-        }
-    }
+    });
     // we need to shift the inventory that is sent to the client
     // because the hotbar for some reason isnt the first (or even last!) row in the sent data
     // if we ever use indexes on "main" that were sent by the minetest client,
     // we first need to fix these: serverside = (clientside - 9) % 36
-    for list in to_update.iter_mut() {
+    for list in slots.lists.iter_mut() {
         if list.0 == "main" {
             list.1.rotate_right(9);
         }
     }
-    if force_full || inventory_state.clientside_fields != to_update {
-        update_inventory(luanti_conn, to_update.clone()).await;
-        inventory_state.clientside_fields = to_update;
+    if force_full || inventory_state.clientside_fields != slots.lists {
+        update_inventory(luanti_conn, slots.lists.clone()).await;
+        inventory_state.clientside_fields = slots.lists;
+    }
+    // the rest only describes an open container
+    let Some(container) = container.as_mut() else {
+        return;
+    };
+    let recipes = &inventory_state.stonecutter_recipes;
+    if slots.stonecutter_input != container.stonecutter_input
+        || slots.loom_patterns != container.loom_patterns
+    {
+        container.stonecutter_input = slots.stonecutter_input;
+        container.loom_patterns = slots.loom_patterns;
+        if matches!(container.kind, MenuKind::Stonecutter | MenuKind::Loom) {
+            debug!(
+                "Sending S2C ShowFormspec for changed options (stonecutter_input={:?}, {} loom patterns)",
+                container.stonecutter_input,
+                container.loom_patterns.len()
+            );
+            s2c::containers::reshow_formspec(mc_client, luanti_conn, container, recipes);
+        }
+    }
+    // enchantment options depend on lapis in input slot and player level
+    // neither of those is a container property
+    if container.kind == MenuKind::Enchantment {
+        let affordable = s2c::containers::affordable_enchantments(mc_client, &container.properties);
+        if affordable != container.last_shown_affordable {
+            container.last_shown_affordable = affordable;
+            debug!("Sending S2C ShowFormspec for enchantment affordability {affordable:?}");
+            s2c::containers::reshow_formspec(mc_client, luanti_conn, container, recipes);
+        }
     }
 }

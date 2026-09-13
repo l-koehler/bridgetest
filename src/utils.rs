@@ -402,6 +402,27 @@ pub fn get_block_at(mc_client: &mut Client, pos: &BlockPos) -> Option<BlockKind>
     }
 }
 
+/// returns an empty string for 0
+/// supports all enchantment levels
+pub fn roman_numeral(num: u16) -> String {
+    match num {
+        0 => String::new(), // better for recursion
+        1..=3 => "I".repeat(num as usize),
+        4 => String::from("IV"),
+        5..=8 => String::from("V") + &roman_numeral(num - 5),
+        9 => String::from("IX"),
+        10..=39 => String::from("X") + &roman_numeral(num - 10),
+        40..=49 => String::from("XL") + &roman_numeral(num - 40),
+        50..=89 => String::from("L") + &roman_numeral(num - 50),
+        90..=99 => String::from("XC") + &roman_numeral(num - 90),
+        100..=399 => String::from("C") + &roman_numeral(num - 100),
+        400..=499 => String::from("CD") + &roman_numeral(num - 400),
+        500..=899 => String::from("D") + &roman_numeral(num - 500),
+        900..=999 => String::from("CM") + &roman_numeral(num - 900),
+        1000.. => "M".repeat((num / 1000) as usize) + &roman_numeral(num % 1000),
+    }
+}
+
 pub fn get_random_username() -> String {
     let hs_name = String::from(settings::HS_NAMES[rand::rng().random_range(0..26)]);
     format!("{}{:0>3}", hs_name, rand::rng().random_range(0..1000))

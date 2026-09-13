@@ -1,5 +1,6 @@
 pub mod chat;
 pub mod commands;
+pub mod containers;
 pub mod entities;
 pub mod inventory;
 pub mod player;

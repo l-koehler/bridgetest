@@ -222,12 +222,12 @@ dependencies = [
 [[package]]
 name = "azalea"
 version = "0.16.0+mc26.2"
-source = "git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19#6249c295d353b9b3ef68f665b311cba39211fd19"
+source = "git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay#d73839a5f3cb4ae47dcc3d915d15244daf161eb9"
 dependencies = [
  "azalea-auth",
  "azalea-block",
  "azalea-brigadier",
- "azalea-buf",
+ "azalea-buf 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
  "azalea-chat",
  "azalea-client",
  "azalea-core",
@@ -235,7 +235,7 @@ dependencies = [
  "azalea-inventory",
  "azalea-physics",
  "azalea-protocol",
- "azalea-registry",
+ "azalea-registry 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
  "azalea-world",
  "bevy_app",
  "bevy_ecs",
@@ -260,9 +260,9 @@ dependencies = [
 [[package]]
 name = "azalea-auth"
 version = "0.16.0+mc26.2"
-source = "git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19#6249c295d353b9b3ef68f665b311cba39211fd19"
+source = "git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay#d73839a5f3cb4ae47dcc3d915d15244daf161eb9"
 dependencies = [
- "azalea-buf",
+ "azalea-buf 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
  "azalea-crypto",
  "base64",
  "chrono",
@@ -280,17 +280,17 @@ dependencies = [
 [[package]]
 name = "azalea-block"
 version = "0.16.0+mc26.2"
-source = "git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19#6249c295d353b9b3ef68f665b311cba39211fd19"
+source = "git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay#d73839a5f3cb4ae47dcc3d915d15244daf161eb9"
 dependencies = [
  "azalea-block-macros",
- "azalea-buf",
- "azalea-registry",
+ "azalea-buf 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
+ "azalea-registry 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
 ]
 
 [[package]]
 name = "azalea-block-macros"
 version = "0.16.0+mc26.2"
-source = "git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19#6249c295d353b9b3ef68f665b311cba39211fd19"
+source = "git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay#d73839a5f3cb4ae47dcc3d915d15244daf161eb9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -300,9 +300,9 @@ dependencies = [
 [[package]]
 name = "azalea-brigadier"
 version = "0.16.0+mc26.2"
-source = "git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19#6249c295d353b9b3ef68f665b311cba39211fd19"
+source = "git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay#d73839a5f3cb4ae47dcc3d915d15244daf161eb9"
 dependencies = [
- "azalea-buf",
+ "azalea-buf 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
  "azalea-chat",
  "parking_lot",
 ]
@@ -310,9 +310,9 @@ dependencies = [
 [[package]]
 name = "azalea-buf"
 version = "0.16.0+mc26.2"
-source = "git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19#6249c295d353b9b3ef68f665b311cba39211fd19"
+source = "git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay#d73839a5f3cb4ae47dcc3d915d15244daf161eb9"
 dependencies = [
- "azalea-buf-macros",
+ "azalea-buf-macros 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
  "byteorder",
  "indexmap",
  "serde_json",
@@ -320,6 +320,30 @@ dependencies = [
  "thiserror 2.0.20",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "azalea-buf"
+version = "0.16.0+mc26.2"
+source = "git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19#6249c295d353b9b3ef68f665b311cba39211fd19"
+dependencies = [
+ "azalea-buf-macros 0.16.0+mc26.2 (git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19)",
+ "byteorder",
+ "indexmap",
+ "simdnbt",
+ "thiserror 2.0.20",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "azalea-buf-macros"
+version = "0.16.0+mc26.2"
+source = "git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay#d73839a5f3cb4ae47dcc3d915d15244daf161eb9"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -335,11 +359,11 @@ dependencies = [
 [[package]]
 name = "azalea-chat"
 version = "0.16.0+mc26.2"
-source = "git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19#6249c295d353b9b3ef68f665b311cba39211fd19"
+source = "git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay#d73839a5f3cb4ae47dcc3d915d15244daf161eb9"
 dependencies = [
- "azalea-buf",
+ "azalea-buf 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
  "azalea-language",
- "azalea-registry",
+ "azalea-registry 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
  "serde",
  "serde_json",
  "simdnbt",
@@ -349,12 +373,12 @@ dependencies = [
 [[package]]
 name = "azalea-client"
 version = "0.16.0+mc26.2"
-source = "git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19#6249c295d353b9b3ef68f665b311cba39211fd19"
+source = "git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay#d73839a5f3cb4ae47dcc3d915d15244daf161eb9"
 dependencies = [
  "async-compat",
  "azalea-auth",
  "azalea-block",
- "azalea-buf",
+ "azalea-buf 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
  "azalea-chat",
  "azalea-core",
  "azalea-crypto",
@@ -362,7 +386,7 @@ dependencies = [
  "azalea-inventory",
  "azalea-physics",
  "azalea-protocol",
- "azalea-registry",
+ "azalea-registry 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
  "azalea-world",
  "bevy_app",
  "bevy_ecs",
@@ -387,11 +411,11 @@ dependencies = [
 [[package]]
 name = "azalea-core"
 version = "0.16.0+mc26.2"
-source = "git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19#6249c295d353b9b3ef68f665b311cba39211fd19"
+source = "git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay#d73839a5f3cb4ae47dcc3d915d15244daf161eb9"
 dependencies = [
- "azalea-buf",
+ "azalea-buf 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
  "azalea-chat",
- "azalea-registry",
+ "azalea-registry 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
  "bevy_ecs",
  "crc32c",
  "derive_more",
@@ -408,10 +432,10 @@ dependencies = [
 [[package]]
 name = "azalea-crypto"
 version = "0.16.0+mc26.2"
-source = "git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19#6249c295d353b9b3ef68f665b311cba39211fd19"
+source = "git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay#d73839a5f3cb4ae47dcc3d915d15244daf161eb9"
 dependencies = [
  "aes",
- "azalea-buf",
+ "azalea-buf 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
  "cfb8",
  "md-5 0.11.0",
  "num-bigint 0.5.1",
@@ -427,14 +451,14 @@ dependencies = [
 [[package]]
 name = "azalea-entity"
 version = "0.16.0+mc26.2"
-source = "git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19#6249c295d353b9b3ef68f665b311cba39211fd19"
+source = "git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay#d73839a5f3cb4ae47dcc3d915d15244daf161eb9"
 dependencies = [
  "azalea-block",
- "azalea-buf",
+ "azalea-buf 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
  "azalea-chat",
  "azalea-core",
  "azalea-inventory",
- "azalea-registry",
+ "azalea-registry 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
  "azalea-world",
  "bevy_app",
  "bevy_ecs",
@@ -450,14 +474,14 @@ dependencies = [
 [[package]]
 name = "azalea-inventory"
 version = "0.16.0+mc26.2"
-source = "git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19#6249c295d353b9b3ef68f665b311cba39211fd19"
+source = "git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay#d73839a5f3cb4ae47dcc3d915d15244daf161eb9"
 dependencies = [
  "azalea-auth",
- "azalea-buf",
+ "azalea-buf 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
  "azalea-chat",
  "azalea-core",
  "azalea-inventory-macros",
- "azalea-registry",
+ "azalea-registry 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
  "indexmap",
  "serde",
  "simdnbt",
@@ -468,7 +492,7 @@ dependencies = [
 [[package]]
 name = "azalea-inventory-macros"
 version = "0.16.0+mc26.2"
-source = "git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19#6249c295d353b9b3ef68f665b311cba39211fd19"
+source = "git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay#d73839a5f3cb4ae47dcc3d915d15244daf161eb9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -478,7 +502,7 @@ dependencies = [
 [[package]]
 name = "azalea-language"
 version = "0.16.0+mc26.2"
-source = "git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19#6249c295d353b9b3ef68f665b311cba39211fd19"
+source = "git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay#d73839a5f3cb4ae47dcc3d915d15244daf161eb9"
 dependencies = [
  "compact_str",
  "serde_json",
@@ -487,13 +511,13 @@ dependencies = [
 [[package]]
 name = "azalea-physics"
 version = "0.16.0+mc26.2"
-source = "git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19#6249c295d353b9b3ef68f665b311cba39211fd19"
+source = "git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay#d73839a5f3cb4ae47dcc3d915d15244daf161eb9"
 dependencies = [
  "azalea-block",
  "azalea-core",
  "azalea-entity",
  "azalea-inventory",
- "azalea-registry",
+ "azalea-registry 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
  "azalea-world",
  "bevy_app",
  "bevy_ecs",
@@ -504,19 +528,19 @@ dependencies = [
 [[package]]
 name = "azalea-protocol"
 version = "0.16.0+mc26.2"
-source = "git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19#6249c295d353b9b3ef68f665b311cba39211fd19"
+source = "git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay#d73839a5f3cb4ae47dcc3d915d15244daf161eb9"
 dependencies = [
  "azalea-auth",
  "azalea-block",
  "azalea-brigadier",
- "azalea-buf",
+ "azalea-buf 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
  "azalea-chat",
  "azalea-core",
  "azalea-crypto",
  "azalea-entity",
  "azalea-inventory",
  "azalea-protocol-macros",
- "azalea-registry",
+ "azalea-registry 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
  "azalea-world",
  "bevy_ecs",
  "flate2",
@@ -539,7 +563,7 @@ dependencies = [
 [[package]]
 name = "azalea-protocol-macros"
 version = "0.16.0+mc26.2"
-source = "git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19#6249c295d353b9b3ef68f665b311cba39211fd19"
+source = "git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay#d73839a5f3cb4ae47dcc3d915d15244daf161eb9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -549,12 +573,32 @@ dependencies = [
 [[package]]
 name = "azalea-registry"
 version = "0.16.0+mc26.2"
-source = "git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19#6249c295d353b9b3ef68f665b311cba39211fd19"
+source = "git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay#d73839a5f3cb4ae47dcc3d915d15244daf161eb9"
 dependencies = [
- "azalea-buf",
- "azalea-registry-macros",
+ "azalea-buf 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
+ "azalea-registry-macros 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
  "serde",
  "simdnbt",
+]
+
+[[package]]
+name = "azalea-registry"
+version = "0.16.0+mc26.2"
+source = "git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19#6249c295d353b9b3ef68f665b311cba39211fd19"
+dependencies = [
+ "azalea-buf 0.16.0+mc26.2 (git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19)",
+ "azalea-registry-macros 0.16.0+mc26.2 (git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19)",
+ "serde",
+ "simdnbt",
+]
+
+[[package]]
+name = "azalea-registry-macros"
+version = "0.16.0+mc26.2"
+source = "git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay#d73839a5f3cb4ae47dcc3d915d15244daf161eb9"
+dependencies = [
+ "quote",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -569,12 +613,12 @@ dependencies = [
 [[package]]
 name = "azalea-world"
 version = "0.16.0+mc26.2"
-source = "git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19#6249c295d353b9b3ef68f665b311cba39211fd19"
+source = "git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay#d73839a5f3cb4ae47dcc3d915d15244daf161eb9"
 dependencies = [
  "azalea-block",
- "azalea-buf",
+ "azalea-buf 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
  "azalea-core",
- "azalea-registry",
+ "azalea-registry 0.16.0+mc26.2 (git+https://github.com/l-koehler/azalea?branch=fix-itemstackslotdisplay)",
  "bevy_ecs",
  "derive_more",
  "nohash-hasher",
@@ -888,7 +932,7 @@ version = "0.1.0"
 dependencies = [
  "azalea",
  "azalea-language",
- "azalea-registry",
+ "azalea-registry 0.16.0+mc26.2 (git+https://github.com/azalea-rs/azalea.git?rev=6249c295d353b9b3ef68f665b311cba39211fd19)",
  "bevy_ecs",
  "bimap",
  "chrono",

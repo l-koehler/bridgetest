@@ -1,5 +1,6 @@
 pub mod chat;
 pub mod commands;
+pub mod containers;
 pub mod defs;
 pub mod entities;
 pub mod entity_variants;

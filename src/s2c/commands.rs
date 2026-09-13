@@ -154,9 +154,24 @@ pub async fn process(
                 s2c::entities::set_entity_data(&data_packet, &mut proxy_state.entities).await
             }
 
-            ClientboundGamePacket::OpenScreen(screen_packet) => {
-                s2c::inventory::open_screen(&screen_packet, luanti_conn, &mut proxy_state.inventory)
-                    .await
+            ClientboundGamePacket::OpenScreen(screen_packet) => s2c::containers::open_screen(
+                &screen_packet,
+                mc_client,
+                luanti_conn,
+                &mut proxy_state.inventory,
+                &mut proxy_state.container,
+            ),
+            ClientboundGamePacket::MerchantOffers(offers_packet) => {
+                s2c::containers::merchant_offers(
+                    &offers_packet,
+                    mc_client,
+                    luanti_conn,
+                    &mut proxy_state.container,
+                    &proxy_state.inventory.stonecutter_recipes,
+                )
+            }
+            ClientboundGamePacket::UpdateRecipes(recipes_packet) => {
+                s2c::containers::update_recipes(&recipes_packet, &mut proxy_state.inventory)
             }
 
             ClientboundGamePacket::BlockUpdate(blockupdate_packet) => {
@@ -204,24 +219,45 @@ pub async fn process(
                 )
                 .await
             }
-            ClientboundGamePacket::ContainerSetSlot(_)
-            | ClientboundGamePacket::ContainerSetData(_)
-            | ClientboundGamePacket::ContainerSetContent(_) => {
+            ClientboundGamePacket::ContainerSetSlot(_) => {
                 s2c::inventory::refresh_inv(
                     mc_client,
                     luanti_conn,
                     &mut proxy_state.inventory,
+                    &mut proxy_state.container,
                     false,
                 )
                 .await
             }
-            ClientboundGamePacket::ContainerClose(close_packet) => {
-                s2c::inventory::server_closed_container(
-                    &close_packet,
+            ClientboundGamePacket::ContainerSetContent(content_packet) => {
+                s2c::inventory::sync_container_state(mc_client, &content_packet);
+                s2c::inventory::refresh_inv(
+                    mc_client,
                     luanti_conn,
                     &mut proxy_state.inventory,
+                    &mut proxy_state.container,
+                    false,
                 )
                 .await
+            }
+            ClientboundGamePacket::SetCursorItem(cursor_packet) => {
+                s2c::inventory::sync_cursor_item(mc_client, &cursor_packet);
+            }
+            ClientboundGamePacket::ContainerSetData(data_packet) => {
+                s2c::containers::update_progress_bar(
+                    &data_packet,
+                    mc_client,
+                    luanti_conn,
+                    &mut proxy_state.container,
+                    &proxy_state.inventory.stonecutter_recipes,
+                )
+            }
+            ClientboundGamePacket::ContainerClose(close_packet) => {
+                s2c::containers::server_closed_container(
+                    &close_packet,
+                    luanti_conn,
+                    &mut proxy_state.container,
+                )
             }
             ClientboundGamePacket::LevelParticles(particle_packet) => {
                 s2c::particles::level_particles(&particle_packet, luanti_conn).await

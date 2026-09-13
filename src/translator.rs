@@ -34,8 +34,11 @@ pub async fn client_handler(
      * The first few packets (handshake) are outside the main loop, because
      * at this point the minecraft client isn't initialized yet.
      */
-    let (mut mc_client, mut mc_conn, player_name) =
+    let (mut mc_client, mut mc_conn, player_name, early_recipes) =
         handshake::handshake(&mut luanti_conn, &settings).await;
+    for recipes in &early_recipes {
+        s2c::containers::update_recipes(recipes, &mut proxy_state.inventory);
+    }
     debug!("Sending S2C ActiveObjectRemoveAdd (add LocalPlayer)");
     s2c::defs::register_media(&mut luanti_conn);
 

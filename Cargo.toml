@@ -8,8 +8,8 @@ default-run = "bridgetest"
 
 [dependencies]
 # azalea is pretty unstable, update manually from time to time
-azalea = { git = "https://github.com/azalea-rs/azalea.git", rev = "6249c295d353b9b3ef68f665b311cba39211fd19" }
-azalea-language = { git = "https://github.com/azalea-rs/azalea.git", rev = "6249c295d353b9b3ef68f665b311cba39211fd19" }
+azalea = { git = "https://github.com/l-koehler/azalea", branch = "fix-itemstackslotdisplay" }
+azalea-language = { git = "https://github.com/l-koehler/azalea", branch = "fix-itemstackslotdisplay" }
 # needed directly for #[derive(Component)]
 bevy_ecs = { version = "0.19.0", default-features = false, features = ["multi_threaded"] }
 
@@ -39,4 +39,3 @@ zip = { version = "^8.6.0", default-features = false, features = ["deflate", "de
 [build-dependencies]
 azalea-registry = { git = "https://github.com/azalea-rs/azalea.git", rev = "6249c295d353b9b3ef68f665b311cba39211fd19" }
 serde_json = "^1.0.151"
-

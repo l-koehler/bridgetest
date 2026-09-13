@@ -1,13 +1,12 @@
 use azalea::Client;
 use azalea::container::ContainerHandleRef;
+use azalea::inventory;
 use azalea::inventory::operations::{ClickOperation, PickupClick, QuickMoveClick, ThrowClick};
 use azalea::protocol::packets::game::ServerboundSetCarriedItem;
 use log::*;
 
 use luanti_protocol::LuantiConnection;
-use luanti_protocol::commands::client_to_server::{
-    InventoryActionSpec, InventoryFieldsSpec, PlayerItemSpec,
-};
+use luanti_protocol::commands::client_to_server::{InventoryActionSpec, PlayerItemSpec};
 use luanti_protocol::types::{InventoryAction, InventoryLocation};
 
 use std::sync::{Arc, Mutex};
@@ -21,38 +20,13 @@ pub fn set_mainhand(mc_client: &mut Client, specbox: Box<PlayerItemSpec>) {
     let _ = mc_client.write_packet(ServerboundSetCarriedItem { slot: hotbar_index });
 }
 
-// luanti sends this whenever any formspec is submitted or closed
-pub fn handle_form_fields(
-    mc_client: &mut Client,
-    specbox: Box<InventoryFieldsSpec>,
-    inventory_state: &mut state::InventoryState,
-) {
-    let InventoryFieldsSpec {
-        client_formspec_name: _,
-        fields,
-    } = *specbox;
-    // "quit" for closing the formspec, anything else is some other action
-    if fields.iter().any(|(name, _)| name == "quit") {
-        close_open_container(mc_client, inventory_state);
-    }
-}
-
-pub fn close_open_container(mc_client: &mut Client, inventory_state: &mut state::InventoryState) {
-    if inventory_state.container_id.take().is_some() {
-        if let Ok(handle) = mc_client.get_inventory() {
-            handle.close();
-        }
-    }
-    // drop this to let azalea close our inventory/2x2-grid
-    inventory_state.inventory_handle = None;
-}
-
 // inventory actions and crafting
 pub async fn inventory_action(
     mc_client: &mut Client,
     luanti_conn: &mut LuantiConnection,
     specbox: Box<InventoryActionSpec>,
     inventory_state: &mut state::InventoryState,
+    container: &mut Option<state::ContainerState>,
 ) {
     let InventoryActionSpec { action } = *specbox;
     debug!("C2S InventoryAction received: {:?}", action);
@@ -62,7 +36,7 @@ pub async fn inventory_action(
             from_inv: _,
             from_list,
             from_i,
-        } => drop_item(count, from_list, from_i, mc_client, inventory_state),
+        } => drop_item(count, from_list, from_i, mc_client, container),
         InventoryAction::Move {
             count,
             from_inv: _,
@@ -80,53 +54,57 @@ pub async fn inventory_action(
                 to_i,
                 mc_client,
                 inventory_state,
+                container,
                 luanti_conn,
             )
             .await
         }
         // crafting tables are implemented as regular containers
         InventoryAction::Craft { count, craft_inv } => {
-            craft_item(mc_client, luanti_conn, inventory_state, count, craft_inv).await
+            craft_item(
+                mc_client,
+                luanti_conn,
+                inventory_state,
+                container,
+                count,
+                craft_inv,
+            )
+            .await
         }
     }
 }
 
 // see https://minecraft.wiki/w/Java_Edition_protocol/Packets?section=96#Set_Container_Content for full indexing of the player inv
-fn to_inv_index(mt_index: u16, mt_list: &str) -> u16 {
+fn to_inv_index(mt_index: u16, mt_list: &str) -> Option<u16> {
     match mt_list {
-        "armor" => mt_index + 5,
-        "craft" => mt_index + 1,
-        "craftpreview" => 0,
-        "offhand" => 45,
+        "armor" => Some(mt_index + 5),
+        "craft" => Some(mt_index + 1),
+        "craftpreview" => Some(0),
+        "offhand" => Some(45),
         "main" => match mt_index {
-            0..=8 => mt_index + 36,
-            9..=35 => mt_index,
-            _ => unreachable!(),
+            0..=8 => Some(mt_index + 36),
+            9..=35 => Some(mt_index),
+            _ => None,
         },
-        _ => unreachable!(),
+        _ => None,
     }
 }
 
 // magically convert a luanti (list,index) thing into an index into the currently-open menu
 // needs offset = player_slots_range().min()
-fn shift_to_menu(list: &str, index: u16, offset: u16) -> u16 {
+fn shift_to_menu(list: &str, index: u16, offset: u16) -> Option<u16> {
     if list == "container" {
-        // implicitly correct by formspecs
-        return index;
+        // formspecs set up to match indexing
+        return Some(index);
     }
-    let raw = to_inv_index(index, list);
+    let raw = to_inv_index(index, list)?;
     if list == "main" {
         // -9 shift to main-only, since we have armor etc in separate lists for luanti
-        (raw - 9) + offset
+        Some((raw - 9) + offset)
     } else {
-        // craft/craftpreview/armor/offhand only ever appear together with
-        // Menu::Player (no container open) - the containers/crafting-table
-        // formspecs never show those lists. Menu::Player's own layout
-        // already matches to_inv_index's indexing 1:1, so offset is always 9
-        // here and no shift is needed. Shifting anyway would also underflow,
-        // since these map to raw indices below 9 (e.g. "craftpreview" is
-        // always 0).
-        raw
+        // craft/craftpreview/armor/offhand only ever appear in Menu::Player, not container formspecs
+        // Menu::Player layout matches indexing in to_inv_index
+        Some(raw)
     }
 }
 
@@ -147,14 +125,20 @@ pub fn drop_item(
     from_list: String,
     from_i: i16,
     mc_client: &mut Client,
-    inventory_state: &state::InventoryState,
+    container: &Option<state::ContainerState>,
 ) {
     let Ok(menu) = mc_client.menu() else {
         error!("Client does not have an inventory component!");
         return;
     };
     let offset = menu.player_slots_range().min().unwrap() as u16;
-    let slot_index = shift_to_menu(from_list.as_str(), from_i as u16, offset);
+    let Some(slot_index) = shift_to_menu(from_list.as_str(), from_i as u16, offset) else {
+        warn!(
+            "Client sent InventoryAction::Drop from unknown list \"{}\"@{}, ignoring.",
+            from_list, from_i
+        );
+        return;
+    };
     let Some(slot) = menu.slot(slot_index as usize) else {
         return;
     };
@@ -165,7 +149,7 @@ pub fn drop_item(
     }
 
     // see move_item
-    if inventory_state.container_id.is_some() {
+    if container.is_some() {
         let Ok(handle) = mc_client.get_inventory() else {
             error!("Client does not have an inventory component!");
             return;
@@ -219,6 +203,7 @@ pub async fn move_item(
     to_i: Option<i16>,
     mc_client: &mut Client,
     inventory_state: &mut state::InventoryState,
+    container: &mut Option<state::ContainerState>,
     luanti_conn: &mut LuantiConnection,
 ) {
     let Some(to_i) = to_i else {
@@ -236,8 +221,23 @@ pub async fn move_item(
     };
     // translate luanti->minecraft indices
     let offset = menu.player_slots_range().min().unwrap() as u16;
-    let index_from = shift_to_menu(from_list.as_str(), from_i as u16, offset);
-    let index_to = shift_to_menu(to_list.as_str(), to_i as u16, offset);
+    let Some(index_from) = shift_to_menu(from_list.as_str(), from_i as u16, offset) else {
+        warn!(
+            "Client sent InventoryAction::Move from unknown list \"{}\"@{}, ignoring.",
+            from_list, from_i
+        );
+        return;
+    };
+    let Some(index_to) = shift_to_menu(to_list.as_str(), to_i as u16, offset) else {
+        warn!(
+            "Client sent InventoryAction::Move to unknown list \"{}\"@{}, ignoring.",
+            to_list, to_i
+        );
+        return;
+    };
+
+    // prevent moving into or taking partial from merchant result
+    let is_merchant_result = matches!(menu, inventory::Menu::Merchant { .. }) && index_from == 2;
 
     let Some(src_slot) = menu.slot(index_from as usize) else {
         // client tried to pick up an empty slot
@@ -249,11 +249,15 @@ pub async fn move_item(
     if src_count == 0 {
         return;
     }
-    let count = count.min(src_count);
+    let count = if is_merchant_result {
+        src_count
+    } else {
+        count.min(src_count)
+    };
 
     // we have to use the container instead of our inventory when one is open
     // even when we just shuffle our inventory
-    if inventory_state.container_id.is_some() {
+    if container.is_some() {
         // can't use the 2x2 crafting grid at the same time as a real container
         inventory_state.inventory_handle = None;
         let Ok(handle) = mc_client.get_inventory() else {
@@ -278,18 +282,19 @@ pub async fn move_item(
 
     // unknown state, but not what it was before
     inventory_state.clientside_fields = Vec::new();
-    s2c::inventory::refresh_inv(mc_client, luanti_conn, inventory_state, true).await;
+    s2c::inventory::refresh_inv(mc_client, luanti_conn, inventory_state, container, true).await;
 }
 
 pub async fn craft_item(
     mc_client: &mut Client,
     luanti_conn: &mut LuantiConnection,
     inventory_state: &mut state::InventoryState,
+    container: &mut Option<state::ContainerState>,
     count: u16,
     _craft_location: InventoryLocation,
 ) {
     // the crafting result is in slot 0
-    if inventory_state.container_id.is_some() {
+    if container.is_some() {
         match mc_client.get_inventory() {
             Ok(handle) if handle.id() != 0 => {
                 for _ in 0..count {
@@ -313,5 +318,5 @@ pub async fn craft_item(
             }
         }
     }
-    s2c::inventory::refresh_inv(mc_client, luanti_conn, inventory_state, true).await;
+    s2c::inventory::refresh_inv(mc_client, luanti_conn, inventory_state, container, true).await;
 }

@@ -46,12 +46,16 @@ pub async fn process(
                 luanti_conn,
                 specbox,
                 &mut proxy_state.inventory,
+                &mut proxy_state.container,
             )
             .await
         }
-        ToServerCommand::InventoryFields(specbox) => {
-            c2s::inventory::handle_form_fields(mc_client, specbox, &mut proxy_state.inventory)
-        }
+        ToServerCommand::InventoryFields(specbox) => c2s::containers::handle_form_fields(
+            mc_client,
+            specbox,
+            &mut proxy_state.inventory,
+            &mut proxy_state.container,
+        ),
         ToServerCommand::GotBlocks(_) => (), // Gotblocks just confirms to the server that blocks were received
         _ => warn!(
             "Got unimplemented C2S command, dropping {}",

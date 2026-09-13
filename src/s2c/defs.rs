@@ -518,7 +518,7 @@ pub fn get_csmrestrictions() -> ToClientCommand {
 }
 
 // constants
-pub const INTERACTIVE_BLOCKS: [BlockKind; 50] = [
+pub const INTERACTIVE_BLOCKS: &[BlockKind] = &[
     // opens inventory
     BlockKind::Chest,
     BlockKind::EnderChest,
@@ -526,6 +526,34 @@ pub const INTERACTIVE_BLOCKS: [BlockKind; 50] = [
     BlockKind::Anvil,
     BlockKind::Grindstone,
     BlockKind::CraftingTable,
+    BlockKind::Furnace,
+    BlockKind::BlastFurnace,
+    BlockKind::Smoker,
+    BlockKind::BrewingStand,
+    BlockKind::Hopper,
+    BlockKind::SmithingTable,
+    BlockKind::CartographyTable,
+    BlockKind::Stonecutter,
+    BlockKind::Loom,
+    BlockKind::Beacon,
+    BlockKind::Barrel,
+    BlockKind::ShulkerBox,
+    BlockKind::WhiteShulkerBox,
+    BlockKind::OrangeShulkerBox,
+    BlockKind::MagentaShulkerBox,
+    BlockKind::LightBlueShulkerBox,
+    BlockKind::YellowShulkerBox,
+    BlockKind::LimeShulkerBox,
+    BlockKind::PinkShulkerBox,
+    BlockKind::GrayShulkerBox,
+    BlockKind::LightGrayShulkerBox,
+    BlockKind::CyanShulkerBox,
+    BlockKind::PurpleShulkerBox,
+    BlockKind::BlueShulkerBox,
+    BlockKind::BrownShulkerBox,
+    BlockKind::GreenShulkerBox,
+    BlockKind::RedShulkerBox,
+    BlockKind::BlackShulkerBox,
     // changes own state
     BlockKind::Lever,
     BlockKind::Comparator,
@@ -603,8 +631,8 @@ pub async fn get_item_def_command(media_state: &MediaState) -> ToClientCommand {
     for item in mc_data_api.items.items_array().unwrap() {
         mc_name = format!("minecraft:{}", item.name.clone());
         // generate inventory image
-        // if only present as block mapping, use inventory cube
-        // this logic is duplicated in utils::texture_from_itemstack
+        // similar logic in utils::texture_from_itemstack (which always needs a
+        // real texture string, so it keeps using inventory cubes)
         if media_state.item_texture_map.contains_key(&mc_name) {
             inventory_image = media_state
                 .item_texture_map
@@ -612,6 +640,10 @@ pub async fn get_item_def_command(media_state: &MediaState) -> ToClientCommand {
                 .unwrap()
                 .clone()
                 .to_luanti_safe();
+        } else if placeable_ids.contains(&item.id) {
+            // no image: the client then renders the node registered under this
+            // same name, giving slabs/stairs/nodeboxes their actual shape
+            inventory_image = String::new();
         } else {
             inventory_image = lookup_block_mapping(&media_state.block_texture_map, &mc_name, "")
                 .expect("block_texture_map invalid, mapping messed up!")
@@ -726,7 +758,17 @@ pub async fn get_node_def_command(
     let mut state_content_ids: Vec<u16> = vec![0u16; BlockState::MAX_STATE as usize + 1];
     let mut next_id: u32 = CONTENT_ID_OFFSET as u32;
 
-    for raw_id in 0..=BlockState::MAX_STATE {
+    // each kinds default state goes first, so the first state to claim a new signature also claims the block name
+    // needed to get block items to render properly
+    let default_ids = (0..=BlockState::MAX_STATE).filter(|&id| {
+        let state = BlockState::try_from(id).unwrap();
+        !state.is_air() && BlockState::from(BlockKind::try_from(state).unwrap()) == state
+    });
+    let mut processed = vec![false; BlockState::MAX_STATE as usize + 1];
+    for raw_id in default_ids.chain(0..=BlockState::MAX_STATE) {
+        if std::mem::replace(&mut processed[raw_id as usize], true) {
+            continue;
+        }
         let state = BlockState::try_from(raw_id).expect("id in MAX_STATE range is always valid");
         if state.is_air() {
             continue;

@@ -25,7 +25,14 @@ pub async fn tick(
     // update the MT clients inventory if it changed
     // for stupid reasons, we don't use packets for this, instead run this on every tick
     // and whenever the player crafted something
-    s2c::inventory::refresh_inv(mc_client, luanti_conn, &mut proxy_state.inventory, false).await;
+    s2c::inventory::refresh_inv(
+        mc_client,
+        luanti_conn,
+        &mut proxy_state.inventory,
+        &mut proxy_state.container,
+        false,
+    )
+    .await;
     // update subtitles, removing any older than 1.5 seconds
     let cutoff = Instant::now() - Duration::from_millis(1500);
     proxy_state.chat.subtitles.retain(|x| x.1 > cutoff);
