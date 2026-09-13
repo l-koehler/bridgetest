@@ -236,7 +236,8 @@ pub async fn tick(
     // format of air_supply: 0 - 299
     // 0 -> 0 bubbles displayed
     // 299 -> 20 bubbles
-    let approx_bubble_count: u32 = { air_supply.abs() as f32 / 14.95 }.round() as u32;
+    // it keeps counting down past 0 while drowning, clamp that away
+    let approx_bubble_count: u32 = { air_supply.max(0) as f32 / 14.95 }.round() as u32;
     if approx_bubble_count != proxy_state.player.mc_last_air_supply {
         s2c::player::edit_airbar(
             approx_bubble_count,

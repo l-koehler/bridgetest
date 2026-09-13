@@ -119,6 +119,11 @@ pub fn register_rules(luanti_conn: &mut LuantiConnection) {
     luanti_conn.send(add_effect_img()).unwrap();
     debug!("Sending S2C AddHUD (Hotbar)");
     luanti_conn.send(add_hudbar()).unwrap();
+    debug!("Sending S2C AddHUD (XPBar)");
+    luanti_conn.send(add_xpbar_bg()).unwrap();
+    luanti_conn.send(add_xpbar()).unwrap();
+    debug!("Sending S2C AddHUD (XPLevel)");
+    luanti_conn.send(add_xplevel()).unwrap();
 
     debug!("Sending S2C Formspec (Inventory)");
     luanti_conn
@@ -136,6 +141,12 @@ pub const AIRBAR_ID: u32 = 2;
 pub const SUBTITLE_ID: u32 = 3;
 pub const EFFECTS_ID: u32 = 4;
 pub const HOTBAR_ID: u32 = 5;
+pub const XPBAR_BG_ID: u32 = 6;
+pub const XPBAR_ID: u32 = 7;
+pub const XPLEVEL_ID: u32 = 8;
+
+// cropped to fill the bar
+pub const XPBAR_TEXTURE: &str = "gui-sprites-hud-experience_bar_progress.png";
 
 pub const PLAYER_INV_FORMSPEC: &str = "\
 formspec_version[7]
@@ -354,7 +365,7 @@ pub fn add_healthbar() -> ToClientCommand {
         align: v2f { x: 0.0, y: 0.0 },
         offset: v2f {
             x: -265.0,
-            y: -88.0,
+            y: -102.0,
         },
         world_pos: v3f::ZERO,
         size: v2f { x: 24.0, y: 24.0 },
@@ -375,9 +386,12 @@ pub fn add_foodbar() -> ToClientCommand {
         text: String::from("gui-sprites-hud-food_full.png"),
         number: 20,
         item: 20,
-        dir: 0,
+        dir: 1, // right to left
         align: v2f { x: 0.0, y: 0.0 },
-        offset: v2f { x: 45.0, y: -88.0 },
+        offset: v2f {
+            x: 261.0,
+            y: -102.0,
+        },
         world_pos: v3f::ZERO,
         size: v2f { x: 24.0, y: 24.0 },
         z_index: Some(0),
@@ -397,9 +411,12 @@ pub fn add_airbar() -> ToClientCommand {
         text: String::from("gui-sprites-hud-air.png"),
         number: 0, // default to not show this element
         item: 0,   // item count also gets changed when needed
-        dir: 0,
+        dir: 1,    // right to left
         align: v2f { x: 0.0, y: 0.0 },
-        offset: v2f { x: 45.0, y: -113.0 },
+        offset: v2f {
+            x: 261.0,
+            y: -127.0,
+        },
         world_pos: v3f::ZERO,
         size: v2f { x: 24.0, y: 24.0 },
         z_index: Some(0),
@@ -423,7 +440,7 @@ pub fn add_subtitlebox() -> ToClientCommand {
         align: v2f { x: 0.0, y: 0.0 },
         offset: v2f {
             x: -265.0,
-            y: -116.0,
+            y: -130.0,
         },
         world_pos: v3f::ZERO,
         size: v2f { x: 1.0, y: 1.0 },
@@ -476,6 +493,80 @@ pub fn add_hudbar() -> ToClientCommand {
         z_index: Some(0),
         text2: None,
         style: None,
+        flags: None,
+    }))
+}
+
+// two stacked images, static background and the progress bar texture
+pub fn add_xpbar_bg() -> ToClientCommand {
+    ToClientCommand::Hudadd(Box::new(server_to_client::HudaddSpec {
+        server_id: XPBAR_BG_ID,
+        typ: 0,
+        pos: v2f { x: 0.5, y: 1.0 },
+        name: String::new(),
+        scale: v2f { x: 2.77, y: 2.77 },
+        text: String::from("gui-sprites-hud-experience_bar_background.png"),
+        number: 0,
+        item: 0,
+        dir: 0,
+        align: v2f { x: 1.0, y: 1.0 },
+        offset: v2f {
+            x: -252.0,
+            y: -76.0,
+        },
+        world_pos: v3f::ZERO,
+        size: v2f::ZERO,
+        z_index: Some(0),
+        text2: None,
+        style: None,
+        flags: None,
+    }))
+}
+
+pub fn add_xpbar() -> ToClientCommand {
+    ToClientCommand::Hudadd(Box::new(server_to_client::HudaddSpec {
+        server_id: XPBAR_ID,
+        typ: 0,
+        pos: v2f { x: 0.5, y: 1.0 },
+        name: String::new(),
+        scale: v2f { x: 2.77, y: 2.77 },
+        text: String::new(),
+        number: 0,
+        item: 0,
+        dir: 0,
+        // pinned to the left edge, grow to the right
+        align: v2f { x: 1.0, y: 1.0 },
+        offset: v2f {
+            x: -252.0,
+            y: -76.0,
+        },
+        world_pos: v3f::ZERO,
+        size: v2f::ZERO,
+        z_index: Some(1),
+        text2: None,
+        style: None,
+        flags: None,
+    }))
+}
+
+pub fn add_xplevel() -> ToClientCommand {
+    ToClientCommand::Hudadd(Box::new(server_to_client::HudaddSpec {
+        server_id: XPLEVEL_ID,
+        typ: 1,
+        pos: v2f { x: 0.5, y: 1.0 },
+        name: String::new(),
+        scale: v2f::ZERO,
+        text: String::new(),
+        number: 0x0080FF20, // green
+        item: 0,
+        dir: 0,
+        align: v2f { x: 0.0, y: 0.0 },
+        offset: v2f { x: 0.0, y: -86.0 },
+        world_pos: v3f::ZERO,
+        size: v2f { x: 1.3, y: 1.3 },
+        z_index: Some(2),
+        text2: Some(String::new()),
+        style: Some(0),
         flags: None,
     }))
 }

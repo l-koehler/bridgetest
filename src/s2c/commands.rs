@@ -71,6 +71,10 @@ pub async fn process(
                 s2c::player::set_health(&sethealth_packet, luanti_conn, &mut proxy_state.player)
                     .await
             }
+            ClientboundGamePacket::SetExperience(setxp_packet) => {
+                s2c::player::set_experience(&setxp_packet, luanti_conn, &mut proxy_state.player)
+                    .await
+            }
             // these two are misleading. SetDefaultSpawnPosition sets the on-death respawn position,
             // Respawn (re)*SPAWNS* the player in a dimension and is not only sent on death!
             ClientboundGamePacket::SetDefaultSpawnPosition(setspawn_packet) => {

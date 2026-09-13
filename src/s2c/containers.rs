@@ -236,12 +236,11 @@ fn get_merchant_formspec(title: &str, offers: &[MerchantOffer]) -> String {
         let demand_bonus = (offer.price_multiplier * count as f32 * offer.demand as f32)
             .floor()
             .max(0.0) as i32;
-        let cost_a_final = (count + demand_bonus + offer.special_price_diff)
-            .clamp(1, 64);
+        let cost_a_final = (count + demand_bonus + offer.special_price_diff).clamp(1, 64);
         if (cost_a_final != count) {
             // strikethrough and new price
             form_spec.push_str(&format!("image[0.5,{:.2};0.35,0.06;gui-sprites-container-villager-discount_strikethrough.png]", y+0.6));
-            form_spec.push_str(&format!("label[1.05,{:.2};{}]", y+0.63, cost_a_final));
+            form_spec.push_str(&format!("label[1.05,{:.2};{}]", y + 0.63, cost_a_final));
         }
         // second input
         if let Some(cost_b) = &offer.cost_b {

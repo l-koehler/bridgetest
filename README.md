@@ -79,13 +79,15 @@ If you don't use a microsoft account, the server you connect to has to be in off
 
 ## Things that are still missing from a usable version
 
-* Swimming  
+* Swimming and Boats  
+* Fully smooth movement  
 
 ## Other, smaller, broken things
 
 * Secondary Beacon Effects can't be selected
 * Chunks occasionally disappear in Luanti (Luanti clientside chunk-unload logic)
 * Various edge case rendering stuff (waterlogged blocks dont work)
+* Animations are entirely missing
 
 ## Even more limitations (ones that don't affect gameplay)
 

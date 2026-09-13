@@ -26,7 +26,7 @@ use azalea::player::PlayerInfo;
 use azalea::protocol::packets::game::{
     c_player_position::ClientboundPlayerPosition, c_respawn::ClientboundRespawn,
     c_set_default_spawn_position::ClientboundSetDefaultSpawnPosition,
-    c_set_health::ClientboundSetHealth,
+    c_set_experience::ClientboundSetExperience, c_set_health::ClientboundSetHealth,
 };
 
 use azalea::protocol::packets::common::CommonPlayerSpawnInfo;
@@ -188,7 +188,7 @@ pub async fn edit_healthbar(mode: HeartDisplay, num: u32, conn: &LuantiConnectio
             }));
         conn.send(set_bar_texture).unwrap();
     }
-    if num < 20 {
+    if num < 21 {
         let set_bar_number =
             ToClientCommand::Hudchange(Box::new(server_to_client::HudchangeCommand {
                 server_id: s2c::defs::HEALTHBAR_ID,
@@ -224,10 +224,17 @@ pub async fn edit_foodbar(mode: FoodDisplay, num: u32, conn: &LuantiConnection) 
 
 pub async fn edit_airbar(num: u32, conn: &LuantiConnection, prev_num: u32) {
     // num is count of half bubbles (between 0 and 20)
-    // we reformat it to look good despite formspec
-    let number = num - (num % 2);
-    let item = num + (num % 2);
-    let p_item = prev_num + (prev_num % 2);
+    // a completely full bar is hidden
+    let (number, item) = if num >= 20 {
+        (0, 0)
+    } else {
+        (num - (num % 2), num + (num % 2))
+    };
+    let p_item = if prev_num >= 20 {
+        0
+    } else {
+        prev_num + (prev_num % 2)
+    };
     let set_bar_number: ToClientCommand =
         ToClientCommand::Hudchange(Box::new(server_to_client::HudchangeCommand {
             server_id: s2c::defs::AIRBAR_ID,
@@ -243,6 +250,50 @@ pub async fn edit_airbar(num: u32, conn: &LuantiConnection, prev_num: u32) {
         conn.send(set_bar_item).unwrap();
     };
     conn.send(set_bar_number).unwrap();
+}
+
+pub async fn set_experience(
+    source_packet: &ClientboundSetExperience,
+    conn: &LuantiConnection,
+    player_state: &mut state::PlayerState,
+) {
+    let ClientboundSetExperience {
+        experience_progress,
+        experience_level,
+        total_experience: _,
+    } = source_packet;
+    // 182px wide bar, whole pixels
+    let filled = (experience_progress * 183.0).floor().clamp(0.0, 182.0) as u32;
+    if filled != player_state.mc_last_xp_width {
+        player_state.mc_last_xp_width = filled;
+        // combine used for cropping
+        let texture = if filled == 0 {
+            String::new()
+        } else {
+            format!("[combine:{}x5:0,0={}", filled, s2c::defs::XPBAR_TEXTURE)
+        };
+        let set_bar_texture =
+            ToClientCommand::Hudchange(Box::new(server_to_client::HudchangeCommand {
+                server_id: s2c::defs::XPBAR_ID,
+                stat: server_to_client::HudStat::Text(texture),
+            }));
+        conn.send(set_bar_texture).unwrap();
+    }
+    if *experience_level != player_state.mc_last_xp_level {
+        player_state.mc_last_xp_level = *experience_level;
+        // don't draw level 0
+        let text = if *experience_level == 0 {
+            String::new()
+        } else {
+            experience_level.to_string()
+        };
+        let set_level_text =
+            ToClientCommand::Hudchange(Box::new(server_to_client::HudchangeCommand {
+                server_id: s2c::defs::XPLEVEL_ID,
+                stat: server_to_client::HudStat::Text(text),
+            }));
+        conn.send(set_level_text).unwrap();
+    }
 }
 
 pub async fn update_effects(

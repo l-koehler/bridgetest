@@ -15,6 +15,9 @@ pub struct PlayerState {
     pub mt_last_known_health: u16,
     // used to determine if the air supply bar should change
     pub mc_last_air_supply: u32,
+    // used to avoid regenerating the cropped xp bar texture on every xp change
+    pub mc_last_xp_width: u32,
+    pub mc_last_xp_level: u32,
     // needed for respawning
     pub respawn_pos: (f32, f32, f32),
     pub current_dimension: Dimensions,
@@ -38,6 +41,8 @@ impl Default for PlayerState {
             client_effects: Vec::new(),
             mt_last_known_health: 0,
             mc_last_air_supply: 0,
+            mc_last_xp_width: 0,
+            mc_last_xp_level: 0,
             respawn_pos: (0.0, 0.0, 0.0),
             current_dimension: Dimensions::Overworld,
             is_sneaking: false,
