@@ -81,6 +81,8 @@ If you don't use a microsoft account, the server you connect to has to be in off
 
 * Swimming and Boats  
 * Fully smooth movement  
+* Luanti only supports worlds up to ±31000 nodes in size, far less than Minecraft.  
+  This currently fails silently, better would be to re-center the world around the client.  
 
 ## Other, smaller, broken things
 
@@ -98,7 +100,7 @@ If you don't use a microsoft account, the server you connect to has to be in off
 
 * The program *might* work on Windows, but I am not testing this. I doubt it.  
 
-* The proxy can only handle one client at a time, but could probably be rewritten to handle more clients.  
+* The proxy can only handle one client at a time, but could probably be changed to handle more clients.  
   Just start several proxies with different listening ports (`--port`) for now.  
 
 ## Attributions

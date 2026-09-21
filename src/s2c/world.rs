@@ -5,7 +5,7 @@ use azalea::world::Chunk;
 use state::world::Dimensions;
 
 use azalea::BlockPos;
-use azalea::core::position::ChunkSectionBlockPos;
+use azalea::core::position::{ChunkPos, ChunkSectionBlockPos};
 use azalea::registry::builtin::BlockKind;
 use core::slice::SlicePattern;
 use log::*;
@@ -244,6 +244,12 @@ fn decode_section_light(
     }
 }
 
+// check that the mc world has data for the chunk
+// reading while the chunk is still loading otherwise returns all air, erasing the clientside map
+fn chunk_is_loaded(world: &azalea::world::World, chunk_x: i32, chunk_z: i32) -> bool {
+    world.chunks.get(&ChunkPos::new(chunk_x, chunk_z)).is_some()
+}
+
 pub async fn send_level_chunk(
     packet_data: &ClientboundLevelChunkWithLight,
     luanti_conn: &mut LuantiConnection,
@@ -354,6 +360,15 @@ pub async fn section_block_update(
     let mut nodearr: [BlockState; 4096] = [BlockState::AIR; 4096];
     let world_lock = mc_client.world().unwrap();
     let world = world_lock.read();
+    if !chunk_is_loaded(&world, section_pos.x, section_pos.z) {
+        // the chunk usually arrives right after this in the same batch,
+        // at which point the full section (with spawners) gets sent anyway
+        warn!(
+            "Got S2C SectionBlocksUpdate for unloaded section {:?}, skipping",
+            section_pos
+        );
+        return;
+    }
     for z in 0..16 {
         for y in 0..16 {
             for x in 0..16 {
@@ -516,6 +531,13 @@ pub async fn light_update(
     {
         let world_lock = mc_client.world().unwrap();
         let world = world_lock.read();
+        if !chunk_is_loaded(&world, *chunk_x_pos, *chunk_z_pos) {
+            warn!(
+                "Got S2C LightUpdate for unloaded chunk {}|{}, skipping",
+                chunk_x_pos, chunk_z_pos
+            );
+            return;
+        }
         for (section_index, r) in resolved.iter().enumerate() {
             if r.is_none() {
                 continue;
