@@ -83,7 +83,7 @@ pub async fn client_handler(
     proxy_state.player.current_dimension = match worldname.path() {
         "the_end" => Dimensions::End,
         "overworld" => Dimensions::Overworld,
-        "nether" => Dimensions::Nether,
+        "the_nether" => Dimensions::Nether,
         _ => {
             warn!("Got unknown dimension: {:?}", worldname.path());
             Dimensions::Custom
